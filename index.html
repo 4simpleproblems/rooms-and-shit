@@ -237,10 +237,35 @@
             pointer-events: auto; 
         }
 
-        .fade-spinner {
-            font-size: 3rem;
-            color: var(--black-outline); 
-            animation: fa-spin 2s linear infinite; 
+        @media (max-width: 600px) {
+            .node-square {
+                width: 80px;
+                height: 80px;
+                font-size: 35px;
+                border: 6px solid var(--black-outline);
+                box-shadow: 8px 8px 0px var(--black-outline);
+            }
+            .node-label {
+                font-size: 0.9rem;
+                padding: 4px 10px;
+                border: 4px solid var(--black-outline);
+                box-shadow: 4px 4px 0px var(--black-outline);
+            }
+            #theater { top: 28%; left: 25%; }
+            #lobby { top: 62%; left: 50%; }
+            #music { top: 28%; left: 75%; }
+            .join-container {
+                left: 20px;
+                right: 20px;
+                width: auto;
+                bottom: 20px;
+            }
+            .settings-menu {
+                top: 20px;
+                right: 20px;
+                font-size: 0.9rem;
+                padding: 8px 12px;
+            }
         }
     </style>
 </head>

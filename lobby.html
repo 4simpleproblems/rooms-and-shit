@@ -264,13 +264,140 @@
             pointer-events: auto; 
         }
 
-        .fade-spinner {
-            font-size: 3rem;
-            color: var(--black-outline); 
-            animation: fa-spin 2s linear infinite; 
+        .mobile-menu-drawer {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 320px;
+            height: 100%;
+            background: var(--bg-creme);
+            border-left: 6px solid var(--black-outline);
+            box-sizing: border-box;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 150;
+            pointer-events: auto;
+            transform: translateX(100%);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            overflow-y: auto;
+        }
+        
+        .mobile-menu-drawer.open {
+            transform: translateX(0);
+        }
+        
+        .drawer-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(9, 9, 11, 0.4);
+            z-index: 140;
+            display: none;
+            pointer-events: auto;
         }
 
+        #mobile-menu-btn {
+            display: none;
+        }
 
+        #mobile-joystick-container {
+            position: absolute;
+            bottom: 40px;
+            left: 40px;
+            width: 130px;
+            height: 130px;
+            border-radius: 50%;
+            border: 4px solid var(--black-outline);
+            background: rgba(244, 241, 225, 0.9);
+            box-shadow: 4px 4px 0px var(--black-outline);
+            display: none;
+            z-index: 100;
+            pointer-events: auto;
+            touch-action: none;
+        }
+
+        #mobile-joystick-handle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 4px solid var(--black-outline);
+            background: var(--color-lobby);
+            box-shadow: 2px 2px 0px var(--black-outline);
+            pointer-events: none;
+        }
+
+        #mobile-actions-container {
+            position: absolute;
+            bottom: 40px;
+            right: 40px;
+            display: none;
+            gap: 16px;
+            z-index: 100;
+            pointer-events: auto;
+        }
+
+        #mobile-jump-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            border: 4px solid var(--black-outline);
+            background: var(--white-ui);
+            box-shadow: 4px 4px 0px var(--black-outline);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Alfa Slab One', cursive;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            cursor: pointer;
+            user-select: none;
+            touch-action: none;
+        }
+
+        #mobile-explode-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            border: 4px solid var(--black-outline);
+            background: #FF3366;
+            box-shadow: 4px 4px 0px var(--black-outline);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Alfa Slab One', cursive;
+            font-size: 0.8rem;
+            color: var(--black-outline);
+            text-transform: uppercase;
+            cursor: pointer;
+            user-select: none;
+            touch-action: none;
+        }
+
+        @media (max-width: 768px) {
+            .header-panel {
+                top: 16px;
+                left: 16px;
+                padding: 10px;
+                gap: 10px;
+            }
+            .header-title {
+                font-size: 1.1rem;
+            }
+            .ui-btn {
+                padding: 8px 12px;
+                font-size: 0.85rem;
+                border: 3px solid var(--black-outline);
+                box-shadow: 3px 3px 0px var(--black-outline);
+            }
+            #mobile-menu-btn {
+                display: inline-flex;
+            }
+        }
     </style>
 </head>
 <body>
@@ -293,6 +420,7 @@
         <div class="ui-panel header-panel">
             <button id="back-btn" class="ui-btn"><i class="fa-solid fa-arrow-left"></i> Map</button>
             <h1 class="header-title">Lobby Room</h1>
+            <button id="mobile-menu-btn" class="ui-btn primary"><i class="fa-solid fa-comments"></i> Menu</button>
         </div>
 
         <div class="ui-panel controls-panel" style="width: 320px;">
@@ -350,6 +478,20 @@
             <button class="ui-btn emotion-btn" onclick="spawnEmotion('sad')">😢</button>
             <button class="ui-btn emotion-btn" onclick="spawnEmotion('shocked')">❗</button>
         </div>
+    </div>
+
+    <div id="drawer-overlay" class="drawer-overlay"></div>
+    <div id="mobile-menu-drawer" class="mobile-menu-drawer">
+        <button id="mobile-menu-close-btn" class="ui-btn mobile-menu-close-btn"><i class="fa-solid fa-xmark"></i> Close</button>
+    </div>
+
+    <div id="mobile-joystick-container">
+        <div id="mobile-joystick-handle"></div>
+    </div>
+
+    <div id="mobile-actions-container">
+        <div id="mobile-jump-btn">Jmp</div>
+        <div id="mobile-explode-btn">Boom</div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -1213,6 +1355,203 @@
                 }
             }
         }
+
+        const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+        if (isTouchDevice) {
+            document.getElementById('mobile-joystick-container').style.display = 'block';
+            document.getElementById('mobile-actions-container').style.display = 'flex';
+            document.getElementById('mobile-menu-btn').style.display = 'inline-flex';
+            
+            document.querySelector('.controls-panel').style.display = 'none';
+            
+            const drawer = document.getElementById('mobile-menu-drawer');
+            const connPanel = document.querySelector('.connection-panel');
+            const chatPanel = document.querySelector('.chat-panel');
+            const emotionsPanel = document.querySelector('.emotions-panel');
+            
+            drawer.appendChild(connPanel);
+            drawer.appendChild(chatPanel);
+            drawer.appendChild(emotionsPanel);
+            
+            connPanel.style.position = 'static';
+            connPanel.style.boxShadow = 'none';
+            connPanel.style.border = '4px solid var(--black-outline)';
+            connPanel.style.width = '100%';
+            
+            chatPanel.style.position = 'static';
+            chatPanel.style.boxShadow = 'none';
+            chatPanel.style.border = '4px solid var(--black-outline)';
+            chatPanel.style.width = '100%';
+            
+            emotionsPanel.style.position = 'static';
+            emotionsPanel.style.boxShadow = 'none';
+            emotionsPanel.style.border = '4px solid var(--black-outline)';
+            emotionsPanel.style.width = '100%';
+            emotionsPanel.style.justifyContent = 'center';
+            emotionsPanel.style.padding = '12px';
+        } else {
+            document.getElementById('mobile-menu-btn').style.display = 'none';
+            document.getElementById('mobile-menu-drawer').style.display = 'none';
+        }
+
+        const menuBtn = document.getElementById('mobile-menu-btn');
+        const closeBtn = document.getElementById('mobile-menu-close-btn');
+        const drawer = document.getElementById('mobile-menu-drawer');
+        const overlay = document.getElementById('drawer-overlay');
+        
+        menuBtn.addEventListener('click', () => {
+            drawer.classList.add('open');
+            overlay.style.display = 'block';
+        });
+        
+        closeBtn.addEventListener('click', () => {
+            drawer.classList.remove('open');
+            overlay.style.display = 'none';
+        });
+        
+        overlay.addEventListener('click', () => {
+            drawer.classList.remove('open');
+            overlay.style.display = 'none';
+        });
+
+        let touchingJoystick = false;
+        const joystickContainer = document.getElementById('mobile-joystick-container');
+        const joystickHandle = document.getElementById('mobile-joystick-handle');
+        
+        let joystickRect = null;
+        let joystickCenterX = 0;
+        let joystickCenterY = 0;
+        let joystickTouchId = null;
+        
+        joystickContainer.addEventListener('touchstart', (e) => {
+            touchingJoystick = true;
+            joystickRect = joystickContainer.getBoundingClientRect();
+            joystickCenterX = joystickRect.left + joystickRect.width / 2;
+            joystickCenterY = joystickRect.top + joystickRect.height / 2;
+            const touch = e.changedTouches[0];
+            joystickTouchId = touch.identifier;
+            handleJoystickMove(touch);
+        }, { passive: true });
+        
+        window.addEventListener('touchmove', (e) => {
+            if (!touchingJoystick) return;
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                if (touch.identifier === joystickTouchId) {
+                    handleJoystickMove(touch);
+                    e.preventDefault();
+                    break;
+                }
+            }
+        }, { passive: false });
+        
+        window.addEventListener('touchend', (e) => {
+            if (!touchingJoystick) return;
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                if (touch.identifier === joystickTouchId) {
+                    touchingJoystick = false;
+                    joystickTouchId = null;
+                    joystickHandle.style.left = '50%';
+                    joystickHandle.style.top = '50%';
+                    
+                    players[0].keys.up = false;
+                    players[0].keys.down = false;
+                    players[0].keys.left = false;
+                    players[0].keys.right = false;
+                    break;
+                }
+            }
+        });
+        
+        window.addEventListener('touchcancel', (e) => {
+            if (!touchingJoystick) return;
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                if (touch.identifier === joystickTouchId) {
+                    touchingJoystick = false;
+                    joystickTouchId = null;
+                    joystickHandle.style.left = '50%';
+                    joystickHandle.style.top = '50%';
+                    
+                    players[0].keys.up = false;
+                    players[0].keys.down = false;
+                    players[0].keys.left = false;
+                    players[0].keys.right = false;
+                    break;
+                }
+            }
+        });
+        
+        function handleJoystickMove(touch) {
+            const dx = touch.clientX - joystickCenterX;
+            const dy = touch.clientY - joystickCenterY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const maxDist = 45;
+            
+            let moveX = dx;
+            let moveY = dy;
+            if (dist > maxDist) {
+                moveX = (dx / dist) * maxDist;
+                moveY = (dy / dist) * maxDist;
+            }
+            
+            joystickHandle.style.left = `calc(50% + ${moveX}px)`;
+            joystickHandle.style.top = `calc(50% + ${moveY}px)`;
+            
+            const deadzone = 12;
+            if (moveY < -deadzone) {
+                players[0].keys.up = true;
+                players[0].keys.down = false;
+            } else if (moveY > deadzone) {
+                players[0].keys.down = true;
+                players[0].keys.up = false;
+            } else {
+                players[0].keys.up = false;
+                players[0].keys.down = false;
+            }
+            
+            if (moveX < -deadzone) {
+                players[0].keys.left = true;
+                players[0].keys.right = false;
+            } else if (moveX > deadzone) {
+                players[0].keys.right = true;
+                players[0].keys.left = false;
+            } else {
+                players[0].keys.left = false;
+                players[0].keys.right = false;
+            }
+        }
+
+        const jumpBtn = document.getElementById('mobile-jump-btn');
+        const explodeBtn = document.getElementById('mobile-explode-btn');
+        
+        jumpBtn.addEventListener('touchstart', (e) => {
+            players[0].keys.space = true;
+            jumpBtn.style.transform = 'translate(4px, 4px)';
+            jumpBtn.style.boxShadow = '0px 0px 0px var(--black-outline)';
+            e.preventDefault();
+        });
+        
+        jumpBtn.addEventListener('touchend', (e) => {
+            players[0].keys.space = false;
+            jumpBtn.style.transform = 'none';
+            jumpBtn.style.boxShadow = '4px 4px 0px var(--black-outline)';
+            e.preventDefault();
+        });
+        
+        explodeBtn.addEventListener('touchstart', (e) => {
+            triggerExplosion(1);
+            explodeBtn.style.transform = 'translate(4px, 4px)';
+            explodeBtn.style.boxShadow = '0px 0px 0px var(--black-outline)';
+            e.preventDefault();
+        });
+        
+        explodeBtn.addEventListener('touchend', (e) => {
+            explodeBtn.style.transform = 'none';
+            explodeBtn.style.boxShadow = '4px 4px 0px var(--black-outline)';
+            e.preventDefault();
+        });
 
         animate();
     </script>
