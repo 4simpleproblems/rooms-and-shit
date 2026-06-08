@@ -410,10 +410,6 @@
     <div id="canvas-container"></div>
 
     <div id="chat-bubble-container" style="position: absolute; top: 0; left: 0; pointer-events: none; z-index: 50; width: 100%; height: 100%;">
-        <div id="speech-bubble" class="neo-bubble" style="display: none; position: absolute;">
-            <span id="speech-text"></span>
-            <div class="neo-bubble-arrow"></div>
-        </div>
     </div>
 
     <div class="ui-layer">
@@ -561,7 +557,9 @@
                 walkCycle: 0,
                 vx: 0,
                 vz: 0,
-                keys: { up: false, down: false, left: false, right: false, space: false }
+                keys: { up: false, down: false, left: false, right: false, space: false },
+                bubbleText: '',
+                bubbleTimeout: null
             },
             {
                 id: 2,
@@ -572,7 +570,9 @@
                 walkCycle: 0,
                 vx: 0,
                 vz: 0,
-                keys: { w: false, s: false, a: false, d: false, q: false }
+                keys: { w: false, s: false, a: false, d: false, q: false },
+                bubbleText: '',
+                bubbleTimeout: null
             },
             {
                 id: 3,
@@ -584,7 +584,9 @@
                 vx: 0,
                 vz: 0,
                 keys: { t: false, g: false, f: false, h: false, r: false },
-                isRemote: false
+                isRemote: false,
+                bubbleText: '',
+                bubbleTimeout: null
             }
         ];
 
@@ -750,6 +752,26 @@
                 } else if (data.type === 'respawn') {
                     const id = remoteId || data.id;
                     respawnPlayerLocal(id, data.rx, data.rz);
+                    if (localPlayerId === 1) {
+                        for (const otherConn of connections) {
+                            if (otherConn !== conn && otherConn.open) {
+                                otherConn.send(data);
+                            }
+                        }
+                    }
+                } else if (data.type === 'chat') {
+                    const id = remoteId || data.id;
+                    showSpeechBubble(id, data.text);
+                    if (localPlayerId === 1) {
+                        for (const otherConn of connections) {
+                            if (otherConn !== conn && otherConn.open) {
+                                otherConn.send(data);
+                            }
+                        }
+                    }
+                } else if (data.type === 'emotion') {
+                    const id = remoteId || data.id;
+                    spawnEmotionLocal(id, data.iconClass, data.color, data.animClass);
                     if (localPlayerId === 1) {
                         for (const otherConn of connections) {
                             if (otherConn !== conn && otherConn.open) {
@@ -1038,13 +1060,20 @@
                 animClass = 'anim-shocked';
             }
             
-            const count = type === 'shocked' ? 1 : 4;
-            for (let i = 0; i < count; i++) {
-                createParticle(iconClass, color, animClass);
+            spawnEmotionLocal(localPlayerId, iconClass, color, animClass);
+            for (const conn of connections) {
+                if (conn.open) conn.send({ type: 'emotion', id: localPlayerId, iconClass: iconClass, color: color, animClass: animClass });
             }
         }
 
-        function createParticle(iconClass, color, animClass) {
+        function spawnEmotionLocal(playerId, iconClass, color, animClass) {
+            const count = animClass === 'anim-shocked' ? 1 : 4;
+            for (let i = 0; i < count; i++) {
+                createParticle(playerId, iconClass, color, animClass);
+            }
+        }
+
+        function createParticle(playerId, iconClass, color, animClass) {
             const container = document.getElementById('chat-bubble-container');
             const particle = document.createElement('div');
             particle.className = `emotion-particle ${animClass}`;
@@ -1057,6 +1086,7 @@
             container.appendChild(particle);
             
             activeParticles.push({
+                playerId: playerId,
                 element: particle,
                 offsetX: offsetX,
                 offsetY: offsetY,
@@ -1065,7 +1095,22 @@
             });
         }
 
-        let bubbleTimeout = null;
+        function showSpeechBubble(playerId, text) {
+            const p = players.find(x => x.id === playerId);
+            if (!p) return;
+            
+            p.bubbleText = text;
+            if (p.bubbleTimeout) clearTimeout(p.bubbleTimeout);
+            
+            p.bubbleTimeout = setTimeout(() => {
+                p.bubbleText = '';
+                const bubbleEl = document.getElementById(`speech-bubble-${playerId}`);
+                if (bubbleEl) {
+                    bubbleEl.style.display = 'none';
+                }
+            }, 4000);
+        }
+
         function sendChatMessage() {
             const input = document.getElementById('chat-input');
             const text = input.value.trim();
@@ -1074,15 +1119,10 @@
             input.value = '';
             input.blur();
             
-            const bubble = document.getElementById('speech-bubble');
-            const speechText = document.getElementById('speech-text');
-            speechText.innerText = text;
-            bubble.style.display = 'block';
-            
-            if (bubbleTimeout) clearTimeout(bubbleTimeout);
-            bubbleTimeout = setTimeout(() => {
-                bubble.style.display = 'none';
-            }, 4000);
+            showSpeechBubble(localPlayerId, text);
+            for (const conn of connections) {
+                if (conn.open) conn.send({ type: 'chat', id: localPlayerId, text: text });
+            }
         }
 
         document.getElementById('chat-send-btn').addEventListener('click', sendChatMessage);
@@ -1098,6 +1138,7 @@
             camera.aspect = width / height;
             camera.updateProjectionMatrix();
             renderer.setSize(width, height);
+            updateLayoutForDevice();
         });
 
         window.addEventListener('DOMContentLoaded', () => {
@@ -1290,37 +1331,58 @@
         }
 
         function updateSpeechBubblePosition() {
-            const bubble = document.getElementById('speech-bubble');
-            if (bubble.style.display === 'none') return;
-            if (!players[0].mesh) return;
-            
-            const tempV = new THREE.Vector3();
-            players[0].mesh.getWorldPosition(tempV);
-            tempV.y += 0.4 * CHARACTER_SCALE;
-            tempV.project(camera);
-            
-            const x = (tempV.x * 0.5 + 0.5) * window.innerWidth;
-            const y = (tempV.y * -0.5 + 0.5) * window.innerHeight;
-            
-            bubble.style.left = `${x}px`;
-            bubble.style.top = `${y}px`;
+            for (const p of players) {
+                let bubbleEl = document.getElementById(`speech-bubble-${p.id}`);
+                if (!p.bubbleText) {
+                    if (bubbleEl) bubbleEl.style.display = 'none';
+                    continue;
+                }
+                
+                if (!p.mesh) continue;
+                
+                if (!bubbleEl) {
+                    bubbleEl = document.createElement('div');
+                    bubbleEl.id = `speech-bubble-${p.id}`;
+                    bubbleEl.className = 'neo-bubble';
+                    bubbleEl.innerHTML = `<span></span><div class="neo-bubble-arrow"></div>`;
+                    document.getElementById('chat-bubble-container').appendChild(bubbleEl);
+                }
+                
+                bubbleEl.querySelector('span').innerText = p.bubbleText;
+                bubbleEl.style.display = 'block';
+                
+                const tempV = new THREE.Vector3();
+                p.mesh.getWorldPosition(tempV);
+                tempV.y += 0.4 * CHARACTER_SCALE;
+                tempV.project(camera);
+                
+                const x = (tempV.x * 0.5 + 0.5) * window.innerWidth;
+                const y = (tempV.y * -0.5 + 0.5) * window.innerHeight;
+                
+                bubbleEl.style.left = `${x}px`;
+                bubbleEl.style.top = `${y}px`;
+            }
         }
 
-
-
         function updateParticles() {
-            if (!players[0].mesh) return;
-            const tempV = new THREE.Vector3();
-            players[0].mesh.getWorldPosition(tempV);
-            tempV.y += 0.3 * CHARACTER_SCALE;
-            tempV.project(camera);
-            
-            const charScreenX = (tempV.x * 0.5 + 0.5) * window.innerWidth;
-            const charScreenY = (tempV.y * -0.5 + 0.5) * window.innerHeight;
-            
             const now = Date.now();
             for (let i = activeParticles.length - 1; i >= 0; i--) {
                 const p = activeParticles[i];
+                const player = players.find(x => x.id === p.playerId);
+                if (!player || !player.mesh) {
+                    p.element.remove();
+                    activeParticles.splice(i, 1);
+                    continue;
+                }
+                
+                const tempV = new THREE.Vector3();
+                player.mesh.getWorldPosition(tempV);
+                tempV.y += 0.3 * CHARACTER_SCALE;
+                tempV.project(camera);
+                
+                const charScreenX = (tempV.x * 0.5 + 0.5) * window.innerWidth;
+                const charScreenY = (tempV.y * -0.5 + 0.5) * window.innerHeight;
+                
                 const elapsed = now - p.createdAt;
                 const progress = elapsed / p.duration;
                 
@@ -1356,43 +1418,96 @@
             }
         }
 
-        const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-        if (isTouchDevice) {
-            document.getElementById('mobile-joystick-container').style.display = 'block';
-            document.getElementById('mobile-actions-container').style.display = 'flex';
-            document.getElementById('mobile-menu-btn').style.display = 'inline-flex';
+        function updateLayoutForDevice() {
+            const isMobileLayout = window.innerWidth < window.innerHeight;
             
-            document.querySelector('.controls-panel').style.display = 'none';
-            
-            const drawer = document.getElementById('mobile-menu-drawer');
+            const joystickContainer = document.getElementById('mobile-joystick-container');
+            const actionsContainer = document.getElementById('mobile-actions-container');
+            const menuBtn = document.getElementById('mobile-menu-btn');
+            const controlsPanel = document.querySelector('.controls-panel');
             const connPanel = document.querySelector('.connection-panel');
             const chatPanel = document.querySelector('.chat-panel');
             const emotionsPanel = document.querySelector('.emotions-panel');
+            const drawer = document.getElementById('mobile-menu-drawer');
+            const uiLayer = document.querySelector('.ui-layer');
             
-            drawer.appendChild(connPanel);
-            drawer.appendChild(chatPanel);
-            drawer.appendChild(emotionsPanel);
-            
-            connPanel.style.position = 'static';
-            connPanel.style.boxShadow = 'none';
-            connPanel.style.border = '4px solid var(--black-outline)';
-            connPanel.style.width = '100%';
-            
-            chatPanel.style.position = 'static';
-            chatPanel.style.boxShadow = 'none';
-            chatPanel.style.border = '4px solid var(--black-outline)';
-            chatPanel.style.width = '100%';
-            
-            emotionsPanel.style.position = 'static';
-            emotionsPanel.style.boxShadow = 'none';
-            emotionsPanel.style.border = '4px solid var(--black-outline)';
-            emotionsPanel.style.width = '100%';
-            emotionsPanel.style.justifyContent = 'center';
-            emotionsPanel.style.padding = '12px';
-        } else {
-            document.getElementById('mobile-menu-btn').style.display = 'none';
-            document.getElementById('mobile-menu-drawer').style.display = 'none';
+            if (isMobileLayout) {
+                joystickContainer.style.display = 'block';
+                actionsContainer.style.display = 'flex';
+                menuBtn.style.display = 'inline-flex';
+                controlsPanel.style.display = 'none';
+                
+                if (connPanel.parentNode !== drawer) {
+                    drawer.appendChild(connPanel);
+                }
+                if (chatPanel.parentNode !== drawer) {
+                    drawer.appendChild(chatPanel);
+                }
+                if (emotionsPanel.parentNode !== drawer) {
+                    drawer.appendChild(emotionsPanel);
+                }
+                
+                connPanel.style.position = 'static';
+                connPanel.style.boxShadow = 'none';
+                connPanel.style.border = '4px solid var(--black-outline)';
+                connPanel.style.width = '100%';
+                
+                chatPanel.style.position = 'static';
+                chatPanel.style.boxShadow = 'none';
+                chatPanel.style.border = '4px solid var(--black-outline)';
+                chatPanel.style.width = '100%';
+                
+                emotionsPanel.style.position = 'static';
+                emotionsPanel.style.boxShadow = 'none';
+                emotionsPanel.style.border = '4px solid var(--black-outline)';
+                emotionsPanel.style.width = '100%';
+                emotionsPanel.style.justifyContent = 'center';
+                emotionsPanel.style.padding = '12px';
+            } else {
+                joystickContainer.style.display = 'none';
+                actionsContainer.style.display = 'none';
+                menuBtn.style.display = 'none';
+                controlsPanel.style.display = 'block';
+                
+                if (connPanel.parentNode === drawer) {
+                    uiLayer.appendChild(connPanel);
+                }
+                if (chatPanel.parentNode === drawer) {
+                    uiLayer.appendChild(chatPanel);
+                }
+                if (emotionsPanel.parentNode === drawer) {
+                    uiLayer.appendChild(emotionsPanel);
+                }
+                
+                drawer.classList.remove('open');
+                document.getElementById('drawer-overlay').style.display = 'none';
+                
+                connPanel.style.position = 'absolute';
+                connPanel.style.bottom = '104px';
+                connPanel.style.left = '24px';
+                connPanel.style.width = '380px';
+                connPanel.style.border = '6px solid var(--black-outline)';
+                connPanel.style.boxShadow = '8px 8px 0px var(--black-outline)';
+                
+                chatPanel.style.position = 'absolute';
+                chatPanel.style.bottom = '24px';
+                chatPanel.style.left = '24px';
+                chatPanel.style.width = '380px';
+                chatPanel.style.border = '6px solid var(--black-outline)';
+                chatPanel.style.boxShadow = '8px 8px 0px var(--black-outline)';
+                
+                emotionsPanel.style.position = 'absolute';
+                emotionsPanel.style.bottom = '24px';
+                emotionsPanel.style.right = '24px';
+                emotionsPanel.style.width = 'auto';
+                emotionsPanel.style.border = '6px solid var(--black-outline)';
+                emotionsPanel.style.boxShadow = '8px 8px 0px var(--black-outline)';
+                emotionsPanel.style.justifyContent = 'normal';
+                emotionsPanel.style.padding = '16px';
+            }
         }
+
+        updateLayoutForDevice();
 
         const menuBtn = document.getElementById('mobile-menu-btn');
         const closeBtn = document.getElementById('mobile-menu-close-btn');
@@ -1455,10 +1570,10 @@
                     joystickHandle.style.left = '50%';
                     joystickHandle.style.top = '50%';
                     
-                    players[0].keys.up = false;
-                    players[0].keys.down = false;
-                    players[0].keys.left = false;
-                    players[0].keys.right = false;
+                    players[localPlayerId - 1].keys.up = false;
+                    players[localPlayerId - 1].keys.down = false;
+                    players[localPlayerId - 1].keys.left = false;
+                    players[localPlayerId - 1].keys.right = false;
                     break;
                 }
             }
@@ -1474,10 +1589,10 @@
                     joystickHandle.style.left = '50%';
                     joystickHandle.style.top = '50%';
                     
-                    players[0].keys.up = false;
-                    players[0].keys.down = false;
-                    players[0].keys.left = false;
-                    players[0].keys.right = false;
+                    players[localPlayerId - 1].keys.up = false;
+                    players[localPlayerId - 1].keys.down = false;
+                    players[localPlayerId - 1].keys.left = false;
+                    players[localPlayerId - 1].keys.right = false;
                     break;
                 }
             }
@@ -1501,25 +1616,25 @@
             
             const deadzone = 12;
             if (moveY < -deadzone) {
-                players[0].keys.up = true;
-                players[0].keys.down = false;
+                players[localPlayerId - 1].keys.up = true;
+                players[localPlayerId - 1].keys.down = false;
             } else if (moveY > deadzone) {
-                players[0].keys.down = true;
-                players[0].keys.up = false;
+                players[localPlayerId - 1].keys.down = true;
+                players[localPlayerId - 1].keys.up = false;
             } else {
-                players[0].keys.up = false;
-                players[0].keys.down = false;
+                players[localPlayerId - 1].keys.up = false;
+                players[localPlayerId - 1].keys.down = false;
             }
             
             if (moveX < -deadzone) {
-                players[0].keys.left = true;
-                players[0].keys.right = false;
+                players[localPlayerId - 1].keys.left = true;
+                players[localPlayerId - 1].keys.right = false;
             } else if (moveX > deadzone) {
-                players[0].keys.right = true;
-                players[0].keys.left = false;
+                players[localPlayerId - 1].keys.right = true;
+                players[localPlayerId - 1].keys.left = false;
             } else {
-                players[0].keys.left = false;
-                players[0].keys.right = false;
+                players[localPlayerId - 1].keys.left = false;
+                players[localPlayerId - 1].keys.right = false;
             }
         }
 
@@ -1527,21 +1642,21 @@
         const explodeBtn = document.getElementById('mobile-explode-btn');
         
         jumpBtn.addEventListener('touchstart', (e) => {
-            players[0].keys.space = true;
+            players[localPlayerId - 1].keys.space = true;
             jumpBtn.style.transform = 'translate(4px, 4px)';
             jumpBtn.style.boxShadow = '0px 0px 0px var(--black-outline)';
             e.preventDefault();
         });
         
         jumpBtn.addEventListener('touchend', (e) => {
-            players[0].keys.space = false;
+            players[localPlayerId - 1].keys.space = false;
             jumpBtn.style.transform = 'none';
             jumpBtn.style.boxShadow = '4px 4px 0px var(--black-outline)';
             e.preventDefault();
         });
         
         explodeBtn.addEventListener('touchstart', (e) => {
-            triggerExplosion(1);
+            triggerExplosion(localPlayerId);
             explodeBtn.style.transform = 'translate(4px, 4px)';
             explodeBtn.style.boxShadow = '0px 0px 0px var(--black-outline)';
             e.preventDefault();
