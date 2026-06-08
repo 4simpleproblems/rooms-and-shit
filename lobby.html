@@ -516,7 +516,7 @@
 
         const aspect = window.innerWidth / window.innerHeight;
         const camera = new THREE.PerspectiveCamera(30, aspect, 0.1, 1000);
-        camera.position.set(9, 9, 9);
+        camera.position.set(-10.62, 2.03, -12.04);
         camera.lookAt(0, -1.2, 0);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -1236,12 +1236,29 @@
                 let dx = 0;
                 let dz = 0;
                 if (moveX !== 0 || moveZ !== 0) {
-                    const forwardX = 0.707;
-                    const forwardZ = 0.707;
-                    const rightX = 0.707;
-                    const rightZ = -0.707;
-                    dx = moveX * rightX + moveZ * forwardX;
-                    dz = moveX * rightZ + moveZ * forwardZ;
+                    const camForward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+                    camForward.y = 0;
+                    if (camForward.lengthSq() > 0.0001) {
+                        camForward.normalize();
+                    } else {
+                        camForward.set(0, 0, -1);
+                    }
+
+                    const camRight = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+                    camRight.y = 0;
+                    if (camRight.lengthSq() > 0.0001) {
+                        camRight.normalize();
+                    } else {
+                        camRight.set(1, 0, 0);
+                    }
+
+                    const targetDir = new THREE.Vector3();
+                    targetDir.addScaledVector(camForward, -moveZ);
+                    targetDir.addScaledVector(camRight, moveX);
+
+                    dx = targetDir.x;
+                    dz = targetDir.z;
+
                     const len = Math.sqrt(dx * dx + dz * dz);
                     if (len > 0) {
                         dx /= len;
