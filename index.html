@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rooms & Shit | Main Map</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Inter:wght@500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            /* Map Colors */
+            --bg-creme: #F4F1E1;
+            --tree-creme: #E8E4CE;
+            
+            /* Node Colors */
+            --color-theater: #FF3366;
+            --color-lobby: #E2FF3D;
+            --color-music: #8A2BE2;
+            
+            /* Structural Colors */
+            --black-outline: #09090B;
+            --white-ui: #FFFFFF;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-creme);
+            font-family: 'Inter', sans-serif;
+            overflow: hidden; 
+            color: var(--black-outline);
+        }
+
+        /* ==========================================
+           1. MAP GRAPHICS
+           ========================================== */
+        .map-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+            pointer-events: none; 
+        }
+
+        .map-line {
+            stroke: var(--black-outline);
+            stroke-width: 8; 
+            stroke-linecap: square; 
+            stroke-linejoin: miter;
+            stroke-dasharray: 16 16;
+            animation: lineFlow 15s linear infinite;
+        }
+
+        @keyframes lineFlow {
+            from { stroke-dashoffset: 1000; }
+            to { stroke-dashoffset: 0; }
+        }
+
+        .tree { fill: var(--tree-creme); }
+
+        /* ==========================================
+           2. THE NODES
+           ========================================== */
+        .node-container {
+            position: absolute;
+            z-index: 2;
+            transform: translate(-50%, -50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+        }
+
+        .node-square {
+            width: 110px; 
+            height: 110px;
+            border: 8px solid var(--black-outline); 
+            border-radius: 0px; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 50px; 
+            box-shadow: 12px 12px 0px var(--black-outline); 
+            transition: all 0.1s linear; 
+        }
+
+        .node-square i {
+            color: rgba(9, 9, 11, 0.7); 
+            filter: brightness(0.9); 
+            transition: filter 0.1s linear; 
+        }
+        
+        .node-container:hover .node-square i { filter: brightness(0.7); }
+
+        #theater { top: 35%; left: 25%; }
+        #theater .node-square { background-color: var(--color-theater); }
+
+        #lobby { top: 60%; left: 50%; }
+        #lobby .node-square { background-color: var(--color-lobby); }
+
+        #music { top: 35%; left: 75%; }
+        #music .node-square { background-color: var(--color-music); }
+
+        .node-label {
+            font-family: 'Alfa Slab One', cursive;
+            font-size: 1.3rem;
+            letter-spacing: 2px;
+            background: var(--white-ui);
+            padding: 6px 16px;
+            border: 5px solid var(--black-outline); 
+            border-radius: 0px; 
+            box-shadow: 6px 6px 0px var(--black-outline);
+            text-transform: uppercase;
+        }
+
+        .node-container:hover .node-square {
+            transform: translate(-4px, -4px);
+            box-shadow: 16px 16px 0px var(--black-outline);
+        }
+        .node-container:active .node-square {
+            transform: translate(12px, 12px);
+            box-shadow: 0px 0px 0px var(--black-outline);
+        }
+
+        /* ==========================================
+           3. UI OVERLAYS
+           ========================================= */
+        .ui-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 10;
+            pointer-events: none; 
+        }
+
+        .ui-panel {
+            pointer-events: auto; 
+            background: var(--white-ui);
+            border: 6px solid var(--black-outline); 
+            box-shadow: 10px 10px 0px var(--black-outline);
+            border-radius: 0px; 
+            padding: 24px;
+            position: absolute;
+        }
+
+        .settings-menu {
+            top: 24px;
+            right: 24px;
+            padding: 12px 20px;
+            font-weight: 900; 
+            font-size: 1.1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: transform 0.1s linear, box-shadow 0.1s linear;
+        }
+        
+        .settings-menu:hover {
+            transform: translate(-4px, -4px);
+            box-shadow: 14px 14px 0px var(--black-outline);
+        }
+        
+        .settings-menu:active {
+            transform: translate(10px, 10px);
+            box-shadow: 0px 0px 0px var(--black-outline);
+        }
+
+        .join-container {
+            bottom: 40px;
+            left: 40px;
+            width: 320px;
+        }
+
+        .join-container h2 {
+            font-family: 'Alfa Slab One', cursive;
+            margin: 0 0 20px 0;
+            font-size: 1.6rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            margin-bottom: 16px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 900;
+            font-size: 1.1rem;
+            text-align: center;
+            text-transform: uppercase;
+            background: var(--white-ui);
+            border: 5px solid var(--black-outline); 
+            border-radius: 0px; 
+            box-shadow: 6px 6px 0px var(--black-outline);
+            cursor: pointer;
+            transition: all 0.1s linear;
+        }
+        
+        .btn:last-child { margin-bottom: 0; }
+        .btn.primary { background: var(--color-lobby); }
+        .btn.secondary { background: #E4E4E7; }
+
+        .btn:active {
+            transform: translate(6px, 6px);
+            box-shadow: 0px 0px 0px var(--black-outline);
+        }
+
+        /* ==========================================
+           4. FADE TRANSITION
+           ========================================= */
+        #fade-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #FFFFFF; 
+            z-index: 100; 
+            opacity: 0; 
+            pointer-events: none; 
+            transition: opacity 1.5s ease-in-out; 
+            display: flex;
+            justify-content: flex-end;
+            align-items: flex-end;
+            padding: 40px;
+            box-sizing: border-box;
+        }
+
+        #fade-overlay.visible {
+            opacity: 1;
+            pointer-events: auto; 
+        }
+
+        .fade-spinner {
+            font-size: 3rem;
+            color: var(--black-outline); 
+            animation: fa-spin 2s linear infinite; 
+        }
+    </style>
+</head>
+<body>
+
+    <div id="fade-overlay">
+        <i class="fa-solid fa-spinner fade-spinner"></i>
+    </div>
+
+    <div class="ui-layer">
+        <div class="ui-panel settings-menu">
+            <i class="fa-solid fa-gear"></i> SETTINGS
+        </div>
+
+        <div class="ui-panel join-container">
+            <h2>Lobby Access</h2>
+            <button class="btn primary"><i class="fa-solid fa-globe"></i> Join Public</button>
+            <button class="btn secondary"><i class="fa-solid fa-key"></i> Join Friend</button>
+        </div>
+    </div>
+
+    <svg class="map-canvas">
+        <circle cx="15%" cy="20%" r="60" class="tree" />
+        <circle cx="20%" cy="25%" r="40" class="tree" />
+        <circle cx="80%" cy="65%" r="80" class="tree" />
+        <circle cx="75%" cy="75%" r="45" class="tree" />
+        <circle cx="45%" cy="25%" r="50" class="tree" />
+        <circle cx="35%" cy="80%" r="70" class="tree" />
+
+        <line x1="50%" y1="60%" x2="25%" y2="35%" class="map-line" />
+        <line x1="50%" y1="60%" x2="75%" y2="35%" class="map-line" />
+    </svg>
+
+    <div class="node-container" id="theater">
+        <div class="node-square"><i class="fa-solid fa-film"></i></div>
+        <div class="node-label">THEATER</div>
+    </div>
+
+    <div class="node-container" id="lobby">
+        <div class="node-square"><i class="fa-solid fa-users"></i></div>
+        <div class="node-label">LOBBY</div>
+    </div>
+
+    <div class="node-container" id="music">
+        <div class="node-square"><i class="fa-solid fa-music"></i></div>
+        <div class="node-label">MUSIC</div>
+    </div>
+
+    <script>
+        // ROUTING & ANIMATION LOGIC
+        const nodes = document.querySelectorAll('.node-container');
+        const overlay = document.getElementById('fade-overlay');
+
+        nodes.forEach(node => {
+            node.addEventListener('click', () => {
+                // 1. Trigger the white fade animation
+                overlay.classList.add('visible');
+
+                // 2. Wait exactly 1.5 seconds for the fade to finish, then redirect
+                setTimeout(() => {
+                    if (node.id === 'theater') {
+                        window.location.href = 'theater.html';
+                    } else if (node.id === 'lobby') {
+                        window.location.href = 'lobby.html'; 
+                    } else if (node.id === 'music') {
+                        window.location.href = 'music.html';
+                    }
+                }, 1500); 
+            });
+        });
+    </script>
+</body>
+</html>
+<!-- Made with ❤️ from 4SP -->
