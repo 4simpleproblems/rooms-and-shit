@@ -613,12 +613,10 @@
             }
             
             if (!success) {
-                addChatMessageToLog(null, "Failed to resolve stream. Trying direct proxy fallback...", true);
-                updateProjectorLabel("TRYING FALLBACK...");
-                videoElement.src = proxyUrl(PROVIDERS[0].movie.replace('{id}', id));
-                videoElement.play().then(() => {
-                    updateProjectorLabel("PLAYING (MUTED) - PRESS ENTER TO UNMUTE");
-                }).catch(handlePlayError);
+                addChatMessageToLog(null, "Failed to resolve stream. Servers might be down or blocked.", true);
+                updateProjectorLabel("STREAM UNAVAILABLE");
+                videoElement.removeAttribute('src');
+                videoElement.load();
             }
 
             if (sync) {
