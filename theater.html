@@ -129,6 +129,8 @@
 
     <div id="fade-overlay"></div>
 
+    <video id="movie-video" loop crossorigin="anonymous" style="display:none;"></video>
+
     <div id="customization-overlay">
         <div class="custom-card">
             <h2 class="custom-title">ENTER THEATER</h2>
@@ -359,11 +361,18 @@
             });
         });
 
-        // Movie screen — glowing white plane
+        // Movie screen — VideoTexture
+        const videoElement = document.getElementById('movie-video');
+        const screenTexture = new THREE.VideoTexture(videoElement);
         const screenW = 20;
         const screenH = 11;
         const screenGeo = new THREE.PlaneGeometry(screenW, screenH);
-        const screenMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const screenMat = new THREE.MeshStandardMaterial({ 
+            map: screenTexture,
+            emissive: 0xffffff,
+            emissiveMap: screenTexture,
+            emissiveIntensity: 1.0
+        });
         const screenMesh = new THREE.Mesh(screenGeo, screenMat);
         screenMesh.position.set(0, floorY + ROOM_H * 0.5 + 0.5, -ROOM_D / 2 + 0.2);
         scene.add(screenMesh);
@@ -483,53 +492,74 @@
         let currentMovieId = null;
         let isLookingAtProjector = false;
 
-        function updateMovieScreen(id, sync = true) {
+        async function resolveVideoUrl(embedUrl) {
+            return new Promise((resolve) => {
+                const resolverIframe = document.createElement('iframe');
+                resolverIframe.style.display = 'none';
+                resolverIframe.src = proxyUrl(embedUrl);
+                document.body.appendChild(resolverIframe);
+
+                const checkInterval = setInterval(() => {
+                    try {
+                        const doc = resolverIframe.contentDocument || resolverIframe.contentWindow.document;
+                        const video = doc.querySelector('video');
+                        if (video && video.src) {
+                            clearInterval(checkInterval);
+                            const src = video.src;
+                            document.body.removeChild(resolverIframe);
+                            resolve(src);
+                        }
+                    } catch (e) {
+                        // Keep trying or handle cross-origin if proxy fails
+                    }
+                }, 1000);
+
+                // Timeout after 15 seconds
+                setTimeout(() => {
+                    clearInterval(checkInterval);
+                    if (resolverIframe.parentNode) document.body.removeChild(resolverIframe);
+                    resolve(null);
+                }, 15000);
+            });
+        }
+
+        async function updateMovieScreen(id, sync = true) {
             currentMovieId = id;
-            const embedUrl = proxyUrl(getEmbedUrl('movie', id));
-            let iframe = document.getElementById('theater-screen-iframe');
-            if (!iframe) {
-                iframe = document.createElement('iframe');
-                iframe.id = 'theater-screen-iframe';
-                iframe.style.position = 'fixed';
-                iframe.style.top = '50%';
-                iframe.style.left = '50%';
-                iframe.style.transform = 'translate(-50%, -50%)';
-                iframe.style.width = '80vw';
-                iframe.style.height = '45vw';
-                iframe.style.border = 'none';
-                iframe.style.zIndex = '5';
-                iframe.style.pointerEvents = 'auto';
-                iframe.style.display = 'none';
-                document.body.appendChild(iframe);
-            }
-            iframe.src = embedUrl;
-            iframe.style.display = 'block';
-            screenMesh.visible = false;
+            const embedUrl = getEmbedUrl('movie', id);
             
+            addChatMessageToLog(null, "Resolving movie stream...", true);
+            const directUrl = await resolveVideoUrl(embedUrl);
+            
+            if (directUrl) {
+                videoElement.src = directUrl;
+                videoElement.play().catch(err => {
+                    addChatMessageToLog(null, "Click anywhere to start audio/video playback.", true);
+                    const starter = () => { videoElement.play(); window.removeEventListener('click', starter); };
+                    window.addEventListener('click', starter);
+                });
+                addChatMessageToLog(null, "Movie started!", true);
+            } else {
+                addChatMessageToLog(null, "Failed to resolve direct video stream. Trying fallback...", true);
+                // Fallback: use proxyUrl directly as src might sometimes work if it's a direct stream provider
+                videoElement.src = proxyUrl(embedUrl);
+                videoElement.play().catch(() => {});
+            }
+
             if (sync) {
                 connections.forEach(c => { if (c.open) c.send({ type: 'movieSync', id: localPlayerId, movieId: id }); });
             }
         }
 
         setInterval(() => {
-            const iframe = document.getElementById('theater-screen-iframe');
-            if (iframe && iframe.src && connections.length > 0 && isHost) {
-                try {
-                    const doc = iframe.contentDocument || iframe.contentWindow.document;
-                    const video = doc.querySelector('video');
-                    if (video) {
-                        connections.forEach(c => {
-                            if (c.open) c.send({
-                                type: 'movieStatus',
-                                id: localPlayerId,
-                                time: video.currentTime,
-                                paused: video.paused
-                            });
-                        });
-                    }
-                } catch (e) {
-                    // Cross-origin or proxy not fully ready to allow access
-                }
+            if (videoElement && videoElement.src && connections.length > 0 && isHost) {
+                connections.forEach(c => {
+                    if (c.open) c.send({
+                        type: 'movieStatus',
+                        id: localPlayerId,
+                        time: videoElement.currentTime,
+                        paused: videoElement.paused
+                    });
+                });
             }
         }, 2000);
 
@@ -785,17 +815,10 @@
                     updateMovieScreen(data.movieId, false);
                     if (isHost) connections.forEach(c => { if (c !== conn && c.open) c.send(data); });
                 } else if (data.type === 'movieStatus') {
-                    const iframe = document.getElementById('theater-screen-iframe');
-                    if (iframe && !isHost) {
-                        try {
-                            const doc = iframe.contentDocument || iframe.contentWindow.document;
-                            const video = doc.querySelector('video');
-                            if (video) {
-                                if (Math.abs(video.currentTime - data.time) > 5) video.currentTime = data.time;
-                                if (data.paused && !video.paused) video.pause();
-                                else if (!data.paused && video.paused) video.play();
-                            }
-                        } catch (e) {}
+                    if (videoElement && videoElement.src && !isHost) {
+                        if (Math.abs(videoElement.currentTime - data.time) > 5) videoElement.currentTime = data.time;
+                        if (data.paused && !videoElement.paused) videoElement.pause();
+                        else if (!data.paused && videoElement.paused) videoElement.play().catch(() => {});
                     }
                     if (isHost) connections.forEach(c => { if (c !== conn && c.open) c.send(data); });
                 }
