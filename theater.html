@@ -35,18 +35,22 @@
                     { websocket: "wss://ruby.rubynetwork.xyz/wisp/" }
                 ]);
                 bareInitialized = true;
+                console.log("BareMux Initialized");
             } catch (e) { console.error("BareMux Init Failed", e); }
         };
         (async () => {
             if ("serviceWorker" in navigator) {
                 try {
-                    await navigator.serviceWorker.register("/VORA/VERN_SYSTEM/sw.js", {
-                        scope: "/VORA/VERN_SYSTEM/"
+                    await navigator.serviceWorker.register("/sw.js", {
+                        scope: "/"
                     });
+                    console.log("ServiceWorker registered");
                 } catch (e) { console.error("VERN Proxy Error", e); }
             }
             await window.checkBare();
         })();
+
+        window.corsProxy = (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`;
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Inter:wght@500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -496,6 +500,7 @@
             return new Promise((resolve) => {
                 const resolverIframe = document.createElement('iframe');
                 resolverIframe.style.display = 'none';
+                // Try UV first as it rewrites the page and handles internal redirects
                 resolverIframe.src = proxyUrl(embedUrl);
                 document.body.appendChild(resolverIframe);
 
@@ -505,12 +510,16 @@
                         const video = doc.querySelector('video');
                         if (video && video.src) {
                             clearInterval(checkInterval);
-                            const src = video.src;
+                            let src = video.src;
+                            // If the src is not already proxied and is cross-origin, use our corsProxy
+                            if (!src.includes('/uv/service/') && (src.startsWith('http') || src.startsWith('//'))) {
+                                src = window.corsProxy(src);
+                            }
                             document.body.removeChild(resolverIframe);
                             resolve(src);
                         }
                     } catch (e) {
-                        // Keep trying or handle cross-origin if proxy fails
+                        // Cross-origin error is expected if UV isn't fully intercepting
                     }
                 }, 1000);
 
@@ -528,21 +537,24 @@
             const embedUrl = getEmbedUrl('movie', id);
             
             addChatMessageToLog(null, "Resolving movie stream...", true);
-            const directUrl = await resolveVideoUrl(embedUrl);
+            let directUrl = await resolveVideoUrl(embedUrl);
             
+            if (!directUrl) {
+                // Second attempt with CORS proxy directly on the embed if UV failed to find a video
+                addChatMessageToLog(null, "UV resolution slow, trying direct CORS proxy...", true);
+                directUrl = window.corsProxy(embedUrl);
+            }
+
             if (directUrl) {
                 videoElement.src = directUrl;
                 videoElement.play().catch(err => {
-                    addChatMessageToLog(null, "Click anywhere to start audio/video playback.", true);
+                    addChatMessageToLog(null, "Click anywhere to start playback.", true);
                     const starter = () => { videoElement.play(); window.removeEventListener('click', starter); };
                     window.addEventListener('click', starter);
                 });
                 addChatMessageToLog(null, "Movie started!", true);
             } else {
-                addChatMessageToLog(null, "Failed to resolve direct video stream. Trying fallback...", true);
-                // Fallback: use proxyUrl directly as src might sometimes work if it's a direct stream provider
-                videoElement.src = proxyUrl(embedUrl);
-                videoElement.play().catch(() => {});
+                addChatMessageToLog(null, "Failed to resolve video stream.", true);
             }
 
             if (sync) {
