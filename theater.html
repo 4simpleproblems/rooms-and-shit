@@ -154,7 +154,7 @@
 
     <div id="fade-overlay"></div>
 
-    <video id="movie-video" loop crossorigin="anonymous" style="display:none;"></video>
+    <video id="movie-video" loop crossorigin="anonymous" playsinline muted style="display:none;"></video>
 
     <div id="customization-overlay">
         <div class="custom-card">
@@ -436,6 +436,18 @@
         interactionLabel.visible = false;
         projectorMesh.add(interactionLabel);
 
+        function updateProjectorLabel(text) {
+            projectorMesh.remove(interactionLabel);
+            const newLabel = createNametagSprite(text);
+            newLabel.position.set(0, 0.8, 0);
+            newLabel.scale.set(1.5, 0.3, 1);
+            newLabel.visible = true;
+            projectorMesh.add(newLabel);
+            // Re-assign to interactionLabel for raycaster visibility logic
+            interactionLabel.material = newLabel.material;
+            interactionLabel.visible = true;
+        }
+
         // --- CAMERA MODES ---
         // 0 = Stationary (cinematic), 1 = First Person
         let camMode = 0;
@@ -560,6 +572,7 @@
 
         async function updateMovieScreen(id, sync = true) {
             currentMovieId = id;
+            updateProjectorLabel("RESOLVING STREAM...");
             
             async function tryProvider(providerIdx) {
                 if (providerIdx >= PROVIDERS.length) return false;
@@ -569,16 +582,22 @@
                 
                 if (directUrl) {
                     if (hls) { hls.destroy(); hls = null; }
+                    videoElement.muted = true;
                     if ((directUrl.includes('.m3u8') || directUrl.includes('m3u8')) && Hls.isSupported()) {
                         hls = new Hls();
                         hls.loadSource(directUrl);
                         hls.attachMedia(videoElement);
-                        hls.on(Hls.Events.MANIFEST_PARSED, () => videoElement.play().catch(handlePlayError));
+                        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                            videoElement.play().catch(handlePlayError);
+                            updateProjectorLabel("PLAYING (MUTED) - PRESS ENTER TO UNMUTE");
+                        });
                     } else {
                         videoElement.src = directUrl;
-                        videoElement.play().catch(handlePlayError);
+                        videoElement.play().then(() => {
+                            updateProjectorLabel("PLAYING (MUTED) - PRESS ENTER TO UNMUTE");
+                        }).catch(handlePlayError);
                     }
-                    addChatMessageToLog(null, "Movie started!", true);
+                    addChatMessageToLog(null, "Movie started (Muted). Press Enter at projector to unmute.", true);
                     return true;
                 }
                 return false;
@@ -595,8 +614,11 @@
             
             if (!success) {
                 addChatMessageToLog(null, "Failed to resolve stream. Trying direct proxy fallback...", true);
+                updateProjectorLabel("TRYING FALLBACK...");
                 videoElement.src = proxyUrl(PROVIDERS[0].movie.replace('{id}', id));
-                videoElement.play().catch(handlePlayError);
+                videoElement.play().then(() => {
+                    updateProjectorLabel("PLAYING (MUTED) - PRESS ENTER TO UNMUTE");
+                }).catch(handlePlayError);
             }
 
             if (sync) {
@@ -899,7 +921,13 @@
             if (!p) return;
 
             if (key === 'enter' && isLookingAtProjector && isFirstPerson) {
-                openMovieLookup();
+                if (videoElement && videoElement.muted && !videoElement.paused) {
+                    videoElement.muted = false;
+                    updateProjectorLabel("PLAYING - PRESS ENTER TO BROWSE");
+                    addChatMessageToLog(null, "Audio unmuted!", true);
+                } else {
+                    openMovieLookup();
+                }
                 return;
             }
 
