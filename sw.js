@@ -20,22 +20,31 @@ const uv = new UVServiceWorker({
     decodeUrl: Ultraviolet.codec.xor.decode
 });
 
+let transportReady = false;
+let transportResolve;
+const transportPromise = new Promise(resolve => {
+    transportResolve = resolve;
+});
+
 let connection = new BareMux.BareMuxConnection(config.worker);
 let bareClient = new BareMux.BareClient(connection);
 
-// Initialize Wisp transport as fallback
-(async () => {
+async function initTransport() {
     try {
         await connection.setTransport("/VORA/VERN_SYSTEM/libcurl/index.mjs", [
             { websocket: "wss://wisp.mercurywork.shop/" },
             { websocket: "wss://ruby.rubynetwork.xyz/wisp/" }
         ]);
         uv.bareClient = bareClient;
-        console.log("SW: Wisp Transport Initialized");
+        transportReady = true;
+        if (transportResolve) transportResolve();
+        console.log("SW: Transport Initialized");
     } catch (e) {
-        console.error("SW: Wisp Init Failed", e);
+        console.error("SW: Transport Init Failed", e);
     }
-})();
+}
+
+initTransport();
 
 self.addEventListener('message', (event) => {
     if (event.data && (event.data.type === 'baremuxinit' || event.data.type === 'baremuxready')) {
@@ -44,6 +53,8 @@ self.addEventListener('message', (event) => {
             connection = new BareMux.BareMuxConnection(port);
             bareClient = new BareMux.BareClient(connection);
             uv.bareClient = bareClient;
+            transportReady = true;
+            if (transportResolve) transportResolve();
             console.log("SW: Transport updated via Port");
         }
     }
@@ -57,13 +68,25 @@ self.addEventListener('activate', (event) => {
     event.waitUntil(self.clients.claim());
 });
 
+async function handleFetch(event) {
+    const url = event.request.url;
+    if (url.includes(config.prefix)) {
+        if (!transportReady) await transportPromise;
+        return await uv.fetch(event);
+    }
+    
+    // Auto-proxy TMDB and other essential domains
+    if (url.includes('themoviedb.org') || url.includes('tmdb.org')) {
+        if (!transportReady) await transportPromise;
+        const encoded = config.prefix + Ultraviolet.codec.xor.encode(url);
+        return await uv.fetch({ request: new Request(encoded, event.request) });
+    }
+
+    return await fetch(event.request);
+}
+
 self.addEventListener('fetch', (event) => {
-    event.respondWith((async () => {
-        if (event.request.url.includes(config.prefix)) {
-            return await uv.fetch(event);
-        }
-        return await fetch(event.request);
-    })());
+    event.respondWith(handleFetch(event));
 });
 
 // Made with ❤️ from 4SP

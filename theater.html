@@ -494,7 +494,7 @@
             return async (endpoint, params = {}) => {
                 const url = new URL(`https://api.themoviedb.org/3/${endpoint}`);
                 Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-                const res = await fetch(url.toString(), { headers: { Authorization: auth, Accept: "application/json" } });
+                const res = await fetch(proxyUrl(url.toString()), { headers: { Authorization: auth, Accept: "application/json" } });
                 return res.json();
             };
         })();
@@ -521,6 +521,8 @@
 
         let currentMovieId = null;
         let isLookingAtProjector = false;
+
+        let hls = null;
 
         async function resolveVideoUrl(embedUrl) {
             return new Promise((resolve) => {
@@ -556,17 +558,20 @@
             });
         }
 
+        let hls = null;
+
         async function updateMovieScreen(id, sync = true) {
             currentMovieId = id;
             
             async function tryProvider(providerIdx) {
+                if (providerIdx >= PROVIDERS.length) return false;
                 const url = PROVIDERS[providerIdx].movie.replace('{id}', id);
                 addChatMessageToLog(null, `Attempting Server ${providerIdx + 1}...`, true);
                 let directUrl = await resolveVideoUrl(url);
                 
                 if (directUrl) {
                     if (hls) { hls.destroy(); hls = null; }
-                    if (directUrl.includes('.m3u8') && Hls.isSupported()) {
+                    if ((directUrl.includes('.m3u8') || directUrl.includes('m3u8')) && Hls.isSupported()) {
                         hls = new Hls();
                         hls.loadSource(directUrl);
                         hls.attachMedia(videoElement);
@@ -581,7 +586,14 @@
                 return false;
             }
 
-            const success = await tryProvider(0) || await tryProvider(2) || await tryProvider(3);
+            // Try all servers in order
+            let success = false;
+            for (let i = 0; i < PROVIDERS.length; i++) {
+                if (await tryProvider(i)) {
+                    success = true;
+                    break;
+                }
+            }
             
             if (!success) {
                 addChatMessageToLog(null, "Failed to resolve stream. Trying direct proxy fallback...", true);
