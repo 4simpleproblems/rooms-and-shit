@@ -1165,15 +1165,18 @@
             const cacheBust = "?t=" + Date.now();
             Promise.all([
                 loadModel("model/character.gltf" + cacheBust),
-                loadModel("model/char-sitting.gltf" + cacheBust)
-            ]).then(([charGltf, sitGltf]) => {
-                setupPlayersWithScenes(charGltf, sitGltf);
+                loadModel("model/char-sitting.gltf" + cacheBust),
+                fetch("animations.json" + cacheBust).then(r => r.json())
+            ]).then(([charGltf, sitGltf, animJson]) => {
+                const animations = animJson.map(a => THREE.AnimationClip.parse(a));
+                setupPlayersWithScenes(charGltf, sitGltf, animations);
             }).catch(err => {
+                console.error("Error loading models or animations:", err);
                 loadModel("model/character.gltf" + cacheBust)
                     .then((charGltf) => {
                         parseEmbeddedGLTF(CHAR_SITTING_GLTF_DATA)
                             .then((sitGltf) => {
-                                setupPlayersWithScenes(charGltf, sitGltf);
+                                setupPlayersWithScenes(charGltf, sitGltf, charGltf.animations);
                             })
                             .catch(err2 => {
                                 console.error("Error parsing embedded sit model:", err2);
@@ -1185,10 +1188,10 @@
             });
         }
 
-        function setupPlayersWithScenes(charGltf, sitGltf) {
+        function setupPlayersWithScenes(charGltf, sitGltf, animations) {
             const charScene = charGltf.scene;
             const sitScene = sitGltf.scene;
-            const animations = charGltf.animations;
+            // animations are now passed in from animations.json (or fallback)
 
             for (let i = 0; i < 3; i++) {
                 const p = players[i];
@@ -2715,20 +2718,22 @@
 
                 if (p.mixer) {
                     p.mixer.update(delta);
-                }
-
-                if (p.stompAction) {
+                    
                     const speedVal = p.displacementX !== undefined ? Math.hypot(p.displacementX, p.displacementZ) / Math.max(0.001, delta) : 0;
                     const isMoving = speedVal > 0.15;
                     const shouldPlayStomp = isMoving && !p.isJumping && !p.isSitting && !p.isCustomizing;
+
                     if (shouldPlayStomp) {
-                        const isSprinting = speedVal > 3.5;
-                        p.stompAction.timeScale = isSprinting ? 1.8 : 1.1;
-                        if (!p.stompAction.isRunning()) {
-                            p.stompAction.play();
+                        if (p.stompAction) {
+                            const isSprinting = speedVal > 3.5;
+                            p.stompAction.timeScale = isSprinting ? 1.8 : 1.1;
+                            if (!p.stompAction.isRunning()) {
+                                p.stompAction.play();
+                            }
                         }
                     } else {
-                        p.stompAction.stop();
+                        // Idle state: Turn off all animations
+                        p.mixer.stopAllAction();
                     }
                 }
 
