@@ -4,6 +4,50 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rooms & Shit | Theater</title>
+    <!-- VERN_SYSTEM Proxy -->
+    <script src="/VORA/VERN_SYSTEM/uv/uv.bundle.js"></script>
+    <script>
+        const basePath = "/VORA/VERN_SYSTEM/uv/";
+        self.__uv$config = {
+            prefix: basePath + "service/",
+            encodeUrl: Ultraviolet.codec.xor.encode,
+            decodeUrl: Ultraviolet.codec.xor.decode,
+            handler: basePath + "uv.handler.js",
+            client: basePath + "uv.client.js",
+            bundle: basePath + "uv.bundle.js",
+            config: basePath + "uv.config.js",
+            sw: basePath + "uv.sw.js",
+            stockSW: "/VORA/VERN_SYSTEM/sw.js",
+        };
+    </script>
+    <script src="/VORA/VERN_SYSTEM/baremux/index.js"></script>
+    <script>
+        let bareInitialized = false;
+        window.checkBare = async () => {
+            if (bareInitialized) return;
+            const workerPath = "/VORA/VERN_SYSTEM/baremux/worker.js";
+            const connection = new BareMux.BareMuxConnection(workerPath);
+            const wispUrl = "wss://wisp.mercurywork.shop/";
+            const transportPath = "/VORA/VERN_SYSTEM/libcurl/index.mjs";
+            try {
+                await connection.setTransport(transportPath, [
+                    { websocket: wispUrl },
+                    { websocket: "wss://ruby.rubynetwork.xyz/wisp/" }
+                ]);
+                bareInitialized = true;
+            } catch (e) { console.error("BareMux Init Failed", e); }
+        };
+        (async () => {
+            if ("serviceWorker" in navigator) {
+                try {
+                    await navigator.serviceWorker.register("/VORA/VERN_SYSTEM/sw.js", {
+                        scope: "/VORA/VERN_SYSTEM/"
+                    });
+                } catch (e) { console.error("VERN Proxy Error", e); }
+            }
+            await window.checkBare();
+        })();
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Inter:wght@500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
@@ -45,6 +89,15 @@
         #fade-overlay.visible { opacity:1; pointer-events:auto; }
         #customization-overlay { position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); backdrop-filter:blur(10px); z-index:200; display:flex; justify-content:center; align-items:center; transition:opacity 0.5s, visibility 0.5s; }
         #customization-overlay.hidden { opacity:0; visibility:hidden; pointer-events:none; }
+        #movie-lookup-overlay { position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); backdrop-filter:blur(10px); z-index:300; display:flex; justify-content:center; align-items:center; transition:opacity 0.5s, visibility 0.5s; }
+        #movie-lookup-overlay.hidden { opacity:0; visibility:hidden; pointer-events:none; }
+        .lookup-card { background:#0d0000; border:5px solid #8B0000; box-shadow:10px 10px 0px #8B0000; padding:28px; width:600px; max-width:90%; height:80vh; display:flex; flex-direction:column; gap:18px; pointer-events:auto; }
+        #movie-search-input { border:3px solid #8B0000; padding:10px; font-family:'Inter',sans-serif; font-weight:700; font-size:1rem; outline:none; background:#1a0000; color:#fff; width:100%; box-sizing:border-box; }
+        #movie-results-grid { flex-grow:1; overflow-y:auto; display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:15px; padding-top:10px; }
+        .movie-item { cursor:pointer; background:#1a0000; border:2px solid #8B0000; transition:transform 0.2s; position:relative; overflow:hidden; }
+        .movie-item:hover { transform:scale(1.05); border-color:#FF3366; }
+        .movie-item img { width:100%; aspect-ratio:2/3; object-fit:cover; }
+        .movie-item-title { padding:5px; font-size:0.75rem; text-align:center; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; background:rgba(0,0,0,0.8); position:absolute; bottom:0; width:100%; }
         .custom-card { background:#0d0000; border:5px solid #8B0000; box-shadow:10px 10px 0px #8B0000; padding:28px; width:360px; max-width:90%; display:flex; flex-direction:column; gap:18px; pointer-events:auto; }
         .custom-title { font-family:'Alfa Slab One',cursive; font-size:1.6rem; margin:0; text-align:center; letter-spacing:1px; color:#FF6666; }
         .custom-field { display:flex; flex-direction:column; gap:7px; }
@@ -102,6 +155,19 @@
             </div>
             <button id="start-theater-btn" class="ui-btn primary" style="width:100%;justify-content:center;font-size:1.1rem;margin-top:10px;">
                 ENTER THEATER
+            </button>
+        </div>
+    </div>
+
+    <div id="movie-lookup-overlay" class="hidden">
+        <div class="lookup-card">
+            <h2 class="custom-title">SELECT MOVIE</h2>
+            <div class="custom-field">
+                <input type="text" id="movie-search-input" placeholder="Search for a movie..." />
+            </div>
+            <div id="movie-results-grid"></div>
+            <button id="close-lookup-btn" class="ui-btn primary" style="width:100%;justify-content:center;font-size:1.1rem;margin-top:10px;">
+                CLOSE
             </button>
         </div>
     </div>
@@ -310,6 +376,32 @@
         frameMesh.position.set(0, floorY + ROOM_H * 0.5 + 0.5, -ROOM_D / 2 + 0.15);
         scene.add(frameMesh);
 
+        // Projector (Interaction Point at the back)
+        const projectorGeo = new THREE.BoxGeometry(1.2, 0.8, 1.2);
+        const projectorMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+        const projectorMesh = new THREE.Mesh(projectorGeo, projectorMat);
+        projectorMesh.position.set(0, floorY + 2.5, ROOM_D / 2 - 1.5);
+        scene.add(projectorMesh);
+
+        const lensGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.4, 32);
+        const lensMat = new THREE.MeshStandardMaterial({ color: 0x111111, emissive: 0x222222 });
+        const lensMesh = new THREE.Mesh(lensGeo, lensMat);
+        lensMesh.rotation.x = Math.PI / 2;
+        lensMesh.position.set(0, 0, -0.6);
+        projectorMesh.add(lensMesh);
+
+        // Projector glow light
+        const projLight = new THREE.PointLight(0x00ccff, 0.5, 5);
+        projLight.position.set(0, 0, -0.8);
+        projectorMesh.add(projLight);
+
+        // Interaction helper
+        const interactionLabel = createNametagSprite("PRESS ENTER TO BROWSE");
+        interactionLabel.position.set(0, 0.8, 0);
+        interactionLabel.scale.set(1.5, 0.3, 1);
+        interactionLabel.visible = false;
+        projectorMesh.add(interactionLabel);
+
         // --- CAMERA MODES ---
         // 0 = Stationary (cinematic), 1 = First Person
         let camMode = 0;
@@ -354,6 +446,133 @@
             { id:2, name:'Player 2', color:'#ff9933', mesh:null, position: new THREE.Vector3(-2, floorY, ROOM_D/2 - 3), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false}, bubbleText:'', bubbleTimeout:null, isCustomizing:false },
             { id:3, name:'Player 3', color:'#4444ff', mesh:null, position: new THREE.Vector3(2, floorY, ROOM_D/2 - 3), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false}, isRemote:false, bubbleText:'', bubbleTimeout:null, isCustomizing:false }
         ];
+
+        // --- MOVIE LOGIC ---
+        const PROVIDERS = [
+            { name: "Server 1 (Recommended)", movie: "https://vidrock.net/movie/{id}", tv: "https://vidrock.net/tv/{id}/{s}/{e}" },
+            { name: "Server 2 (Ads)", movie: "https://test.autoembed.cc/embed/movie/{id}", tv: "https://test.autoembed.cc/embed/tv/{id}/{s}/{e}" },
+            { name: "Server 3", movie: "https://player.videasy.net/movie/{id}", tv: "https://player.videasy.net/tv/{id}/{s}/{e}" },
+            { name: "Server 4", movie: "https://moviesapi.club/movie/{id}", tv: "https://moviesapi.club/tv/{id}-{s}-{e}" }
+        ];
+
+        const themoviedb = (() => {
+            const auth = "Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIyYmYwZmFlZWIzZjc3OWRhZDdkOWM3MjY4ZGM0NmNmNiIsIm5iZiI6MTcyMzkzMjM1MS4xNDEyNzIsInN1YiI6IjY2YzExZTJmOTk5ZmYwYTFjNTE2YWRhNCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.vwZW4D57fT-wlqLgHt_4vhnfTbuIwFOOrWE2DBlRHMQ";
+            return async (endpoint, params = {}) => {
+                const url = new URL(`https://api.themoviedb.org/3/${endpoint}`);
+                Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+                const res = await fetch(url.toString(), { headers: { Authorization: auth, Accept: "application/json" } });
+                return res.json();
+            };
+        })();
+
+        function getEmbedUrl(type, id) {
+            return PROVIDERS[0].movie.replace('{id}', id);
+        }
+
+        function proxyUrl(url) {
+            if (!url) return url;
+            const prefix = "/VORA/VERN_SYSTEM/uv/service/";
+            const encoder = typeof Ultraviolet !== 'undefined' ? Ultraviolet.codec.xor.encode : null;
+            if (encoder) {
+                const encoded = encoder(url);
+                return prefix + (encoded.startsWith('/') ? encoded.substring(1) : encoded);
+            }
+            return url;
+        }
+
+        let currentMovieId = null;
+        let isLookingAtProjector = false;
+
+        function updateMovieScreen(id, sync = true) {
+            currentMovieId = id;
+            const embedUrl = proxyUrl(getEmbedUrl('movie', id));
+            let iframe = document.getElementById('theater-screen-iframe');
+            if (!iframe) {
+                iframe = document.createElement('iframe');
+                iframe.id = 'theater-screen-iframe';
+                iframe.style.position = 'fixed';
+                iframe.style.top = '50%';
+                iframe.style.left = '50%';
+                iframe.style.transform = 'translate(-50%, -50%)';
+                iframe.style.width = '80vw';
+                iframe.style.height = '45vw';
+                iframe.style.border = 'none';
+                iframe.style.zIndex = '5';
+                iframe.style.pointerEvents = 'auto';
+                iframe.style.display = 'none';
+                document.body.appendChild(iframe);
+            }
+            iframe.src = embedUrl;
+            iframe.style.display = 'block';
+            screenMesh.visible = false;
+            
+            if (sync) {
+                connections.forEach(c => { if (c.open) c.send({ type: 'movieSync', id: localPlayerId, movieId: id }); });
+            }
+        }
+
+        setInterval(() => {
+            const iframe = document.getElementById('theater-screen-iframe');
+            if (iframe && iframe.src && connections.length > 0 && isHost) {
+                try {
+                    const doc = iframe.contentDocument || iframe.contentWindow.document;
+                    const video = doc.querySelector('video');
+                    if (video) {
+                        connections.forEach(c => {
+                            if (c.open) c.send({
+                                type: 'movieStatus',
+                                id: localPlayerId,
+                                time: video.currentTime,
+                                paused: video.paused
+                            });
+                        });
+                    }
+                } catch (e) {
+                    // Cross-origin or proxy not fully ready to allow access
+                }
+            }
+        }, 2000);
+
+        const movieLookupOverlay = document.getElementById('movie-lookup-overlay');
+        const movieSearchInput = document.getElementById('movie-search-input');
+        const movieResultsGrid = document.getElementById('movie-results-grid');
+
+        async function searchMovies(query) {
+            const data = await themoviedb('search/movie', { query, language: 'en-US' });
+            movieResultsGrid.innerHTML = '';
+            data.results.forEach(movie => {
+                if (!movie.poster_path) return;
+                const div = document.createElement('div');
+                div.className = 'movie-item';
+                div.innerHTML = `
+                    <img src="https://image.tmdb.org/t/p/w200${movie.poster_path}" />
+                    <div class="movie-item-title">${movie.title}</div>
+                `;
+                div.onclick = () => {
+                    updateMovieScreen(movie.id);
+                    closeMovieLookup();
+                };
+                movieResultsGrid.appendChild(div);
+            });
+        }
+
+        function openMovieLookup() {
+            movieLookupOverlay.classList.remove('hidden');
+            movieSearchInput.focus();
+            isCustomizing = true;
+            if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
+        }
+
+        function closeMovieLookup() {
+            movieLookupOverlay.classList.add('hidden');
+            isCustomizing = false;
+            if (isFirstPerson) renderer.domElement.requestPointerLock();
+        }
+
+        movieSearchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchMovies(movieSearchInput.value);
+        });
+        document.getElementById('close-lookup-btn').onclick = closeMovieLookup;
 
         function addChatMessageToLog(name, text, isSystem = false) {
             const logList = document.getElementById('chat-log-list');
@@ -562,6 +781,23 @@
                     const p = players[id - 1];
                     if (p) { p.isCustomizing = data.isCustomizing; updatePlayerVisuals(p); }
                     if (isHost) connections.forEach(c => { if (c !== conn && c.open) c.send(data); });
+                } else if (data.type === 'movieSync') {
+                    updateMovieScreen(data.movieId, false);
+                    if (isHost) connections.forEach(c => { if (c !== conn && c.open) c.send(data); });
+                } else if (data.type === 'movieStatus') {
+                    const iframe = document.getElementById('theater-screen-iframe');
+                    if (iframe && !isHost) {
+                        try {
+                            const doc = iframe.contentDocument || iframe.contentWindow.document;
+                            const video = doc.querySelector('video');
+                            if (video) {
+                                if (Math.abs(video.currentTime - data.time) > 5) video.currentTime = data.time;
+                                if (data.paused && !video.paused) video.pause();
+                                else if (!data.paused && video.paused) video.play();
+                            }
+                        } catch (e) {}
+                    }
+                    if (isHost) connections.forEach(c => { if (c !== conn && c.open) c.send(data); });
                 }
             });
             conn.on('close', () => { document.getElementById('connection-status').innerText = 'Status: Disconnected.'; });
@@ -569,12 +805,20 @@
 
         window.addEventListener('keydown', (e) => {
             const key = e.key.toLowerCase();
-            if (key === 'escape') { togglePause(); return; }
-            if (isCustomizing) return;
+            if (key === 'escape') { 
+                if (!movieLookupOverlay.classList.contains('hidden')) { closeMovieLookup(); return; }
+                togglePause(); return; 
+            }
+            if (isCustomizing && movieLookupOverlay.classList.contains('hidden')) return;
             if (document.activeElement.tagName === 'INPUT') return;
 
             const p = players[localPlayerId - 1];
             if (!p) return;
+
+            if (key === 'enter' && isLookingAtProjector && isFirstPerson) {
+                openMovieLookup();
+                return;
+            }
 
             if (key === 'arrowup' || key === 'w') p.keys.up = true;
             else if (key === 'arrowdown' || key === 's') p.keys.down = true;
@@ -761,6 +1005,23 @@
                 const headPos = new THREE.Vector3().copy(localP.mesh.position).add(new THREE.Vector3(0, 0.65, 0));
                 camera.position.copy(headPos);
                 camera.quaternion.setFromEuler(new THREE.Euler(fpPitch, fpYaw, 0, 'YXZ'));
+
+                // Projector interaction check
+                const raycaster = new THREE.Raycaster();
+                raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+                const intersects = raycaster.intersectObject(projectorMesh);
+                const dist = localP.mesh.position.distanceTo(projectorMesh.position);
+                
+                if (intersects.length > 0 && dist < 4) {
+                    isLookingAtProjector = true;
+                    interactionLabel.visible = true;
+                } else {
+                    isLookingAtProjector = false;
+                    interactionLabel.visible = false;
+                }
+            } else {
+                isLookingAtProjector = false;
+                interactionLabel.visible = false;
             }
 
             renderer.render(scene, camera);
