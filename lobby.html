@@ -1155,24 +1155,19 @@
                 fetch("animations.json" + cacheBust).then(r => r.json())
             ]).then(([charGltf, animJson]) => {
                 const animations = animJson.map(a => {
-                    // Convert custom format to Three.js standard if needed
                     const tracks = a.tracks.map(t => {
-                        let trackName = t.name;
-                        if (!trackName && t.nodeName && t.property) {
-                            trackName = `${t.nodeName}.${t.property}`;
+                        const nodeName = t.nodeName || (t.name ? t.name.split('.')[0] : 'unknown');
+                        const property = t.property || (t.name ? t.name.split('.')[1] : 'position');
+                        const trackName = `${nodeName}.${property}`;
+                        const times = new Float32Array(t.times);
+                        const values = new Float32Array(t.values);
+                        if (property === 'quaternion') {
+                            return new THREE.QuaternionKeyframeTrack(trackName, times, values);
+                        } else {
+                            return new THREE.VectorKeyframeTrack(trackName, times, values);
                         }
-                        return {
-                            name: trackName,
-                            type: t.type || (t.property === 'quaternion' ? 'quaternion' : 'vector'),
-                            times: t.times,
-                            values: t.values
-                        };
                     });
-                    return THREE.AnimationClip.parse({
-                        name: a.name,
-                        duration: a.duration,
-                        tracks: tracks
-                    });
+                    return new THREE.AnimationClip(a.name, a.duration, tracks);
                 });
                 setupPlayersWithScenes(charGltf, animations);
             }).catch(err => {
@@ -1205,8 +1200,11 @@
                 if (animations && animations.length > 0) {
                     p.mixer = new THREE.AnimationMixer(charMesh);
                     p.actions = {};
+                    p.currentAction = null;
                     animations.forEach(clip => {
                         const action = p.mixer.clipAction(clip);
+                        action.setLoop(THREE.LoopRepeat, Infinity);
+                        action.clampWhenFinished = false;
                         p.actions[clip.name] = action;
                     });
                 }
