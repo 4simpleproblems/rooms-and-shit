@@ -23,13 +23,15 @@ const xor = {
     }
 };
 
-importScripts(config.sw);
-
-const uv = new UVServiceWorker({
+self.__uv$config = {
     ...config,
     encodeUrl: xor.encode,
     decodeUrl: xor.decode
-});
+};
+
+importScripts(config.sw);
+
+const uv = new UVServiceWorker();
 
 let transportReady = false;
 let transportResolve;

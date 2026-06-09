@@ -512,12 +512,13 @@
         ];
 
         const themoviedb = (() => {
-            const auth = "Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIyYmYwZmFlZWIzZjc3OWRhZDdkOWM3MjY4ZGM0NmNmNiIsIm5iZiI6MTcyMzkzMjM1MS4xNDEyNzIsInN1YiI6IjY2YzExZTJmOTk5ZmYwYTFjNTE2YWRhNCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.vwZW4D57fT-wlqLgHt_4vhnfTbuIwFOOrWE2DBlRHMQ";
+            const apiKey = "2bf0faeeb3f779dad7d9c7268dc46cf6";
             return async (endpoint, params = {}) => {
                 try {
                     const url = new URL(`https://api.themoviedb.org/3/${endpoint}`);
+                    url.searchParams.set('api_key', apiKey);
                     Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-                    const res = await fetch(proxyUrl(url.toString()), { headers: { Authorization: auth, Accept: "application/json" } });
+                    const res = await fetch(proxyUrl(url.toString()), { headers: { Accept: "application/json" } });
                     if (!res.ok) throw new Error(`TMDB API error: ${res.status}`);
                     return res.json();
                 } catch (e) {
