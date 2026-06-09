@@ -1111,7 +1111,7 @@
                     let occupied = false;
                     for (const other of players) {
                         if (other.id !== localPlayerId && other.mesh) {
-                            const distToSpot = other.mesh.position.distanceTo(new THREE.Vector3(27, parkTopY + 0.35 + 0.08, sitZSpots[i]));
+                            const distToSpot = other.mesh.position.distanceTo(new THREE.Vector3(27, parkTopY + 0.70, sitZSpots[i]));
                             if (distToSpot < 0.5) {
                                 occupied = true;
                                 break;
@@ -1134,7 +1134,7 @@
                     p.vz = 0;
                     p.yVelocity = 0;
                     p.isJumping = false;
-                    p.mesh.position.set(27, parkTopY + 0.35 + 0.08, sitZSpots[closestSpotIdx]);
+                    p.mesh.position.set(27, parkTopY + 0.70, sitZSpots[closestSpotIdx]);
                     p.mesh.rotation.set(0, -Math.PI / 2, 0);
                 }
             }
@@ -2470,6 +2470,24 @@
                 nextAction = p.actions['Idle'];
             }
 
+            const jumpAction = p.actions['Jump'];
+            if (p.isJumping && jumpAction) {
+                if (p.currentAction !== jumpAction) {
+                    if (p.currentAction) p.currentAction.fadeOut(0.1);
+                    jumpAction.reset();
+                    jumpAction.setLoop(THREE.LoopOnce, 1);
+                    jumpAction.clampWhenFinished = true;
+                    jumpAction.timeScale = 0;
+                    jumpAction.play();
+                    p.currentAction = jumpAction;
+                }
+                const peakVelocity = 5.2;
+                const t = p.yVelocity !== undefined ? p.yVelocity : 0;
+                const normalized = 1.0 - Math.max(0, Math.min(1, (t + peakVelocity) / (peakVelocity * 2)));
+                jumpAction.time = normalized * jumpAction.getClip().duration;
+                return;
+            }
+
             if (nextAction && p.currentAction !== nextAction) {
                 if (p.currentAction) p.currentAction.fadeOut(0.15);
                 nextAction.reset().fadeIn(0.15).play();
@@ -2778,7 +2796,7 @@
                         p.isSitting = false; p.mesh.position.y = parkTopY + 0.7;
                     } else {
                         const sitZSpots = [-2.2, -1.0, 0.2];
-                        p.mesh.position.set(27, parkTopY + 0.35 + 0.08, sitZSpots[p.sitSpotIndex]);
+                        p.mesh.position.set(27, parkTopY + 0.70, sitZSpots[p.sitSpotIndex]);
                         p.mesh.rotation.set(0, -Math.PI / 2, 0);
                         if (p.mixer) { p.mixer.update(delta); updateAnimationState(p, 0); }
                         continue;
