@@ -49,10 +49,22 @@
         (async () => {
             if ("serviceWorker" in navigator) {
                 try {
-                    await navigator.serviceWorker.register("/sw.js", {
+                    const reg = await navigator.serviceWorker.register("/sw.js", {
                         scope: "/"
                     });
                     console.log("ServiceWorker registered");
+                    
+                    // Signal BareMux to the SW
+                    await window.checkBare();
+                    const connection = new BareMux.BareMuxConnection("/VORA/VERN_SYSTEM/baremux/worker.js");
+                    const workerPort = await connection.getInnerPort();
+                    if (reg.active) {
+                        reg.active.postMessage({
+                            type: 'baremuxinit',
+                            port: workerPort,
+                            path: "/VORA/VERN_SYSTEM/baremux/worker.js"
+                        }, [workerPort]);
+                    }
                 } catch (e) { console.error("VERN Proxy Error", e); }
             }
             await window.checkBare();
@@ -63,6 +75,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Inter:wght@500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
         :root {
             --bg-creme: #1a0a0a;
@@ -524,9 +537,9 @@
                         if (video && video.src) {
                             clearInterval(checkInterval);
                             let src = video.src;
-                            // If the src is not already proxied and is cross-origin, use our corsProxy
+                            // If the src is not already proxied and is cross-origin, use our proxyUrl
                             if (!src.includes('/uv/service/') && (src.startsWith('http') || src.startsWith('//'))) {
-                                src = window.corsProxy(src);
+                                src = proxyUrl(src);
                             }
                             document.body.removeChild(resolverIframe);
                             resolve(src);
@@ -545,6 +558,8 @@
             });
         }
 
+        let hls = null;
+
         async function updateMovieScreen(id, sync = true) {
             currentMovieId = id;
             const embedUrl = getEmbedUrl('movie', id);
@@ -553,18 +568,24 @@
             let directUrl = await resolveVideoUrl(embedUrl);
             
             if (!directUrl) {
-                // Second attempt with CORS proxy directly on the embed if UV failed to find a video
-                addChatMessageToLog(null, "UV resolution slow, trying direct CORS proxy...", true);
-                directUrl = window.corsProxy(embedUrl);
+                addChatMessageToLog(null, "Direct resolution slow, trying proxied embed...", true);
+                directUrl = proxyUrl(embedUrl);
             }
 
             if (directUrl) {
-                videoElement.src = directUrl;
-                videoElement.play().catch(err => {
-                    addChatMessageToLog(null, "Click anywhere to start playback.", true);
-                    const starter = () => { videoElement.play(); window.removeEventListener('click', starter); };
-                    window.addEventListener('click', starter);
-                });
+                if (hls) { hls.destroy(); hls = null; }
+                
+                if (directUrl.includes('.m3u8') && Hls.isSupported()) {
+                    hls = new Hls();
+                    hls.loadSource(directUrl);
+                    hls.attachMedia(videoElement);
+                    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                        videoElement.play().catch(handlePlayError);
+                    });
+                } else {
+                    videoElement.src = directUrl;
+                    videoElement.play().catch(handlePlayError);
+                }
                 addChatMessageToLog(null, "Movie started!", true);
             } else {
                 addChatMessageToLog(null, "Failed to resolve video stream.", true);
@@ -573,6 +594,12 @@
             if (sync) {
                 connections.forEach(c => { if (c.open) c.send({ type: 'movieSync', id: localPlayerId, movieId: id }); });
             }
+        }
+
+        function handlePlayError() {
+            addChatMessageToLog(null, "Click anywhere to start playback.", true);
+            const starter = () => { videoElement.play(); window.removeEventListener('click', starter); };
+            window.addEventListener('click', starter);
         }
 
         setInterval(() => {
