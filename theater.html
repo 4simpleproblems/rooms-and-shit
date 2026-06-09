@@ -8,6 +8,16 @@
     <script src="/VORA/VERN_SYSTEM/uv/uv.bundle.js"></script>
     <script>
         const basePath = "/VORA/VERN_SYSTEM/uv/";
+        const xor = {
+            encode(str) {
+                if (!str) return str;
+                return encodeURIComponent(str.toString().split('').map((char, ind) => ind % 2 ? String.fromCharCode(char.charCodeAt(0) ^ 2) : char).join(''));
+            },
+            decode(str) {
+                if (!str) return str;
+                return decodeURIComponent(str).split('').map((char, ind) => ind % 2 ? String.fromCharCode(char.charCodeAt(0) ^ 2) : char).join('');
+            }
+        };
         function initUVConfig() {
             if (typeof Ultraviolet === 'undefined') {
                 setTimeout(initUVConfig, 100);
@@ -15,8 +25,8 @@
             }
             self.__uv$config = {
                 prefix: basePath + "service/",
-                encodeUrl: Ultraviolet.codec.xor.encode,
-                decodeUrl: Ultraviolet.codec.xor.decode,
+                encodeUrl: xor.encode,
+                decodeUrl: xor.decode,
                 handler: basePath + "uv.handler.js",
                 client: basePath + "uv.client.js",
                 bundle: basePath + "uv.bundle.js",
@@ -504,10 +514,16 @@
         const themoviedb = (() => {
             const auth = "Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIyYmYwZmFlZWIzZjc3OWRhZDdkOWM3MjY4ZGM0NmNmNiIsIm5iZiI6MTcyMzkzMjM1MS4xNDEyNzIsInN1YiI6IjY2YzExZTJmOTk5ZmYwYTFjNTE2YWRhNCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.vwZW4D57fT-wlqLgHt_4vhnfTbuIwFOOrWE2DBlRHMQ";
             return async (endpoint, params = {}) => {
-                const url = new URL(`https://api.themoviedb.org/3/${endpoint}`);
-                Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-                const res = await fetch(proxyUrl(url.toString()), { headers: { Authorization: auth, Accept: "application/json" } });
-                return res.json();
+                try {
+                    const url = new URL(`https://api.themoviedb.org/3/${endpoint}`);
+                    Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+                    const res = await fetch(proxyUrl(url.toString()), { headers: { Authorization: auth, Accept: "application/json" } });
+                    if (!res.ok) throw new Error(`TMDB API error: ${res.status}`);
+                    return res.json();
+                } catch (e) {
+                    console.error("themoviedb fetch failed:", e);
+                    return { results: [] };
+                }
             };
         })();
 
@@ -523,12 +539,9 @@
                 console.warn("UV not ready, returning original URL");
                 return url;
             }
-            const encoder = Ultraviolet.codec.xor.encode;
-            if (encoder) {
-                const encoded = encoder(url);
-                return prefix + (encoded.startsWith('/') ? encoded.substring(1) : encoded);
-            }
-            return url;
+            
+            const encoded = xor.encode(url);
+            return prefix + (encoded.startsWith('/') ? encoded.substring(1) : encoded);
         }
 
         let currentMovieId = null;
@@ -650,6 +663,10 @@
         async function searchMovies(query) {
             const data = await themoviedb('search/movie', { query, language: 'en-US' });
             movieResultsGrid.innerHTML = '';
+            if (!data || !data.results) {
+                addChatMessageToLog(null, "Search failed or returned no results.", true);
+                return;
+            }
             data.results.forEach(movie => {
                 if (!movie.poster_path) return;
                 const div = document.createElement('div');

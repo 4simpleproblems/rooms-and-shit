@@ -12,12 +12,23 @@ const config = {
     worker: '/VORA/VERN_SYSTEM/baremux/worker.js'
 };
 
+const xor = {
+    encode(str) {
+        if (!str) return str;
+        return encodeURIComponent(str.toString().split('').map((char, ind) => ind % 2 ? String.fromCharCode(char.charCodeAt(0) ^ 2) : char).join(''));
+    },
+    decode(str) {
+        if (!str) return str;
+        return decodeURIComponent(str).split('').map((char, ind) => ind % 2 ? String.fromCharCode(char.charCodeAt(0) ^ 2) : char).join('');
+    }
+};
+
 importScripts(config.sw);
 
 const uv = new UVServiceWorker({
     ...config,
-    encodeUrl: Ultraviolet.codec.xor.encode,
-    decodeUrl: Ultraviolet.codec.xor.decode
+    encodeUrl: xor.encode,
+    decodeUrl: xor.decode
 });
 
 let transportReady = false;
@@ -78,7 +89,7 @@ async function handleFetch(event) {
     // Auto-proxy TMDB and other essential domains
     if (url.includes('themoviedb.org') || url.includes('tmdb.org')) {
         if (!transportReady) await transportPromise;
-        const encoded = config.prefix + Ultraviolet.codec.xor.encode(url);
+        const encoded = config.prefix + xor.encode(url);
         return await uv.fetch({ request: new Request(encoded, event.request) });
     }
 
