@@ -526,18 +526,17 @@
             return new Promise((resolve) => {
                 const resolverIframe = document.createElement('iframe');
                 resolverIframe.style.display = 'none';
-                // Try UV first as it rewrites the page and handles internal redirects
                 resolverIframe.src = proxyUrl(embedUrl);
                 document.body.appendChild(resolverIframe);
 
                 const checkInterval = setInterval(() => {
                     try {
+                        // UV should make the iframe content accessible
                         const doc = resolverIframe.contentDocument || resolverIframe.contentWindow.document;
                         const video = doc.querySelector('video');
                         if (video && video.src) {
                             clearInterval(checkInterval);
                             let src = video.src;
-                            // If the src is not already proxied and is cross-origin, use our proxyUrl
                             if (!src.includes('/uv/service/') && (src.startsWith('http') || src.startsWith('//'))) {
                                 src = proxyUrl(src);
                             }
@@ -545,50 +544,49 @@
                             resolve(src);
                         }
                     } catch (e) {
-                        // Cross-origin error is expected if UV isn't fully intercepting
+                        // If cross-origin, UV might not be fully ready on this provider
                     }
                 }, 1000);
 
-                // Timeout after 15 seconds
                 setTimeout(() => {
                     clearInterval(checkInterval);
                     if (resolverIframe.parentNode) document.body.removeChild(resolverIframe);
                     resolve(null);
-                }, 15000);
+                }, 10000);
             });
         }
 
-        let hls = null;
-
         async function updateMovieScreen(id, sync = true) {
             currentMovieId = id;
-            const embedUrl = getEmbedUrl('movie', id);
             
-            addChatMessageToLog(null, "Resolving movie stream...", true);
-            let directUrl = await resolveVideoUrl(embedUrl);
-            
-            if (!directUrl) {
-                addChatMessageToLog(null, "Direct resolution slow, trying proxied embed...", true);
-                directUrl = proxyUrl(embedUrl);
+            async function tryProvider(providerIdx) {
+                const url = PROVIDERS[providerIdx].movie.replace('{id}', id);
+                addChatMessageToLog(null, `Attempting Server ${providerIdx + 1}...`, true);
+                let directUrl = await resolveVideoUrl(url);
+                
+                if (directUrl) {
+                    if (hls) { hls.destroy(); hls = null; }
+                    if (directUrl.includes('.m3u8') && Hls.isSupported()) {
+                        hls = new Hls();
+                        hls.loadSource(directUrl);
+                        hls.attachMedia(videoElement);
+                        hls.on(Hls.Events.MANIFEST_PARSED, () => videoElement.play().catch(handlePlayError));
+                    } else {
+                        videoElement.src = directUrl;
+                        videoElement.play().catch(handlePlayError);
+                    }
+                    addChatMessageToLog(null, "Movie started!", true);
+                    return true;
+                }
+                return false;
             }
 
-            if (directUrl) {
-                if (hls) { hls.destroy(); hls = null; }
-                
-                if (directUrl.includes('.m3u8') && Hls.isSupported()) {
-                    hls = new Hls();
-                    hls.loadSource(directUrl);
-                    hls.attachMedia(videoElement);
-                    hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                        videoElement.play().catch(handlePlayError);
-                    });
-                } else {
-                    videoElement.src = directUrl;
-                    videoElement.play().catch(handlePlayError);
-                }
-                addChatMessageToLog(null, "Movie started!", true);
-            } else {
-                addChatMessageToLog(null, "Failed to resolve video stream.", true);
+            const success = await tryProvider(0) || await tryProvider(2) || await tryProvider(3);
+            
+            if (!success) {
+                addChatMessageToLog(null, "Failed to resolve stream. Trying direct proxy fallback...", true);
+                videoElement.src = proxyUrl(PROVIDERS[0].movie.replace('{id}', id));
+                videoElement.play().catch(handlePlayError);
             }
 
             if (sync) {
@@ -1099,8 +1097,8 @@
                 interactionLabel.visible = false;
             }
 
-            if (videoElement && !videoElement.paused) {
-                // Video is playing, ensure texture updates
+            if (videoElement && videoElement.readyState >= 2 && !videoElement.paused) {
+                // Video is playing and has data, ensure texture updates
                 screenTexture.needsUpdate = true;
             }
             

@@ -20,39 +20,32 @@ const uv = new UVServiceWorker({
     decodeUrl: Ultraviolet.codec.xor.decode
 });
 
-let transportReady = false;
-let transportResolve;
-const transportPromise = new Promise(resolve => {
-    transportResolve = resolve;
-});
-
 let connection = new BareMux.BareMuxConnection(config.worker);
 let bareClient = new BareMux.BareClient(connection);
 
-function updateTransport(path, port = null) {
+// Initialize Wisp transport as fallback
+(async () => {
     try {
-        if (port) {
-            connection = new BareMux.BareMuxConnection(port);
-        } else if (path) {
-            connection = new BareMux.BareMuxConnection(path);
-        }
-        bareClient = new BareMux.BareClient(connection);
+        await connection.setTransport("/VORA/VERN_SYSTEM/libcurl/index.mjs", [
+            { websocket: "wss://wisp.mercurywork.shop/" },
+            { websocket: "wss://ruby.rubynetwork.xyz/wisp/" }
+        ]);
         uv.bareClient = bareClient;
-        console.log("SW: Transport updated");
+        console.log("SW: Wisp Transport Initialized");
     } catch (e) {
-        console.error("SW: Failed to update transport:", e);
+        console.error("SW: Wisp Init Failed", e);
     }
-
-    if (!transportReady) {
-        transportReady = true;
-        if (transportResolve) transportResolve();
-    }
-}
+})();
 
 self.addEventListener('message', (event) => {
     if (event.data && (event.data.type === 'baremuxinit' || event.data.type === 'baremuxready')) {
         const port = event.data.port || (event.ports && event.ports[0]);
-        updateTransport(event.data.path, port);
+        if (port) {
+            connection = new BareMux.BareMuxConnection(port);
+            bareClient = new BareMux.BareClient(connection);
+            uv.bareClient = bareClient;
+            console.log("SW: Transport updated via Port");
+        }
     }
 });
 
@@ -67,12 +60,6 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     event.respondWith((async () => {
         if (event.request.url.includes(config.prefix)) {
-            if (!transportReady) {
-                await Promise.race([
-                    transportPromise,
-                    new Promise(r => setTimeout(r, 2000))
-                ]);
-            }
             return await uv.fetch(event);
         }
         return await fetch(event.request);
