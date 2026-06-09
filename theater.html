@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rooms & Shit | Theater</title>
+    <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Inter:wght@500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <style>
+        :root {
+            --bg-creme: #1a0a0a;
+            --color-theater: #FF3366;
+            --color-lobby: #FF3366;
+            --black-outline: #09090B;
+            --white-ui: #FFFFFF;
+        }
+        body { margin:0; padding:0; background:#000; font-family:'Inter',sans-serif; overflow:hidden; color:#fff; user-select:none; }
+        #canvas-container { position:absolute; top:0; left:0; width:100vw; height:100vh; z-index:1; }
+        .ui-layer { position:absolute; top:0; left:0; width:100%; height:100%; z-index:10; pointer-events:none; }
+        .ui-panel { pointer-events:auto; background:rgba(10,0,0,0.75); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border:4px solid #8B0000; box-shadow:6px 6px 0px #8B0000; padding:14px; position:absolute; box-sizing:border-box; }
+        .header-panel { top:20px; left:20px; display:flex; align-items:center; gap:14px; }
+        .header-title { font-family:'Alfa Slab One',cursive; font-size:1.3rem; letter-spacing:1px; margin:0; color:#fff; }
+        .ui-btn { font-family:'Inter',sans-serif; font-weight:900; font-size:0.9rem; text-align:center; text-transform:uppercase; background:#1a0000; color:#fff; border:3px solid #8B0000; box-shadow:3px 3px 0px #8B0000; cursor:pointer; padding:8px 14px; transition:transform 0.05s, box-shadow 0.05s; display:inline-flex; align-items:center; gap:6px; }
+        .ui-btn:hover { transform:translate(-2px,-2px); box-shadow:5px 5px 0px #8B0000; }
+        .ui-btn:active { transform:translate(3px,3px); box-shadow:0px 0px 0px #8B0000; }
+        .ui-btn.primary { background:#8B0000; color:#fff; }
+        .controls-panel { top:20px; right:20px; width:240px; }
+        .controls-panel h3 { font-family:'Alfa Slab One',cursive; font-size:0.9rem; margin:0 0 8px 0; color:#FF6666; }
+        .control-row { display:flex; justify-content:space-between; margin-bottom:6px; font-size:0.82rem; font-weight:700; }
+        .control-key { background:#2a0000; border:2px solid #8B0000; border-radius:3px; padding:1px 5px; font-family:monospace; font-weight:900; color:#FF9999; }
+        #chat-log-panel { position:absolute; bottom:250px; left:20px; width:360px; height:180px; display:flex; flex-direction:column; box-sizing:border-box; background:rgba(10,0,0,0.8); border:4px solid #8B0000; box-shadow:6px 6px 0px #8B0000; padding:10px; z-index:10; }
+        #chat-log-list { flex-grow:1; overflow-y:auto; margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:5px; font-size:0.82rem; font-weight:700; }
+        #chat-log-list::-webkit-scrollbar { width:6px; }
+        #chat-log-list::-webkit-scrollbar-track { background:#1a0000; }
+        #chat-log-list::-webkit-scrollbar-thumb { background:#8B0000; }
+        .chat-msg { line-height:1.4; word-break:break-word; color:#ddd; }
+        .chat-msg-system { color:#FF6666; font-style:italic; }
+        .chat-panel { bottom:20px; left:20px; width:360px; display:flex; gap:10px; }
+        .chat-input { background:#1a0000; color:#fff; border:3px solid #8B0000; padding:8px 10px; font-family:'Inter',sans-serif; font-weight:700; font-size:0.9rem; flex-grow:1; outline:none; }
+        .emotions-panel { position:absolute; bottom:20px; right:20px; display:flex; gap:8px; background:rgba(10,0,0,0.75); border:4px solid #8B0000; box-shadow:6px 6px 0px #8B0000; padding:12px; }
+        .emotion-btn { width:46px; height:46px; font-size:1.2rem; display:flex; justify-content:center; align-items:center; padding:0; }
+        #cam-mode-indicator { position:absolute; top:20px; left:50%; transform:translateX(-50%); background:rgba(139,0,0,0.8); border:3px solid #FF3366; padding:5px 14px; font-family:'Alfa Slab One',cursive; font-size:0.8rem; color:#fff; pointer-events:none; letter-spacing:1px; }
+        #fade-overlay { position:absolute; top:0; left:0; width:100vw; height:100vh; background-color:#000; z-index:100; opacity:0; pointer-events:none; transition:opacity 1.5s ease-in-out; display:flex; justify-content:center; align-items:center; }
+        #fade-overlay.visible { opacity:1; pointer-events:auto; }
+        #customization-overlay { position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); backdrop-filter:blur(10px); z-index:200; display:flex; justify-content:center; align-items:center; transition:opacity 0.5s, visibility 0.5s; }
+        #customization-overlay.hidden { opacity:0; visibility:hidden; pointer-events:none; }
+        .custom-card { background:#0d0000; border:5px solid #8B0000; box-shadow:10px 10px 0px #8B0000; padding:28px; width:360px; max-width:90%; display:flex; flex-direction:column; gap:18px; pointer-events:auto; }
+        .custom-title { font-family:'Alfa Slab One',cursive; font-size:1.6rem; margin:0; text-align:center; letter-spacing:1px; color:#FF6666; }
+        .custom-field { display:flex; flex-direction:column; gap:7px; }
+        .custom-field label { font-weight:900; font-size:0.85rem; text-transform:uppercase; color:#FF9999; }
+        #custom-name-input { border:3px solid #8B0000; padding:10px; font-family:'Inter',sans-serif; font-weight:700; font-size:1rem; outline:none; background:#1a0000; color:#fff; }
+        .color-options { display:grid; grid-template-columns:repeat(6,1fr); gap:7px; }
+        .color-btn { aspect-ratio:1; border:3px solid #8B0000; cursor:pointer; box-shadow:2px 2px 0px #8B0000; transition:transform 0.05s; }
+        .color-btn.active, .color-btn:hover { transform:translate(-2px,-2px); box-shadow:4px 4px 0px #8B0000; }
+        #pause-overlay { position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); backdrop-filter:blur(10px); z-index:200; display:flex; justify-content:center; align-items:center; transition:opacity 0.5s, visibility 0.5s; }
+        #pause-overlay.hidden { opacity:0; visibility:hidden; pointer-events:none; }
+        input[type="range"] { -webkit-appearance:none; width:100%; height:10px; background:#1a0000; border:3px solid #8B0000; outline:none; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:18px; height:18px; background:#8B0000; border:3px solid #FF3366; cursor:pointer; }
+        #mobile-joystick-container { position:absolute; bottom:40px; left:40px; width:120px; height:120px; border-radius:50%; border:3px solid #8B0000; background:rgba(20,0,0,0.8); display:none; z-index:100; pointer-events:auto; touch-action:none; }
+        #mobile-joystick-handle { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:44px; height:44px; border-radius:50%; border:3px solid #8B0000; background:#FF3366; pointer-events:none; }
+        #mobile-actions-container { position:absolute; bottom:40px; right:40px; display:none; gap:14px; z-index:100; pointer-events:auto; }
+        #mobile-jump-btn { width:64px; height:64px; border-radius:50%; border:3px solid #8B0000; background:#1a0000; color:#fff; box-shadow:3px 3px 0px #8B0000; display:flex; justify-content:center; align-items:center; font-family:'Alfa Slab One',cursive; font-size:0.85rem; cursor:pointer; user-select:none; touch-action:none; }
+        #mobile-menu-btn { display:none; }
+        .mobile-menu-drawer { position:absolute; top:0; right:0; width:300px; height:100%; background:#0d0000; border-left:4px solid #8B0000; padding:20px; display:flex; flex-direction:column; gap:16px; z-index:150; pointer-events:auto; transform:translateX(100%); transition:transform 0.3s cubic-bezier(0.16,1,0.3,1); overflow-y:auto; box-sizing:border-box; }
+        .mobile-menu-drawer.open { transform:translateX(0); }
+        .drawer-overlay { position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:140; display:none; pointer-events:auto; }
+        @media (max-width:768px) {
+            .header-panel { top:12px; left:12px; padding:8px; gap:8px; }
+            .header-title { font-size:1rem; }
+            #mobile-menu-btn { display:inline-flex; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="fade-overlay" class="visible"></div>
+
+    <div id="customization-overlay" class="hidden">
+        <div class="custom-card">
+            <h2 class="custom-title">ENTER THEATER</h2>
+            <div class="custom-field">
+                <label for="custom-name-input">YOUR NAME</label>
+                <input type="text" id="custom-name-input" value="Player" maxlength="15" placeholder="Enter name..." />
+            </div>
+            <div class="custom-field">
+                <label>CHOOSE COLOR</label>
+                <div class="color-options">
+                    <button class="color-btn active" data-color="#E2FF3D" style="background:#E2FF3D;"></button>
+                    <button class="color-btn" data-color="#FF3366" style="background:#FF3366;"></button>
+                    <button class="color-btn" data-color="#8A2BE2" style="background:#8A2BE2;"></button>
+                    <button class="color-btn" data-color="#33ccff" style="background:#33ccff;"></button>
+                    <button class="color-btn" data-color="#33ff33" style="background:#33ff33;"></button>
+                    <button class="color-btn" data-color="#ff9933" style="background:#ff9933;"></button>
+                    <button class="color-btn" data-color="#ff33ff" style="background:#ff33ff;"></button>
+                    <button class="color-btn" data-color="#ffff33" style="background:#ffff33;"></button>
+                    <button class="color-btn" data-color="#33ffff" style="background:#33ffff;"></button>
+                    <button class="color-btn" data-color="#ff3333" style="background:#ff3333;"></button>
+                    <button class="color-btn" data-color="#996633" style="background:#996633;"></button>
+                    <button class="color-btn" data-color="#ff9999" style="background:#ff9999;"></button>
+                </div>
+            </div>
+            <button id="start-theater-btn" class="ui-btn primary" style="width:100%;justify-content:center;font-size:1.1rem;margin-top:10px;">
+                ENTER THEATER
+            </button>
+        </div>
+    </div>
+
+    <div id="pause-overlay" class="hidden">
+        <div class="custom-card">
+            <h2 class="custom-title">PAUSED</h2>
+            <div class="custom-field">
+                <label for="pause-name-input">NAME</label>
+                <input type="text" id="pause-name-input" value="Player" maxlength="15" />
+            </div>
+            <div class="custom-field">
+                <label>COLOR</label>
+                <div class="color-options" id="pause-color-options">
+                    <button class="color-btn active" data-color="#E2FF3D" style="background:#E2FF3D;"></button>
+                    <button class="color-btn" data-color="#FF3366" style="background:#FF3366;"></button>
+                    <button class="color-btn" data-color="#8A2BE2" style="background:#8A2BE2;"></button>
+                    <button class="color-btn" data-color="#33ccff" style="background:#33ccff;"></button>
+                    <button class="color-btn" data-color="#33ff33" style="background:#33ff33;"></button>
+                    <button class="color-btn" data-color="#ff9933" style="background:#ff9933;"></button>
+                    <button class="color-btn" data-color="#ff33ff" style="background:#ff33ff;"></button>
+                    <button class="color-btn" data-color="#ffff33" style="background:#ffff33;"></button>
+                    <button class="color-btn" data-color="#33ffff" style="background:#33ffff;"></button>
+                    <button class="color-btn" data-color="#ff3333" style="background:#ff3333;"></button>
+                    <button class="color-btn" data-color="#996633" style="background:#996633;"></button>
+                    <button class="color-btn" data-color="#ff9999" style="background:#ff9999;"></button>
+                </div>
+            </div>
+            <div class="custom-field">
+                <label for="pause-fov-input">FOV: <span id="fov-val">90</span></label>
+                <input type="range" id="pause-fov-input" min="60" max="120" value="90" />
+            </div>
+            <button id="resume-btn" class="ui-btn primary" style="width:100%;justify-content:center;font-size:1.1rem;margin-top:10px;">RESUME</button>
+        </div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <div class="ui-layer">
+        <div class="ui-panel header-panel">
+            <button id="back-btn" class="ui-btn" onclick="window.location.href='index.html'"><i class="fa-solid fa-arrow-left"></i> Map</button>
+            <button id="pause-btn" class="ui-btn"><i class="fa-solid fa-pause"></i> Pause</button>
+            <h1 class="header-title">Theater Room</h1>
+            <button id="mobile-menu-btn" class="ui-btn primary"><i class="fa-solid fa-comments"></i> Menu</button>
+        </div>
+
+        <div id="cam-mode-indicator">📽 STATIONARY CAM — Press V for First Person</div>
+
+        <div id="chat-log-panel">
+            <ul id="chat-log-list"></ul>
+        </div>
+
+        <div class="ui-panel controls-panel">
+            <h3>Theater Controls</h3>
+            <div class="control-row"><span>Move</span><span class="control-key">WASD</span></div>
+            <div class="control-row"><span>Jump</span><span class="control-key">Space</span></div>
+            <div class="control-row"><span>Camera</span><span class="control-key">V</span></div>
+            <div class="control-row"><span>Chat</span><span class="control-key">Enter</span></div>
+        </div>
+
+        <div class="ui-panel connection-panel" style="bottom:108px;left:20px;width:360px;box-sizing:border-box;display:flex;flex-direction:column;gap:8px;">
+            <h3 style="font-family:'Alfa Slab One',cursive;font-size:0.9rem;margin:0;color:#FF6666;">WATCH WITH FRIENDS</h3>
+            <div style="display:flex;align-items:center;justify-content:space-between;font-size:0.82rem;font-weight:700;background:#1a0000;border:2px solid #8B0000;padding:5px 8px;">
+                <span>Room ID: <span id="my-peer-id-label" style="font-family:monospace;font-weight:900;color:#FF9999;">Loading...</span></span>
+                <button id="copy-id-btn" class="ui-btn" style="padding:2px 6px;font-size:0.7rem;height:20px;"><i class="fa-solid fa-copy"></i> Copy</button>
+            </div>
+            <div style="display:flex;gap:6px;">
+                <input type="text" id="join-peer-id-input" class="chat-input" placeholder="Enter Room ID..." style="font-size:0.78rem;padding:5px 8px;" />
+                <button id="connect-btn" class="ui-btn primary" style="padding:5px 10px;font-size:0.78rem;"><i class="fa-solid fa-link"></i> Join</button>
+            </div>
+            <div id="connection-status" style="font-size:0.72rem;font-weight:800;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Status: Local Mode</div>
+        </div>
+
+        <div class="ui-panel chat-panel">
+            <input type="text" id="chat-input" class="chat-input" placeholder="Say something in the theater..." maxlength="50" autocomplete="off" />
+            <button id="chat-send-btn" class="ui-btn primary"><i class="fa-solid fa-paper-plane"></i></button>
+        </div>
+
+        <div class="emotions-panel">
+            <button class="ui-btn emotion-btn" onclick="spawnEmotion('angry');this.blur();" tabindex="-1"><i class="fa-solid fa-bolt-lightning"></i></button>
+            <button class="ui-btn emotion-btn" onclick="spawnEmotion('love');this.blur();" tabindex="-1"><i class="fa-solid fa-heart"></i></button>
+            <button class="ui-btn emotion-btn" onclick="spawnEmotion('happy');this.blur();" tabindex="-1"><i class="fa-solid fa-face-laugh-beam"></i></button>
+            <button class="ui-btn emotion-btn" onclick="spawnEmotion('sad');this.blur();" tabindex="-1"><i class="fa-solid fa-cloud-showers-water"></i></button>
+            <button class="ui-btn emotion-btn" onclick="spawnEmotion('shocked');this.blur();" tabindex="-1"><i class="fa-solid fa-exclamation"></i></button>
+        </div>
+    </div>
+
+    <div id="drawer-overlay" class="drawer-overlay"></div>
+    <div id="mobile-menu-drawer" class="mobile-menu-drawer">
+        <button id="mobile-menu-close-btn" class="ui-btn"><i class="fa-solid fa-xmark"></i> Close</button>
+    </div>
+
+    <div id="mobile-joystick-container"><div id="mobile-joystick-handle"></div></div>
+    <div id="mobile-actions-container">
+        <div id="mobile-jump-btn">Jmp</div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script>
+        window.createImageBitmap = undefined;
+        const loader = new THREE.GLTFLoader();
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x000000);
+
+        const aspect = window.innerWidth / window.innerHeight;
+        const camera = new THREE.PerspectiveCamera(90, aspect, 0.1, 200);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.setClearColor(0x000000);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // --- THEATER DIMENSIONS ---
+        const ROOM_W = 40;
+        const ROOM_D = 30;
+        const ROOM_H = 8;
+        const floorY = 0;
+
+        // Ambient — very dim, deep red tint
+        const ambientLight = new THREE.AmbientLight(0x220000, 0.4);
+        scene.add(ambientLight);
+
+        // Ceiling accent lights (red mood)
+        const moodColors = [0x550000, 0x440000, 0x550000];
+        const moodXPos = [-12, 0, 12];
+        moodXPos.forEach((x, i) => {
+            const pl = new THREE.PointLight(moodColors[i], 0.5, 18);
+            pl.position.set(x, floorY + ROOM_H - 0.5, 0);
+            scene.add(pl);
+        });
+
+        // Screen glow light
+        const screenLight = new THREE.PointLight(0xffffff, 1.8, 25);
+        screenLight.position.set(0, floorY + ROOM_H * 0.55, -(ROOM_D / 2) + 2.5);
+        scene.add(screenLight);
+
+        // --- THEATER GEOMETRY ---
+        const floorGeo = new THREE.BoxGeometry(ROOM_W, 0.3, ROOM_D);
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0x0d0d0d, roughness: 0.95 });
+        const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+        floorMesh.position.set(0, floorY - 0.15, 0);
+        floorMesh.receiveShadow = true;
+        scene.add(floorMesh);
+
+        // Ceiling
+        const ceilMat = new THREE.MeshStandardMaterial({ color: 0x080808, roughness: 1.0 });
+        const ceilMesh = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.3, ROOM_D), ceilMat);
+        ceilMesh.position.set(0, floorY + ROOM_H + 0.15, 0);
+        scene.add(ceilMesh);
+
+        // Walls — deep red
+        const wallMat = new THREE.MeshStandardMaterial({ color: 0x5a0000, roughness: 0.9 });
+        // Left wall
+        const lWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, ROOM_H, ROOM_D), wallMat);
+        lWall.position.set(-ROOM_W / 2 - 0.15, floorY + ROOM_H / 2, 0);
+        scene.add(lWall);
+        // Right wall
+        const rWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, ROOM_H, ROOM_D), wallMat);
+        rWall.position.set(ROOM_W / 2 + 0.15, floorY + ROOM_H / 2, 0);
+        scene.add(rWall);
+        // Back wall (behind audience)
+        const bWall = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, ROOM_H, 0.3), wallMat);
+        bWall.position.set(0, floorY + ROOM_H / 2, ROOM_D / 2 + 0.15);
+        scene.add(bWall);
+        // Front wall (screen side) — dark
+        const fWallMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 1.0 });
+        const fWall = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, ROOM_H, 0.3), fWallMat);
+        fWall.position.set(0, floorY + ROOM_H / 2, -ROOM_D / 2 - 0.15);
+        scene.add(fWall);
+
+        // Decorative wall trim stripes (dark red horizontal)
+        const trimMat = new THREE.MeshStandardMaterial({ color: 0x7a0000, roughness: 0.8 });
+        [-ROOM_W / 2, ROOM_W / 2].forEach(wx => {
+            const sign = wx < 0 ? 1 : -1;
+            [1.5, ROOM_H - 1.0].forEach(ty => {
+                const trim = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, ROOM_D - 0.5), trimMat);
+                trim.position.set(wx + sign * 0.15, floorY + ty, 0);
+                scene.add(trim);
+            });
+        });
+
+        // Movie screen — glowing white plane
+        const screenW = 20;
+        const screenH = 11;
+        const screenGeo = new THREE.PlaneGeometry(screenW, screenH);
+        const screenMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const screenMesh = new THREE.Mesh(screenGeo, screenMat);
+        screenMesh.position.set(0, floorY + ROOM_H * 0.5 + 0.5, -ROOM_D / 2 + 0.2);
+        scene.add(screenMesh);
+
+        // Screen border frame (black)
+        const frameMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
+        const frameBorder = 0.4;
+        const frameGeo = new THREE.BoxGeometry(screenW + frameBorder * 2, screenH + frameBorder * 2, 0.1);
+        const frameMesh = new THREE.Mesh(frameGeo, frameMat);
+        frameMesh.position.set(0, floorY + ROOM_H * 0.5 + 0.5, -ROOM_D / 2 + 0.15);
+        scene.add(frameMesh);
+
+        // --- CAMERA MODES ---
+        // 0 = Stationary (cinematic), 1 = First Person
+        let camMode = 0;
+        let isFirstPerson = false;
+        let fpYaw = Math.PI; // face toward screen (negative Z)
+        let fpPitch = 0;
+
+        const STATIONARY_POS = new THREE.Vector3(0, floorY + 2.5, ROOM_D / 2 - 1.0);
+        const STATIONARY_TARGET = new THREE.Vector3(0, floorY + ROOM_H * 0.5 + 0.5, -ROOM_D / 2 + 0.2);
+
+        function applyStationaryCamera() {
+            camera.position.copy(STATIONARY_POS);
+            camera.lookAt(STATIONARY_TARGET);
+        }
+        applyStationaryCamera();
+
+        const camIndicator = document.getElementById('cam-mode-indicator');
+
+        function toggleCameraMode() {
+            camMode = camMode === 0 ? 1 : 0;
+            isFirstPerson = camMode === 1;
+            const localP = players[localPlayerId - 1];
+            if (isFirstPerson) {
+                if (localP && localP.mesh) localP.mesh.visible = false;
+                fpYaw = Math.PI;
+                fpPitch = 0;
+                renderer.domElement.requestPointerLock();
+                camIndicator.textContent = '👤 FIRST PERSON — Press V for Stationary';
+            } else {
+                if (localP && localP.mesh) localP.mesh.visible = true;
+                if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
+                applyStationaryCamera();
+                camIndicator.textContent = '📽 STATIONARY CAM — Press V for First Person';
+            }
+        }
+
+        const CHARACTER_SCALE = 2.0;
+        const PLATFORM_SIZE = ROOM_W;
+
+        const players = [
+            { id:1, name:'Player 1', color:'#E2FF3D', mesh:null, position: new THREE.Vector3(0, floorY, ROOM_D/2 - 3), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false}, bubbleText:'', bubbleTimeout:null, isCustomizing:true },
+            { id:2, name:'Player 2', color:'#ff9933', mesh:null, position: new THREE.Vector3(-2, floorY, ROOM_D/2 - 3), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false}, bubbleText:'', bubbleTimeout:null, isCustomizing:false },
+            { id:3, name:'Player 3', color:'#4444ff', mesh:null, position: new THREE.Vector3(2, floorY, ROOM_D/2 - 3), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false}, isRemote:false, bubbleText:'', bubbleTimeout:null, isCustomizing:false }
+        ];
+
+        function addChatMessageToLog(name, text, isSystem = false) {
+            const logList = document.getElementById('chat-log-list');
+            if (!logList) return;
+            const li = document.createElement('li');
+            li.className = 'chat-msg' + (isSystem ? ' chat-msg-system' : '');
+            li.innerText = isSystem ? `[System] ${text}` : `${name}: ${text}`;
+            logList.appendChild(li);
+            logList.scrollTop = logList.scrollHeight;
+        }
+
+        function createToonMaterial(texture, colorHex) {
+            if (texture) {
+                texture.magFilter = THREE.NearestFilter;
+                texture.minFilter = THREE.NearestFilter;
+                texture.wrapS = THREE.RepeatWrapping;
+                texture.wrapT = THREE.RepeatWrapping;
+                texture.generateMipmaps = false;
+                texture.needsUpdate = true;
+            }
+            const mat = new THREE.ShaderMaterial({
+                uniforms: { map:{value:texture}, color:{value:new THREE.Color(colorHex)}, opacity:{value:1.0}, isGreyscale:{value:0.0} },
+                vertexShader: `varying vec3 vNormal; varying vec3 vViewDir; varying vec2 vUv; void main() { vUv=uv; vNormal=normalize(normalMatrix*normal); vec4 mvPosition=modelViewMatrix*vec4(position,1.0); vViewDir=normalize(-mvPosition.xyz); gl_Position=projectionMatrix*mvPosition; }`,
+                fragmentShader: `uniform sampler2D map; uniform vec3 color; uniform float opacity; uniform float isGreyscale; varying vec2 vUv; varying vec3 vNormal; varying vec3 vViewDir; void main() { vec4 texColor=texture2D(map,vUv); if(texColor.a<0.05) discard; vec3 baseColor=texColor.rgb*color; if(isGreyscale>0.5){float grey=dot(baseColor,vec3(0.299,0.587,0.114)); baseColor=vec3(grey);} vec3 lightDir=normalize(vec3(0.0,1.0,0.5)); vec3 viewLightDir=normalize((viewMatrix*vec4(lightDir,0.0)).xyz); float dotNL=dot(normalize(vNormal),viewLightDir); float shade=dotNL>0.5?1.0:dotNL>0.0?0.65:0.35; vec3 finalColor=baseColor*shade; gl_FragColor=vec4(finalColor,opacity); }`,
+                transparent: false,
+                side: THREE.DoubleSide
+            });
+            return mat;
+        }
+
+        function updatePlayerVisuals(p) {
+            if (!p || !p.mesh) return;
+            p.mesh.traverse((child) => {
+                if (child.isMesh && child.material && child.material.uniforms) {
+                    child.material.uniforms.color.value.setStyle(p.color);
+                    const isCust = !!p.isCustomizing;
+                    child.material.uniforms.opacity.value = isCust ? 0.4 : 1.0;
+                    child.material.uniforms.isGreyscale.value = isCust ? 1.0 : 0.0;
+                    child.material.transparent = isCust;
+                    child.material.depthWrite = !isCust;
+                }
+            });
+        }
+
+        function applyColorToPlayer(playerId, colorHex) {
+            const p = players[playerId - 1];
+            if (p) { p.color = colorHex; updatePlayerVisuals(p); }
+        }
+
+        function loadModel(url) {
+            return new Promise((resolve, reject) => { loader.load(url, (gltf) => resolve(gltf), undefined, reject); });
+        }
+
+        loadPlayers();
+
+        function loadPlayers() {
+            const cacheBust = '?t=' + Date.now();
+            Promise.all([
+                loadModel('model/character.gltf' + cacheBust),
+                fetch('animations.json' + cacheBust).then(r => r.json())
+            ]).then(([charGltf, animJson]) => {
+                const animations = animJson.map(a => {
+                    const tracks = a.tracks.map(t => {
+                        const nodeName = t.nodeName || (t.name ? t.name.split('.')[0] : 'unknown');
+                        const property = t.property || (t.name ? t.name.split('.')[1] : 'position');
+                        const trackName = `${nodeName}.${property}`;
+                        const times = new Float32Array(t.times);
+                        const values = new Float32Array(t.values);
+                        return property === 'quaternion'
+                            ? new THREE.QuaternionKeyframeTrack(trackName, times, values)
+                            : new THREE.VectorKeyframeTrack(trackName, times, values);
+                    });
+                    return new THREE.AnimationClip(a.name, a.duration, tracks);
+                });
+                setupPlayers(charGltf, animations);
+            }).catch(err => console.error('Error loading models:', err));
+        }
+
+        function setupPlayers(charGltf, animations) {
+            const charScene = charGltf.scene;
+            for (let i = 0; i < 3; i++) {
+                const p = players[i];
+                const parentGroup = new THREE.Group();
+                parentGroup.position.copy(p.position);
+                parentGroup.rotation.y = Math.PI; // face screen
+
+                const charMesh = charScene.clone();
+                charMesh.scale.set(CHARACTER_SCALE, CHARACTER_SCALE, CHARACTER_SCALE);
+                charMesh.position.y = -0.0625;
+                charMesh.traverse((child) => {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                        child.material = createToonMaterial(child.material.map, p.color);
+                    }
+                });
+                parentGroup.add(charMesh);
+                p.charMesh = charMesh;
+
+                if (animations && animations.length > 0) {
+                    p.mixer = new THREE.AnimationMixer(charMesh);
+                    p.actions = {};
+                    p.currentAction = null;
+                    animations.forEach(clip => {
+                        const action = p.mixer.clipAction(clip);
+                        action.setLoop(THREE.LoopRepeat, Infinity);
+                        action.clampWhenFinished = false;
+                        p.actions[clip.name] = action;
+                    });
+                }
+
+                scene.add(parentGroup);
+                p.mesh = parentGroup;
+                applyColorToPlayer(i + 1, p.color);
+
+                p.nametagSprite = createNametagSprite(p.name);
+                p.nametagSprite.position.set(0, 0.45, 0);
+                p.mesh.add(p.nametagSprite);
+                updatePlayerVisuals(p);
+            }
+            addChatMessageToLog(null, `${players[0].name} is customizing...`, true);
+        }
+
+        let localPlayerId = 1;
+        let isHost = true;
+        const connections = [];
+        let peer = null;
+
+        const myPeerId = '4sp-' + Math.floor(1000 + Math.random() * 9000);
+        document.getElementById('my-peer-id-label').innerText = myPeerId;
+
+        try {
+            if (typeof Peer !== 'undefined') {
+                peer = new Peer(myPeerId);
+                peer.on('open', () => { document.getElementById('connection-status').innerText = 'Status: Waiting...'; });
+                peer.on('connection', (conn) => {
+                    let assignedId = players[1].isRemotePeer ? 3 : 2;
+                    players[assignedId - 1].isRemotePeer = true;
+                    players[assignedId - 1].isRemote = true;
+                    connections.push(conn);
+                    conn.on('open', () => {
+                        document.getElementById('connection-status').innerText = 'Status: Peer connected!';
+                        conn.send({ type: 'init', assignedId });
+                    });
+                    setupConnection(conn, assignedId);
+                });
+            }
+        } catch(e) { console.error('PeerJS init failed:', e); }
+
+        document.getElementById('copy-id-btn').addEventListener('click', () => {
+            navigator.clipboard.writeText(document.getElementById('my-peer-id-label').innerText);
+            const btn = document.getElementById('copy-id-btn');
+            btn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+            setTimeout(() => { btn.innerHTML = '<i class="fa-solid fa-copy"></i> Copy'; }, 2000);
+        });
+
+        document.getElementById('connect-btn').addEventListener('click', () => {
+            if (!peer) return;
+            const targetId = document.getElementById('join-peer-id-input').value.trim();
+            if (!targetId) return;
+            document.getElementById('connection-status').innerText = 'Status: Connecting...';
+            const conn = peer.connect(targetId);
+            conn.on('open', () => {
+                document.getElementById('connection-status').innerText = 'Status: Connected!';
+                connections.push(conn);
+            });
+            conn.on('data', (data) => {
+                if (data.type === 'init') {
+                    isHost = false;
+                    const oldId = localPlayerId;
+                    localPlayerId = data.assignedId;
+                    const oldP = players[oldId - 1];
+                    const newP = players[localPlayerId - 1];
+                    if (oldP && newP) {
+                        newP.name = oldP.name; newP.color = oldP.color;
+                        applyColorToPlayer(localPlayerId, newP.color);
+                    }
+                    for (const p of players) { if (p.id !== localPlayerId) { p.isRemotePeer = true; p.isRemote = true; } }
+                    broadcastConfig();
+                }
+            });
+            setupConnection(conn);
+        });
+
+        function setupConnection(conn, remoteId = null) {
+            if (conn.open) sendLocalConfigTo(conn);
+            else conn.on('open', () => sendLocalConfigTo(conn));
+
+            conn.on('data', (data) => {
+                const id = remoteId || data.id;
+                if (data.type === 'move') {
+                    const p = players[id - 1];
+                    if (p && p.mesh) { p.mesh.position.set(data.x, data.y, data.z); p.mesh.rotation.set(0, data.ry, 0); p.isJumping = data.isJumping; }
+                    if (isHost) connections.forEach(c => { if (c !== conn && c.open) c.send(data); });
+                } else if (data.type === 'chat') {
+                    showSpeechBubble(id, data.text);
+                    if (isHost) connections.forEach(c => { if (c !== conn && c.open) c.send(data); });
+                } else if (data.type === 'emotion') {
+                    spawnEmotionLocal(id, data.iconChar, data.color, data.animClass);
+                    if (isHost) connections.forEach(c => { if (c !== conn && c.open) c.send(data); });
+                } else if (data.type === 'config') {
+                    const p = players[id - 1];
+                    if (p) { p.name = data.name; p.color = data.color; applyColorToPlayer(id, data.color); }
+                    if (isHost) connections.forEach(c => { if (c !== conn && c.open) c.send(data); });
+                } else if (data.type === 'customizing') {
+                    const p = players[id - 1];
+                    if (p) { p.isCustomizing = data.isCustomizing; updatePlayerVisuals(p); }
+                    if (isHost) connections.forEach(c => { if (c !== conn && c.open) c.send(data); });
+                }
+            });
+            conn.on('close', () => { document.getElementById('connection-status').innerText = 'Status: Disconnected.'; });
+        }
+
+        window.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            if (key === 'escape') { togglePause(); return; }
+            if (isCustomizing) return;
+            if (document.activeElement.tagName === 'INPUT') return;
+
+            const p = players[localPlayerId - 1];
+            if (!p) return;
+
+            if (key === 'arrowup' || key === 'w') p.keys.up = true;
+            else if (key === 'arrowdown' || key === 's') p.keys.down = true;
+            else if (key === 'arrowleft' || key === 'a') p.keys.left = true;
+            else if (key === 'arrowright' || key === 'd') p.keys.right = true;
+            else if (key === ' ' || e.code === 'Space') { p.keys.space = true; e.preventDefault(); }
+            else if (key === 'v' && !e.repeat) toggleCameraMode();
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (isCustomizing) return;
+            const key = e.key.toLowerCase();
+            const p = players[localPlayerId - 1];
+            if (!p) return;
+            if (key === 'arrowup' || key === 'w') p.keys.up = false;
+            else if (key === 'arrowdown' || key === 's') p.keys.down = false;
+            else if (key === 'arrowleft' || key === 'a') p.keys.left = false;
+            else if (key === 'arrowright' || key === 'd') p.keys.right = false;
+            else if (key === ' ' || e.code === 'Space') p.keys.space = false;
+        });
+
+        function getGroundY(pos) {
+            const halfW = ROOM_W / 2 - 0.3;
+            const halfD = ROOM_D / 2 - 0.3;
+            if (pos.x >= -halfW && pos.x <= halfW && pos.z >= -halfD && pos.z <= halfD) return floorY;
+            return floorY;
+        }
+
+        function clampToRoom(p) {
+            const halfW = ROOM_W / 2 - 0.4;
+            const halfD = ROOM_D / 2 - 0.4;
+            p.mesh.position.x = Math.max(-halfW, Math.min(halfW, p.mesh.position.x));
+            p.mesh.position.z = Math.max(-halfD, Math.min(halfD, p.mesh.position.z));
+        }
+
+        function updateAnimationState(p, speed) {
+            if (!p.mixer || !p.actions) return;
+            const isMoving = speed > 0.15;
+
+            const jumpAction = p.actions['Jump'];
+            if (p.isJumping && jumpAction) {
+                if (p.currentAction !== jumpAction) {
+                    if (p.currentAction) p.currentAction.fadeOut(0.1);
+                    jumpAction.reset();
+                    jumpAction.setLoop(THREE.LoopOnce, 1);
+                    jumpAction.clampWhenFinished = true;
+                    jumpAction.timeScale = 0;
+                    jumpAction.play();
+                    p.currentAction = jumpAction;
+                }
+                const peakVel = 5.2;
+                const t = p.yVelocity !== undefined ? p.yVelocity : 0;
+                const normalized = 1.0 - Math.max(0, Math.min(1, (t + peakVel) / (peakVel * 2)));
+                jumpAction.time = normalized * jumpAction.getClip().duration;
+                return;
+            }
+
+            let nextAction = isMoving ? p.actions['Stomp'] : p.actions['Idle'];
+            if (nextAction) nextAction.timeScale = 1.1;
+
+            if (nextAction && p.currentAction !== nextAction) {
+                if (p.currentAction) p.currentAction.fadeOut(0.15);
+                nextAction.reset().fadeIn(0.15).play();
+                p.currentAction = nextAction;
+            } else if (!nextAction && p.currentAction) {
+                p.currentAction.fadeOut(0.15);
+                p.currentAction = null;
+                p.mixer.stopAllAction();
+            }
+        }
+
+        const dustParticles = [];
+        const reactionParticles = [];
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = Math.min(clock.getDelta(), 0.05);
+
+            for (const p of players) {
+                if (p.mesh) {
+                    if (!p.lastFramePosition) p.lastFramePosition = p.mesh.position.clone();
+                    p.displacementX = p.mesh.position.x - p.lastFramePosition.x;
+                    p.displacementZ = p.mesh.position.z - p.lastFramePosition.z;
+                }
+            }
+
+            for (const p of players) {
+                if (!p.mesh) continue;
+                if (p.isCustomizing) { p.vx = 0; p.vz = 0; continue; }
+
+                if (p.isRemote) {
+                    if (p.mixer) {
+                        p.mixer.update(delta);
+                        const spd = Math.hypot(p.displacementX, p.displacementZ) / Math.max(0.001, delta);
+                        updateAnimationState(p, spd);
+                    }
+                    continue;
+                }
+
+                let moveX = 0, moveZ = 0;
+                if (p.keys.up) moveZ -= 1;
+                if (p.keys.down) moveZ += 1;
+                if (p.keys.left) moveX -= 1;
+                if (p.keys.right) moveX += 1;
+
+                p.vx *= 0.88; p.vz *= 0.88;
+                const speed = 2.8;
+
+                if (moveX !== 0 || moveZ !== 0) {
+                    let dx = moveX, dz = moveZ;
+                    if (isFirstPerson) {
+                        const camF = new THREE.Vector3(0, 0, -1).applyEuler(new THREE.Euler(0, fpYaw, 0));
+                        camF.y = 0; camF.normalize();
+                        const camR = new THREE.Vector3(1, 0, 0).applyEuler(new THREE.Euler(0, fpYaw, 0));
+                        camR.y = 0; camR.normalize();
+                        const dir = new THREE.Vector3().addScaledVector(camF, -moveZ).addScaledVector(camR, moveX);
+                        if (dir.length() > 0) { dir.normalize(); dx = dir.x; dz = dir.z; }
+                    }
+                    const len = Math.sqrt(dx * dx + dz * dz);
+                    if (len > 0) { dx /= len; dz /= len; }
+                    p.mesh.position.x += (dx * speed + p.vx) * delta;
+                    p.mesh.position.z += (dz * speed + p.vz) * delta;
+
+                    if (!isFirstPerson) {
+                        const tA = Math.atan2(dx, dz) + Math.PI;
+                        let diff = tA - p.mesh.rotation.y;
+                        while (diff < -Math.PI) diff += Math.PI * 2;
+                        while (diff > Math.PI) diff -= Math.PI * 2;
+                        p.mesh.rotation.y += diff * 0.15;
+                    }
+                }
+
+                clampToRoom(p);
+                const grY = getGroundY(p.mesh.position);
+
+                if (!p.isJumping && p.mesh.position.y > grY + 0.1) { p.isJumping = true; p.yVelocity = 0; }
+
+                if (p.keys.space && !p.isJumping) { p.isJumping = true; p.yVelocity = 5.2; p.jumpHoldTimer = 0; }
+                if (p.isJumping) {
+                    const grav = (p.keys.space && (p.jumpHoldTimer || 0) < 0.25) ? 6.0 : 18.0;
+                    if (p.keys.space) p.jumpHoldTimer = (p.jumpHoldTimer || 0) + delta;
+                    p.yVelocity -= grav * delta;
+                    p.mesh.position.y += p.yVelocity * delta;
+                    if (p.mesh.position.y <= grY) { p.mesh.position.y = grY; p.isJumping = false; p.yVelocity = 0; p.jumpHoldTimer = 0; }
+                } else {
+                    p.mesh.position.y = THREE.MathUtils.lerp(p.mesh.position.y, grY, 0.2);
+                }
+
+                if (p.mixer) {
+                    p.mixer.update(delta);
+                    const pBef = p.lastFramePosition || p.mesh.position.clone();
+                    const sV = Math.hypot(p.mesh.position.x - pBef.x, p.mesh.position.z - pBef.z) / Math.max(0.001, delta);
+                    updateAnimationState(p, sV);
+                }
+            }
+
+            for (const p of players) {
+                if (p.mesh && p.lastFramePosition) p.lastFramePosition.copy(p.mesh.position);
+            }
+
+            // Network broadcast
+            const localP = players[localPlayerId - 1];
+            if (localP && localP.mesh && connections.length > 0) {
+                const moveData = { type: 'move', id: localPlayerId, x: localP.mesh.position.x, y: localP.mesh.position.y, z: localP.mesh.position.z, ry: localP.mesh.rotation.y, isJumping: localP.isJumping };
+                connections.forEach(c => { if (c.open) c.send(moveData); });
+            }
+
+            // Reaction particles
+            for (let i = reactionParticles.length - 1; i >= 0; i--) {
+                const rp = reactionParticles[i];
+                rp.sprite.position.x += rp.vx * delta;
+                rp.sprite.position.y += rp.vy * delta;
+                rp.sprite.position.z += rp.vz * delta;
+                if (rp.type === 'angry') rp.sprite.position.x += (Math.random() - 0.5) * 0.12;
+                else if (rp.type === 'love') rp.sprite.position.x += Math.sin(rp.life * 10) * 0.04;
+                rp.life -= rp.decay;
+                rp.sprite.material.opacity = rp.life;
+                if (rp.life <= 0) { scene.remove(rp.sprite); rp.sprite.material.map.dispose(); rp.sprite.material.dispose(); reactionParticles.splice(i, 1); }
+            }
+
+            // Camera update
+            if (isFirstPerson && localP && localP.mesh) {
+                const headPos = new THREE.Vector3().copy(localP.mesh.position).add(new THREE.Vector3(0, 0.65, 0));
+                camera.position.copy(headPos);
+                camera.quaternion.setFromEuler(new THREE.Euler(fpPitch, fpYaw, 0, 'YXZ'));
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // --- SPRITE HELPERS ---
+        function createNametagSprite(name) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512; canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, 512, 128);
+            ctx.font = 'bold 36px "Inter", sans-serif';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.strokeStyle = '#000'; ctx.lineWidth = 10; ctx.lineJoin = 'miter'; ctx.miterLimit = 2;
+            ctx.strokeText(name, 256, 64);
+            ctx.fillStyle = '#fff'; ctx.fillText(name, 256, 64);
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.minFilter = THREE.LinearFilter;
+            const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+            const sprite = new THREE.Sprite(mat);
+            sprite.scale.set(1.5, 0.375, 1);
+            return sprite;
+        }
+
+        function createSpeechBubbleSprite(text) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512; canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, 512, 256);
+            ctx.font = 'bold 24px "Inter", sans-serif';
+            const tw = ctx.measureText(text).width;
+            const bW = Math.max(80, tw + 40), bH = 60;
+            const x = (512 - bW) / 2, y = (256 - bH) / 2 - 10;
+            ctx.fillStyle = '#fff'; ctx.strokeStyle = '#09090B'; ctx.lineWidth = 6;
+            ctx.fillRect(x, y, bW, bH); ctx.strokeRect(x, y, bW, bH);
+            const ax = 256, ay = y + bH;
+            ctx.beginPath(); ctx.moveTo(ax - 8, ay); ctx.lineTo(ax + 8, ay); ctx.lineTo(ax, ay + 12); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#09090B'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(text, 256, y + bH / 2);
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.minFilter = THREE.LinearFilter;
+            const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+            const sprite = new THREE.Sprite(mat);
+            sprite.scale.set(2, 1, 1);
+            return sprite;
+        }
+
+        function showSpeechBubble(playerId, text) {
+            const p = players.find(x => x.id === playerId);
+            if (!p) return;
+            addChatMessageToLog(p.name, text, false);
+            if (!p.mesh) return;
+            if (p.bubbleSprite) { p.mesh.remove(p.bubbleSprite); p.bubbleSprite.material.map.dispose(); p.bubbleSprite.material.dispose(); }
+            p.bubbleSprite = createSpeechBubbleSprite(text);
+            p.bubbleSprite.position.set(0, 0.75, 0);
+            p.mesh.add(p.bubbleSprite);
+            if (p.bubbleTimeout) clearTimeout(p.bubbleTimeout);
+            p.bubbleTimeout = setTimeout(() => {
+                if (p.bubbleSprite && p.mesh) { p.mesh.remove(p.bubbleSprite); p.bubbleSprite.material.map.dispose(); p.bubbleSprite.material.dispose(); p.bubbleSprite = null; }
+            }, 4000);
+        }
+
+        function createReactionSprite(iconChar, color) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128; canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, 128, 128);
+            ctx.font = '900 64px "Font Awesome 6 Free"';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.strokeStyle = '#000'; ctx.lineWidth = 8;
+            ctx.strokeText(iconChar, 64, 64);
+            ctx.fillStyle = color || '#fff';
+            ctx.fillText(iconChar, 64, 64);
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.minFilter = THREE.LinearFilter;
+            const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+            const sprite = new THREE.Sprite(mat);
+            sprite.scale.set(0.6, 0.6, 1);
+            return sprite;
+        }
+
+        function spawnEmotionLocal(playerId, iconChar, color, type) {
+            const p = players[playerId - 1];
+            if (!p || !p.mesh) return;
+            const count = type === 'shocked' ? 1 : 4;
+            for (let i = 0; i < count; i++) {
+                const sprite = createReactionSprite(iconChar, color);
+                sprite.position.copy(p.mesh.position);
+                sprite.position.y += 0.5;
+                sprite.position.x += (Math.random() - 0.5) * 0.4;
+                sprite.position.z += (Math.random() - 0.5) * 0.4;
+                scene.add(sprite);
+                reactionParticles.push({ sprite, vx: (Math.random()-0.5)*0.8, vy: 1.2+Math.random()*1.5, vz: (Math.random()-0.5)*0.8, life: 1.0, decay: 0.015+Math.random()*0.02, type });
+            }
+        }
+
+        const EMOTION_MAP = {
+            angry: { iconChar: '\uf0e7', color: '#FF3333', type: 'angry' },
+            love:  { iconChar: '\uf004', color: '#FF3366', type: 'love' },
+            happy: { iconChar: '\uf59a', color: '#FFD700', type: 'happy' },
+            sad:   { iconChar: '\uf73d', color: '#33ccff', type: 'sad' },
+            shocked: { iconChar: '\uf12a', color: '#fff', type: 'shocked' }
+        };
+
+        function spawnEmotion(type) {
+            if (isCustomizing) return;
+            const e = EMOTION_MAP[type];
+            if (!e) return;
+            spawnEmotionLocal(localPlayerId, e.iconChar, e.color, e.type);
+            connections.forEach(c => { if (c.open) c.send({ type: 'emotion', id: localPlayerId, iconChar: e.iconChar, color: e.color, animClass: e.type }); });
+        }
+
+        // --- CHAT ---
+        const chatInput = document.getElementById('chat-input');
+        const chatSendBtn = document.getElementById('chat-send-btn');
+        function sendChatMessage() {
+            const text = chatInput.value.trim();
+            if (!text) return;
+            chatInput.value = '';
+            showSpeechBubble(localPlayerId, text);
+            connections.forEach(c => { if (c.open) c.send({ type: 'chat', id: localPlayerId, text }); });
+        }
+        chatSendBtn.addEventListener('click', sendChatMessage);
+        chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { sendChatMessage(); e.preventDefault(); } });
+
+        // --- CUSTOMIZATION OVERLAY ---
+        let isCustomizing = true;
+        let isPaused = false;
+        let chosenColor = '#E2FF3D';
+
+        const customOverlay = document.getElementById('customization-overlay');
+        const customNameInput = document.getElementById('custom-name-input');
+        const colorBtns = document.querySelectorAll('.color-btn');
+
+        colorBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                colorBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                chosenColor = btn.getAttribute('data-color');
+            });
+        });
+
+        document.getElementById('start-theater-btn').addEventListener('click', () => {
+            let nameVal = customNameInput.value.trim() || 'Player';
+            const localP = players[localPlayerId - 1];
+            if (localP) {
+                localP.name = nameVal; localP.color = chosenColor; localP.isCustomizing = false;
+                applyColorToPlayer(localPlayerId, chosenColor);
+                if (localP.mesh) {
+                    if (localP.nametagSprite) { localP.mesh.remove(localP.nametagSprite); localP.nametagSprite.material.map.dispose(); localP.nametagSprite.material.dispose(); }
+                    localP.nametagSprite = createNametagSprite(nameVal);
+                    localP.nametagSprite.position.set(0, 0.45, 0);
+                    localP.mesh.add(localP.nametagSprite);
+                }
+            }
+            customOverlay.classList.add('hidden');
+            isCustomizing = false;
+            addChatMessageToLog(null, `${nameVal} entered the theater.`, true);
+            savePreference('name', nameVal);
+            savePreference('color', chosenColor);
+            broadcastConfig();
+            broadcastCustomizingState(false);
+            const fo = document.getElementById('fade-overlay');
+            fo.classList.add('visible');
+            setTimeout(() => fo.classList.remove('visible'), 800);
+        });
+
+        customNameInput.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('start-theater-btn').click(); });
+
+        function sendLocalConfigTo(conn) {
+            const localP = players[localPlayerId - 1];
+            if (localP) {
+                conn.send({ type: 'config', id: localPlayerId, name: localP.name, color: localP.color });
+                conn.send({ type: 'customizing', id: localPlayerId, isCustomizing: localP.isCustomizing });
+            }
+        }
+
+        function broadcastConfig() {
+            const localP = players[localPlayerId - 1];
+            if (localP && connections.length > 0) connections.forEach(c => { if (c.open) c.send({ type: 'config', id: localPlayerId, name: localP.name, color: localP.color }); });
+        }
+
+        function broadcastCustomizingState(state) {
+            if (connections.length > 0) connections.forEach(c => { if (c.open) c.send({ type: 'customizing', id: localPlayerId, isCustomizing: state }); });
+        }
+
+        // --- PAUSE ---
+        function togglePause() {
+            const pauseOverlay = document.getElementById('pause-overlay');
+            const localP = players[localPlayerId - 1];
+            if (!localP) return;
+            if (isPaused) {
+                const nameVal = document.getElementById('pause-name-input').value.trim() || 'Player';
+                localP.name = nameVal; localP.color = chosenColor; updatePlayerVisuals(localP);
+                if (localP.nametagSprite) { localP.mesh.remove(localP.nametagSprite); localP.nametagSprite.material.map.dispose(); localP.nametagSprite.material.dispose(); }
+                localP.nametagSprite = createNametagSprite(nameVal);
+                localP.nametagSprite.position.set(0, 0.45, 0);
+                localP.mesh.add(localP.nametagSprite);
+                pauseOverlay.classList.add('hidden');
+                isPaused = false; isCustomizing = false;
+                localP.isCustomizing = false; updatePlayerVisuals(localP);
+                savePreference('name', nameVal); savePreference('color', chosenColor);
+                if (isFirstPerson) renderer.domElement.requestPointerLock();
+                broadcastConfig(); broadcastCustomizingState(false);
+            } else {
+                document.getElementById('pause-name-input').value = localP.name;
+                document.querySelectorAll('#pause-color-options .color-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.getAttribute('data-color') === localP.color);
+                    if (btn.getAttribute('data-color') === localP.color) chosenColor = localP.color;
+                });
+                pauseOverlay.classList.remove('hidden');
+                isPaused = true; isCustomizing = true;
+                localP.isCustomizing = true; updatePlayerVisuals(localP);
+                if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
+                broadcastCustomizingState(true);
+            }
+        }
+
+        document.getElementById('pause-btn').addEventListener('click', () => { if (isCustomizing && !isPaused) return; togglePause(); });
+        document.getElementById('resume-btn').addEventListener('click', togglePause);
+
+        const pauseColorBtns = document.querySelectorAll('#pause-color-options .color-btn');
+        pauseColorBtns.forEach(btn => {
+            btn.addEventListener('click', () => { pauseColorBtns.forEach(b => b.classList.remove('active')); btn.classList.add('active'); chosenColor = btn.getAttribute('data-color'); });
+        });
+
+        const pauseFovInput = document.getElementById('pause-fov-input');
+        const fovValLabel = document.getElementById('fov-val');
+        pauseFovInput.addEventListener('input', e => { const v = e.target.value; fovValLabel.innerText = v; camera.fov = parseInt(v); camera.updateProjectionMatrix(); });
+
+        // --- POINTER LOCK (First Person) ---
+        document.addEventListener('mousemove', (e) => {
+            if (isFirstPerson && document.pointerLockElement === renderer.domElement) {
+                fpYaw -= e.movementX * 0.002;
+                fpPitch -= e.movementY * 0.002;
+                fpPitch = Math.max(-Math.PI/2 + 0.05, Math.min(Math.PI/2 - 0.05, fpPitch));
+            }
+        });
+        renderer.domElement.addEventListener('click', () => { if (isFirstPerson) renderer.domElement.requestPointerLock(); });
+
+        // --- MOBILE ---
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const mobileCloseBtn = document.getElementById('mobile-menu-close-btn');
+        const mobileDrawer = document.getElementById('mobile-menu-drawer');
+        const drawerOverlay = document.getElementById('drawer-overlay');
+        mobileMenuBtn.addEventListener('click', () => { mobileDrawer.classList.add('open'); drawerOverlay.style.display = 'block'; });
+        mobileCloseBtn.addEventListener('click', () => { mobileDrawer.classList.remove('open'); drawerOverlay.style.display = 'none'; });
+        drawerOverlay.addEventListener('click', () => { mobileDrawer.classList.remove('open'); drawerOverlay.style.display = 'none'; });
+
+        const joystickContainer = document.getElementById('mobile-joystick-container');
+        const joystickHandle = document.getElementById('mobile-joystick-handle');
+        let joystickTouchId = null, joystickCX = 0, joystickCY = 0;
+
+        joystickContainer.addEventListener('touchstart', (e) => {
+            if (isCustomizing) return;
+            const r = joystickContainer.getBoundingClientRect();
+            joystickCX = r.left + r.width / 2; joystickCY = r.top + r.height / 2;
+            joystickTouchId = e.changedTouches[0].identifier;
+            handleJoystick(e.changedTouches[0]);
+        }, { passive: true });
+        window.addEventListener('touchmove', (e) => {
+            if (!joystickTouchId) return;
+            for (const t of e.changedTouches) { if (t.identifier === joystickTouchId) { handleJoystick(t); e.preventDefault(); break; } }
+        }, { passive: false });
+        window.addEventListener('touchend', (e) => {
+            for (const t of e.changedTouches) {
+                if (t.identifier === joystickTouchId) {
+                    joystickTouchId = null;
+                    joystickHandle.style.left = '50%'; joystickHandle.style.top = '50%';
+                    const p = players[localPlayerId - 1];
+                    if (p) { p.keys.up = false; p.keys.down = false; p.keys.left = false; p.keys.right = false; }
+                }
+            }
+        });
+
+        function handleJoystick(touch) {
+            if (isCustomizing) return;
+            const dx = touch.clientX - joystickCX, dy = touch.clientY - joystickCY;
+            const dist = Math.sqrt(dx * dx + dy * dy), max = 42;
+            const mx = dist > max ? (dx / dist) * max : dx;
+            const my = dist > max ? (dy / dist) * max : dy;
+            joystickHandle.style.left = `calc(50% + ${mx}px)`;
+            joystickHandle.style.top = `calc(50% + ${my}px)`;
+            const dead = 10, p = players[localPlayerId - 1];
+            if (!p) return;
+            p.keys.up = my < -dead; p.keys.down = my > dead;
+            p.keys.left = mx < -dead; p.keys.right = mx > dead;
+        }
+
+        const jumpBtn = document.getElementById('mobile-jump-btn');
+        jumpBtn.addEventListener('touchstart', (e) => { if (isCustomizing) return; const p = players[localPlayerId - 1]; if (p) p.keys.space = true; e.preventDefault(); });
+        jumpBtn.addEventListener('touchend', (e) => { const p = players[localPlayerId - 1]; if (p) p.keys.space = false; e.preventDefault(); });
+
+        function updateLayoutForDevice() {
+            const isMob = window.innerWidth < window.innerHeight;
+            const jc = document.getElementById('mobile-joystick-container');
+            const ac = document.getElementById('mobile-actions-container');
+            const mb = document.getElementById('mobile-menu-btn');
+            const cp = document.querySelector('.controls-panel');
+            jc.style.display = isMob ? 'block' : 'none';
+            ac.style.display = isMob ? 'flex' : 'none';
+            mb.style.display = isMob ? 'inline-flex' : 'none';
+            if (cp) cp.style.display = isMob ? 'none' : 'block';
+        }
+        updateLayoutForDevice();
+        window.addEventListener('resize', updateLayoutForDevice);
+
+        // --- PREFERENCES ---
+        function initPreferencesDB() {
+            return new Promise(resolve => {
+                const req = indexedDB.open('game_preferences_db', 1);
+                req.onupgradeneeded = e => { const db = e.target.result; if (!db.objectStoreNames.contains('preferences')) db.createObjectStore('preferences'); };
+                req.onsuccess = e => resolve(e.target.result);
+                req.onerror = () => resolve(null);
+            });
+        }
+        function savePreference(key, value) {
+            initPreferencesDB().then(db => { if (!db) return; db.transaction('preferences','readwrite').objectStore('preferences').put(value, key); });
+        }
+        function getPreference(key) {
+            return new Promise(resolve => {
+                initPreferencesDB().then(db => {
+                    if (!db) { resolve(null); return; }
+                    const req = db.transaction('preferences','readonly').objectStore('preferences').get(key);
+                    req.onsuccess = e => resolve(e.target.result);
+                    req.onerror = () => resolve(null);
+                });
+            });
+        }
+        function loadSavedPreferences() {
+            Promise.all([getPreference('name'), getPreference('color'), getPreference('fov')]).then(([savedName, savedColor, savedFov]) => {
+                const localP = players[localPlayerId - 1];
+                if (savedFov) { const f = parseInt(savedFov); camera.fov = f; camera.updateProjectionMatrix(); if (pauseFovInput) { pauseFovInput.value = f; fovValLabel.innerText = f; } }
+                if (savedName && savedColor) {
+                    customNameInput.value = savedName;
+                    document.getElementById('pause-name-input').value = savedName;
+                    chosenColor = savedColor;
+                    document.querySelectorAll('.color-options .color-btn').forEach(btn => btn.classList.toggle('active', btn.getAttribute('data-color') === savedColor));
+                    if (localP) {
+                        localP.name = savedName; localP.color = savedColor; localP.isCustomizing = false;
+                        applyColorToPlayer(localPlayerId, savedColor);
+                        if (localP.mesh) {
+                            if (localP.nametagSprite) { localP.mesh.remove(localP.nametagSprite); localP.nametagSprite.material.map.dispose(); localP.nametagSprite.material.dispose(); }
+                            localP.nametagSprite = createNametagSprite(savedName);
+                            localP.nametagSprite.position.set(0, 0.45, 0);
+                            localP.mesh.add(localP.nametagSprite);
+                        }
+                    }
+                    customOverlay.classList.add('hidden');
+                    isCustomizing = false;
+                    addChatMessageToLog(null, `${savedName} entered the theater.`, true);
+                    broadcastConfig(); broadcastCustomizingState(false);
+                } else {
+                    customOverlay.classList.remove('hidden');
+                }
+            });
+        }
+
+        loadSavedPreferences();
+        animate();
+    </script>
+</body>
+</html>
+<!-- Made with ❤️ from 4SP -->
