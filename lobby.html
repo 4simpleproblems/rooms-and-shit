@@ -1154,7 +1154,26 @@
                 loadModel("model/character.gltf" + cacheBust),
                 fetch("animations.json" + cacheBust).then(r => r.json())
             ]).then(([charGltf, animJson]) => {
-                const animations = animJson.map(a => THREE.AnimationClip.parse(a));
+                const animations = animJson.map(a => {
+                    // Convert custom format to Three.js standard if needed
+                    const tracks = a.tracks.map(t => {
+                        let trackName = t.name;
+                        if (!trackName && t.nodeName && t.property) {
+                            trackName = `${t.nodeName}.${t.property}`;
+                        }
+                        return {
+                            name: trackName,
+                            type: t.type || (t.property === 'quaternion' ? 'quaternion' : 'vector'),
+                            times: t.times,
+                            values: t.values
+                        };
+                    });
+                    return THREE.AnimationClip.parse({
+                        name: a.name,
+                        duration: a.duration,
+                        tracks: tracks
+                    });
+                });
                 setupPlayersWithScenes(charGltf, animations);
             }).catch(err => {
                 console.error("Error loading models or animations:", err);
@@ -2434,6 +2453,24 @@
             
             const delta = clock.getDelta();
             const physicsDelta = Math.min(delta, 0.03);
+
+            // 1. Calculate displacements first so animation/physics logic has current data
+            for (const p of players) {
+                if (p.mesh) {
+                    if (!p.lastFramePosition) {
+                        p.lastFramePosition = p.mesh.position.clone();
+                    }
+                    if (p.lastFrameRotationY === undefined) {
+                        p.lastFrameRotationY = p.mesh.rotation.y;
+                    }
+                    p.displacementX = p.mesh.position.x - p.lastFramePosition.x;
+                    p.displacementZ = p.mesh.position.z - p.lastFramePosition.z;
+                    p.displacementRotY = p.mesh.rotation.y - p.lastFrameRotationY;
+                    while (p.displacementRotY < -Math.PI) p.displacementRotY += Math.PI * 2;
+                    while (p.displacementRotY > Math.PI) p.displacementRotY -= Math.PI * 2;
+                }
+            }
+
             let sumX = 0;
             let bridgePlayerCount = 0;
             for (const p of players) {
@@ -3001,22 +3038,6 @@
 
                 if (p.mesh.position.y < -15.0) {
                     respawnPlayer(p.id);
-                }
-            }
-
-            for (const p of players) {
-                if (p.mesh) {
-                    if (!p.lastFramePosition) {
-                        p.lastFramePosition = p.mesh.position.clone();
-                    }
-                    if (p.lastFrameRotationY === undefined) {
-                        p.lastFrameRotationY = p.mesh.rotation.y;
-                    }
-                    p.displacementX = p.mesh.position.x - p.lastFramePosition.x;
-                    p.displacementZ = p.mesh.position.z - p.lastFramePosition.z;
-                    p.displacementRotY = p.mesh.rotation.y - p.lastFrameRotationY;
-                    while (p.displacementRotY < -Math.PI) p.displacementRotY += Math.PI * 2;
-                    while (p.displacementRotY > Math.PI) p.displacementRotY -= Math.PI * 2;
                 }
             }
 
