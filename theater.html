@@ -1099,6 +1099,11 @@
                 interactionLabel.visible = false;
             }
 
+            if (videoElement && !videoElement.paused) {
+                // Video is playing, ensure texture updates
+                screenTexture.needsUpdate = true;
+            }
+            
             renderer.render(scene, camera);
         }
 
