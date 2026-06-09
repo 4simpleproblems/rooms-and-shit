@@ -628,6 +628,7 @@
             if (!success) {
                 addChatMessageToLog(null, "Failed to resolve stream. Servers might be down or blocked.", true);
                 updateProjectorLabel("STREAM UNAVAILABLE");
+                if (hls) { hls.destroy(); hls = null; }
                 videoElement.removeAttribute('src');
                 videoElement.load();
             }
