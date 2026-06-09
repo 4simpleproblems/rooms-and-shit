@@ -2448,24 +2448,61 @@
 
         const clock = new THREE.Clock();
 
+        function updateAnimationState(p, speed) {
+            if (!p.mixer || !p.actions) return;
+
+            const isMoving = speed > 0.15;
+            const isSprinting = speed > 3.5;
+
+            let nextAction = null;
+
+            if (p.isSitting) {
+                nextAction = p.actions['Sit'];
+            } else if (p.isJumping) {
+                nextAction = p.actions['Jump'];
+            } else if (isMoving) {
+                if (isSprinting) {
+                    nextAction = p.actions['Sprint'];
+                    if (nextAction) nextAction.timeScale = 1.8;
+                } else {
+                    nextAction = p.actions['Stomp'];
+                    if (nextAction) nextAction.timeScale = 1.1;
+                }
+            } else {
+                nextAction = p.actions['Idle'];
+            }
+
+            if (nextAction && p.currentAction !== nextAction) {
+                if (p.currentAction) p.currentAction.fadeOut(0.15);
+                nextAction.reset().fadeIn(0.15).play();
+                p.currentAction = nextAction;
+            } else if (!nextAction && p.currentAction) {
+                p.currentAction.fadeOut(0.15);
+                p.currentAction = null;
+                p.mixer.stopAllAction();
+            }
+        }
+
         function animate() {
             requestAnimationFrame(animate);
             
             const delta = clock.getDelta();
             const physicsDelta = Math.min(delta, 0.03);
 
-            // 1. Calculate displacements first so animation/physics logic has current data
+            // 1. Calculate displacements based on previous frame's end state
             for (const p of players) {
                 if (p.mesh) {
-                    if (!p.lastFramePosition) {
-                        p.lastFramePosition = p.mesh.position.clone();
+                    if (!p.lastFramePos) {
+                        p.lastFramePos = p.mesh.position.clone();
                     }
-                    if (p.lastFrameRotationY === undefined) {
-                        p.lastFrameRotationY = p.mesh.rotation.y;
+                    if (p.lastFrameRotY === undefined) {
+                        p.lastFrameRotY = p.mesh.rotation.y;
                     }
-                    p.displacementX = p.mesh.position.x - p.lastFramePosition.x;
-                    p.displacementZ = p.mesh.position.z - p.lastFramePosition.z;
-                    p.displacementRotY = p.mesh.rotation.y - p.lastFrameRotationY;
+                    
+                    // Displacement since END of last frame
+                    p.displacementX = p.mesh.position.x - p.lastFramePos.x;
+                    p.displacementZ = p.mesh.position.z - p.lastFramePos.z;
+                    p.displacementRotY = p.mesh.rotation.y - p.lastFrameRotY;
                     while (p.displacementRotY < -Math.PI) p.displacementRotY += Math.PI * 2;
                     while (p.displacementRotY > Math.PI) p.displacementRotY -= Math.PI * 2;
                 }
@@ -2702,342 +2739,114 @@
                 }
             }
 
+            // --- PLAYER PROCESSING ---
             for (const p of players) {
                 if (!p.mesh) continue;
 
-                if (p.mixer) {
-                    p.mixer.update(delta);
-                    
-                    const speedVal = p.displacementX !== undefined ? Math.hypot(p.displacementX, p.displacementZ) / Math.max(0.001, delta) : 0;
-                    const isMoving = speedVal > 0.15;
-                    const isSprinting = speedVal > 3.5;
-
-                    let nextAction = null;
-
-                    if (p.isSitting) {
-                        nextAction = p.actions["Sit"];
-                    } else if (p.isJumping) {
-                        nextAction = p.actions["Jump"];
-                    } else if (isMoving) {
-                        nextAction = isSprinting ? p.actions["Sprint"] : p.actions["Stomp"];
-                        if (nextAction) {
-                            nextAction.timeScale = isSprinting ? 1.8 : 1.1;
-                        }
-                    } else {
-                        nextAction = p.actions["Idle"];
-                    }
-
-                    if (nextAction) {
-                        if (p.currentAction !== nextAction) {
-                            if (p.currentAction) p.currentAction.fadeOut(0.15);
-                            nextAction.reset().fadeIn(0.15).play();
-                            p.currentAction = nextAction;
-                        }
-                    } else {
-                        if (p.currentAction) {
-                            p.currentAction.fadeOut(0.15);
-                            p.currentAction = null;
-                        }
-                        p.mixer.stopAllAction();
-                    }
-                }
-
-                // Water Physics
+                // 2. Water Physics
                 const pdx = p.mesh.position.x - pondData.center.x;
                 const pdz = p.mesh.position.z - pondData.center.z;
                 const distH = Math.sqrt(pdx * pdx + pdz * pdz);
                 const inWater = (distH < pondData.radius) && (p.mesh.position.y < pondData.center.y + 0.1);
 
-
-                
                 if (inWater) {
                     const buoyancy = 22.0;
                     const drag = 0.85;
-                    p.vx *= drag;
-                    p.vz *= drag;
-
-                    let isMovingInWater = false;
-                    if (p.id === localPlayerId) {
-                        if (p.keys.up || p.keys.down || p.keys.left || p.keys.right) isMovingInWater = true;
-                    }
-                    
+                    p.vx *= drag; p.vz *= drag;
                     if (p.mesh.position.y < pondData.surfaceY) {
-                        // Float logic
-                        if (p.id === localPlayerId && p.keys.space) {
-                            p.yVelocity += buoyancy * delta;
-                        } else {
-                            p.yVelocity += (buoyancy * 0.6) * delta;
-                        }
-                        p.yVelocity *= 0.9; // Water resistance
-                        
-                        // Splash particles
-                        if (Math.abs(p.yVelocity) > 0.5 || isMovingInWater) {
-                            p.waterTimer = (p.waterTimer || 0) + delta;
-                            if (p.waterTimer > 0.15) {
-                                p.waterTimer = 0;
-                                createWaterSplash(p.mesh.position.x, pondData.surfaceY, p.mesh.position.z);
-                            }
-                        }
+                        if (p.id === localPlayerId && p.keys.space) p.yVelocity += buoyancy * delta;
+                        else p.yVelocity += (buoyancy * 0.6) * delta;
+                        p.yVelocity *= 0.9;
                     }
                 }
 
                 if (p.isCustomizing) {
-                    p.vx = 0;
-                    p.vz = 0;
-                    p.yVelocity = 0;
-                    p.isJumping = false;
+                    p.vx = 0; p.vz = 0; p.yVelocity = 0; p.isJumping = false;
                     continue;
                 }
 
-                if (p.isRemote) continue;
-
-                if (p.isSitting) {
-                    if (p.id === localPlayerId) {
-                        const wantsToMove = p.keys.up || p.keys.down || p.keys.left || p.keys.right || p.keys.space;
-                        if (wantsToMove) {
-                            p.isSitting = false;
-                            p.mesh.position.y = parkTopY + 0.7;
-                        }
+                if (p.isRemote) {
+                    if (p.mixer) {
+                        p.mixer.update(delta);
+                        const speedVal = Math.hypot(p.displacementX, p.displacementZ) / Math.max(0.001, delta);
+                        updateAnimationState(p, speedVal);
                     }
-                }
-
-                if (p.isSitting) {
-                    p.vx = 0;
-                    p.vz = 0;
-                    p.yVelocity = 0;
-                    p.isJumping = false;
-                    const sitZSpots = [-2.2, -1.0, 0.2];
-                    p.mesh.position.set(27, parkTopY + 0.35 + 0.08, sitZSpots[p.sitSpotIndex]);
-                    p.mesh.rotation.set(0, -Math.PI / 2, 0);
-                    if (p.lastFramePosition) {
-                        p.lastFramePosition.copy(p.mesh.position);
-                    }
-                    p.lastFrameRotationY = p.mesh.rotation.y;
                     continue;
                 }
 
-                let moveX = 0;
-                let moveZ = 0;
-                if (p.id === localPlayerId) {
-                    if (p.keys.up) moveZ -= 1;
-                    if (p.keys.down) moveZ += 1;
-                    if (p.keys.left) moveX -= 1;
-                    if (p.keys.right) moveX += 1;
+                // LOCAL PLAYER LOGIC
+                if (p.isSitting) {
+                    if (p.keys.up || p.keys.down || p.keys.left || p.keys.right || p.keys.space) {
+                        p.isSitting = false; p.mesh.position.y = parkTopY + 0.7;
+                    } else {
+                        const sitZSpots = [-2.2, -1.0, 0.2];
+                        p.mesh.position.set(27, parkTopY + 0.35 + 0.08, sitZSpots[p.sitSpotIndex]);
+                        p.mesh.rotation.set(0, -Math.PI / 2, 0);
+                        if (p.mixer) { p.mixer.update(delta); updateAnimationState(p, 0); }
+                        continue;
+                    }
                 }
 
-                p.vx *= 0.92;
-                p.vz *= 0.92;
-                if (Math.abs(p.vx) < 0.05) p.vx = 0;
-                if (Math.abs(p.vz) < 0.05) p.vz = 0;
+                let moveX = 0; let moveZ = 0;
+                if (p.keys.up) moveZ -= 1;
+                if (p.keys.down) moveZ += 1;
+                if (p.keys.left) moveX -= 1;
+                if (p.keys.right) moveX += 1;
 
-                let dx = 0;
-                let dz = 0;
+                p.vx *= 0.92; p.vz *= 0.92;
+                let dx = 0; let dz = 0;
                 if (moveX !== 0 || moveZ !== 0) {
-                    const camForward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-                    camForward.y = 0;
-                    if (camForward.lengthSq() > 0.0001) {
-                        camForward.normalize();
-                    } else {
-                        camForward.set(0, 0, -1);
-                    }
-
-                    const camRight = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
-                    camRight.y = 0;
-                    if (camRight.lengthSq() > 0.0001) {
-                        camRight.normalize();
-                    } else {
-                        camRight.set(1, 0, 0);
-                    }
-
-                    const targetDir = new THREE.Vector3();
-                    targetDir.addScaledVector(camForward, -moveZ);
-                    targetDir.addScaledVector(camRight, moveX);
-
-                    dx = targetDir.x;
-                    dz = targetDir.z;
-
-                    const len = Math.sqrt(dx * dx + dz * dz);
-                    if (len > 0) {
-                        dx /= len;
-                        dz /= len;
-                    }
+                    const camF = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion);
+                    camF.y = 0; camF.normalize();
+                    const camR = new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion);
+                    camR.y = 0; camR.normalize();
+                    const targetDir = new THREE.Vector3().addScaledVector(camF, -moveZ).addScaledVector(camR, moveX).normalize();
+                    dx = targetDir.x; dz = targetDir.z;
                 }
 
-                const stackCount = getStackCount(p);
-                const isSprinting = p.keys.shift && !inWater && !p.isExhausted && (moveX !== 0 || moveZ !== 0);
+                const isSpr = p.keys.shift && !inWater && !p.isExhausted && (moveX !== 0 || moveZ !== 0);
+                let bSpd = isSpr ? (p.stamina > 30 ? 4.8 : 2.8 + 2.0*(p.stamina/30)) : 2.8;
+                if (inWater) bSpd = 0.8;
+                const spd = bSpd / (1.0 + getStackCount(p) * 0.45);
+                
+                const pBef = p.mesh.position.clone();
+                const nX = p.mesh.position.clone(); nX.x += (dx * spd + p.vx) * delta;
+                if (!checkPlayerCollision(p.id, nX) && !checkEnvironmentCollision(p.id, nX)) p.mesh.position.x = nX.x;
+                const nZ = p.mesh.position.clone(); nZ.z += (dz * spd + p.vz) * delta;
+                if (!checkPlayerCollision(p.id, nZ) && !checkEnvironmentCollision(p.id, nZ)) p.mesh.position.z = nZ.z;
 
-                if (isSprinting) {
-                    p.stamina = Math.max(0, p.stamina - 25 * delta);
-                    if (p.stamina <= 0) {
-                        p.isExhausted = true;
-                    }
-                } else {
-                    const isMoving = (moveX !== 0 || moveZ !== 0);
-                    if (isMoving) {
-                        p.stamina = Math.min(100, p.stamina + 15 * delta);
-                    } else {
-                        p.stamina = Math.min(100, p.stamina + 30 * delta);
-                    }
-                    if (p.isExhausted && p.stamina >= 30) {
-                        p.isExhausted = false;
-                    }
-                }
+                const grY = getGroundY(p.id, p.mesh.position);
+                if (!p.isJumping && p.mesh.position.y > grY + 0.25) { p.isJumping = true; p.yVelocity = 0; }
 
-                if (p.id === localPlayerId) {
-                    const staminaBar = document.getElementById('stamina-bar');
-                    if (staminaBar) {
-                        staminaBar.style.width = `${p.stamina}%`;
-                    }
-                }
-
-                let baseSpeed = 2.8;
-                if (isSprinting) {
-                    if (p.stamina > 30) {
-                        baseSpeed = 4.8;
-                    } else {
-                        const factor = p.stamina / 30.0;
-                        baseSpeed = 2.8 + (4.8 - 2.8) * factor;
-                    }
-                }
-                if (inWater) {
-                    baseSpeed = 0.8;
-                }
-                const speed = baseSpeed / (1.0 + stackCount * 0.45);
-                let ballVelocityX = 0;
-                let ballVelocityZ = 0;
-                for (const po of physicsObjects) {
-                    if (po.radius && po.mesh) {
-                        const bdx = p.mesh.position.x - po.mesh.position.x;
-                        const bdz = p.mesh.position.z - po.mesh.position.z;
-                        const distH = Math.sqrt(bdx * bdx + bdz * bdz);
-                        if (distH < po.radius * 0.85 && p.mesh.position.y >= po.mesh.position.y + po.radius * 0.3) {
-                            ballVelocityX = po.vx;
-                            ballVelocityZ = po.vz;
-                            const driftStrength = 1.5;
-                            ballVelocityX -= bdx * driftStrength;
-                            ballVelocityZ -= bdz * driftStrength;
-                            break;
-                        }
-                    }
-                }
-                const stepX = (dx * speed + p.vx + ballVelocityX) * delta;
-                const stepZ = (dz * speed + p.vz + ballVelocityZ) * delta;
-
-                const nextPosX = p.mesh.position.clone();
-                nextPosX.x += stepX;
-                if (!checkPlayerCollision(p.id, nextPosX) && !checkEnvironmentCollision(p.id, nextPosX)) {
-                    p.mesh.position.x = nextPosX.x;
-                } else {
-                    p.vx = 0;
-                }
-
-                const nextPosZ = p.mesh.position.clone();
-                nextPosZ.z += stepZ;
-                if (!checkPlayerCollision(p.id, nextPosZ) && !checkEnvironmentCollision(p.id, nextPosZ)) {
-                    p.mesh.position.z = nextPosZ.z;
-                } else {
-                    p.vz = 0;
-                }
-
-                if (p.id === localPlayerId && isSprinting && (moveX !== 0 || moveZ !== 0)) {
-                    p.dustTimer = (p.dustTimer || 0) + delta;
-                    if (p.dustTimer > 0.08) {
-                        p.dustTimer = 0;
-                        const rightVec = new THREE.Vector3(1, 0, 0).applyQuaternion(p.mesh.quaternion);
-                        const leftFoot = p.mesh.position.clone().addScaledVector(rightVec, -0.25);
-                        const rightFoot = p.mesh.position.clone().addScaledVector(rightVec, 0.25);
-                        if (Math.sin(p.walkCycle) > 0) {
-                            createDustParticle(leftFoot.x, p.mesh.position.y + 0.05, leftFoot.z, dx, dz);
-                        } else {
-                            createDustParticle(rightFoot.x, p.mesh.position.y + 0.05, rightFoot.z, dx, dz);
-                        }
-                    }
-                }
-
-                const charRadius = 0.12 * CHARACTER_SCALE;
-                let isCarried = false;
-                for (const other of players) {
-                    if (other.id !== p.id && other.mesh && isStandingOn(p, other)) {
-                        isCarried = true;
-                        break;
-                    }
-                }
-                const currentGroundY = isCarried ? p.mesh.position.y : getGroundY(p.id, p.mesh.position);
-
-                if (!p.isJumping && p.mesh.position.y > currentGroundY + 0.25) {
-                    p.isJumping = true;
-                    p.yVelocity = 0;
-                    p.sprintActiveInJump = p.keys.shift && !inWater;
-                }
-
-                if (isFirstPerson && p.id === localPlayerId) {
-                    p.mesh.rotation.y = fpYaw;
-                } else if (moveX !== 0 || moveZ !== 0) {
-                    const targetAngle = Math.atan2(dx, dz) + Math.PI;
-                    let diff = targetAngle - p.mesh.rotation.y;
+                if (isFirstPerson && p.id === localPlayerId) { p.mesh.rotation.y = fpYaw; }
+                else if (moveX !== 0 || moveZ !== 0) {
+                    const tA = Math.atan2(dx, dz) + Math.PI;
+                    let diff = tA - p.mesh.rotation.y;
                     while (diff < -Math.PI) diff += Math.PI * 2;
                     while (diff > Math.PI) diff -= Math.PI * 2;
                     p.mesh.rotation.y += diff * 0.15;
                 }
 
                 if (moveX !== 0 || moveZ !== 0) {
-                    const cycleSpeed = isSprinting ? 16 : 12;
-                    p.walkCycle += delta * cycleSpeed;
-                    if (!p.isJumping) {
-                        if ((isFirstPerson && p.id === localPlayerId) || p.mixer) {
-                            p.mesh.position.y = currentGroundY;
-                            p.mesh.rotation.z = 0;
-                        } else {
-                            const bobHeight = isSprinting ? 0.16 : 0.08;
-                            const tiltAngle = isSprinting ? 0.16 : 0.04;
-                            const targetY = currentGroundY + Math.abs(Math.sin(p.walkCycle)) * bobHeight;
-                            const targetZ = Math.sin(p.walkCycle) * tiltAngle;
-                            p.mesh.position.y = THREE.MathUtils.lerp(p.mesh.position.y, targetY, 0.35);
-                            p.mesh.rotation.z = THREE.MathUtils.lerp(p.mesh.rotation.z, targetZ, 0.35);
-                        }
-                    }
+                    if (!p.isJumping) { p.mesh.position.y = grY; p.mesh.rotation.z = 0; }
                 } else if (!p.isJumping) {
-                    if (p.mixer) {
-                        p.mesh.position.y = currentGroundY;
-                        p.mesh.rotation.z = 0;
-                    } else {
-                        p.mesh.position.y = THREE.MathUtils.lerp(p.mesh.position.y, currentGroundY, 0.2);
-                        p.mesh.rotation.z = THREE.MathUtils.lerp(p.mesh.rotation.z, 0, 0.2);
-                    }
-                    p.walkCycle = 0;
+                    p.mesh.position.y = THREE.MathUtils.lerp(p.mesh.position.y, grY, 0.2);
+                    p.mesh.rotation.z = THREE.MathUtils.lerp(p.mesh.rotation.z, 0, 0.2);
                 }
 
-                let jumpPressed = false;
-                if (p.id === localPlayerId) jumpPressed = p.keys.space;
-
-                if (jumpPressed && !p.isJumping && getStackCount(p) === 0) {
-                    p.isJumping = true;
-                    p.yVelocity = 5.2;
-                    p.jumpHoldTimer = 0.0;
-                    p.sprintActiveInJump = p.keys.shift && !inWater;
-                }
-
+                if (p.keys.space && !p.isJumping && getStackCount(p) === 0) { p.isJumping = true; p.yVelocity = 5.2; p.jumpHoldTimer = 0; }
                 if (p.isJumping) {
-                    let gravity = 18.0;
-                    if (jumpPressed && p.jumpHoldTimer !== undefined && p.jumpHoldTimer < 0.25) {
-                        p.jumpHoldTimer += delta;
-                        gravity = 6.0;
-                    }
-                    p.yVelocity -= gravity * delta;
-                    p.mesh.position.y += p.yVelocity * delta;
-                    
-                    const groundY = getGroundY(p.id, p.mesh.position);
-                    if (p.mesh.position.y <= groundY) {
-                        p.mesh.position.y = groundY;
-                        p.isJumping = false;
-                        p.yVelocity = 0;
-                        p.jumpHoldTimer = 0;
-                        p.sprintActiveInJump = false;
-                    }
+                    let grav = (p.keys.space && (p.jumpHoldTimer||0) < 0.25) ? 6.0 : 18.0;
+                    if (p.keys.space) p.jumpHoldTimer = (p.jumpHoldTimer||0) + delta;
+                    p.yVelocity -= grav * delta; p.mesh.position.y += p.yVelocity * delta;
+                    if (p.mesh.position.y <= grY) { p.mesh.position.y = grY; p.isJumping = false; p.yVelocity = 0; }
                 }
+                if (p.mesh.position.y < -15.0) respawnPlayer(p.id);
 
-                if (p.mesh.position.y < -15.0) {
-                    respawnPlayer(p.id);
+                if (p.mixer) {
+                    p.mixer.update(delta);
+                    const sV = Math.hypot(p.mesh.position.x - pBef.x, p.mesh.position.z - pBef.z) / Math.max(0.001, delta);
+                    updateAnimationState(p, sV);
                 }
             }
 
