@@ -8,17 +8,25 @@
     <script src="/VORA/VERN_SYSTEM/uv/uv.bundle.js"></script>
     <script>
         const basePath = "/VORA/VERN_SYSTEM/uv/";
-        self.__uv$config = {
-            prefix: basePath + "service/",
-            encodeUrl: Ultraviolet.codec.xor.encode,
-            decodeUrl: Ultraviolet.codec.xor.decode,
-            handler: basePath + "uv.handler.js",
-            client: basePath + "uv.client.js",
-            bundle: basePath + "uv.bundle.js",
-            config: basePath + "uv.config.js",
-            sw: basePath + "uv.sw.js",
-            stockSW: "/VORA/VERN_SYSTEM/sw.js",
-        };
+        function initUVConfig() {
+            if (typeof Ultraviolet === 'undefined') {
+                setTimeout(initUVConfig, 100);
+                return;
+            }
+            self.__uv$config = {
+                prefix: basePath + "service/",
+                encodeUrl: Ultraviolet.codec.xor.encode,
+                decodeUrl: Ultraviolet.codec.xor.decode,
+                handler: basePath + "uv.handler.js",
+                client: basePath + "uv.client.js",
+                bundle: basePath + "uv.bundle.js",
+                config: basePath + "uv.config.js",
+                sw: basePath + "uv.sw.js",
+                stockSW: "/VORA/VERN_SYSTEM/sw.js",
+            };
+            console.log("UV Config Initialized");
+        }
+        initUVConfig();
     </script>
     <script src="/VORA/VERN_SYSTEM/baremux/index.js"></script>
     <script>
@@ -485,7 +493,12 @@
         function proxyUrl(url) {
             if (!url) return url;
             const prefix = "/VORA/VERN_SYSTEM/uv/service/";
-            const encoder = typeof Ultraviolet !== 'undefined' ? Ultraviolet.codec.xor.encode : null;
+            // Safety check for UV config and Ultraviolet
+            if (typeof Ultraviolet === 'undefined' || !self.__uv$config) {
+                console.warn("UV not ready, returning original URL");
+                return url;
+            }
+            const encoder = Ultraviolet.codec.xor.encode;
             if (encoder) {
                 const encoded = encoder(url);
                 return prefix + (encoded.startsWith('/') ? encoded.substring(1) : encoded);
