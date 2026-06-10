@@ -614,56 +614,7 @@ const bathDoorTop = new THREE.Mesh(new THREE.BoxGeometry(2.5, 1.2, 0.2), bathroo
 bathDoorTop.position.set(6.25, ROOM_H - 0.6, 1.0);
 scene.add(bathDoorTop);
 
-const stallDivider = new THREE.Mesh(new THREE.BoxGeometry(6.0, 2.2, 0.08), stallDividerMat);
-stallDivider.position.set(12.0, 1.1, 5.0);
-scene.add(stallDivider);
 
-const stallFront1 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.2, 1.2), stallDividerMat);
-stallFront1.position.set(9.0, 1.1, 1.6);
-scene.add(stallFront1);
-
-const stallFront2 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.2, 2.4), stallDividerMat);
-stallFront2.position.set(9.0, 1.1, 5.0);
-scene.add(stallFront2);
-
-const stallFront3 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.2, 1.2), stallDividerMat);
-stallFront3.position.set(9.0, 1.1, 8.4);
-scene.add(stallFront3);
-
-const stallPanel1 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.4, 1.6), stallDividerMat);
-stallPanel1.position.set(9.0, 2.0, 3.0);
-scene.add(stallPanel1);
-
-const stallPanel2 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.4, 1.6), stallDividerMat);
-stallPanel2.position.set(9.0, 2.0, 7.0);
-scene.add(stallPanel2);
-
-const stallDoor1 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.8, 1.5), stallDividerMat);
-stallDoor1.position.set(9.4, 0.9, 3.0);
-stallDoor1.rotation.y = 0.5;
-scene.add(stallDoor1);
-
-const stallDoor2 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.8, 1.5), stallDividerMat);
-stallDoor2.position.set(9.4, 0.9, 7.0);
-stallDoor2.rotation.y = -0.3;
-scene.add(stallDoor2);
-
-function createToilet(x, z) {
-    const tg = new THREE.Group();
-    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.4, 12), toiletMat);
-    base.position.y = 0.2;
-    tg.add(base);
-    const bowl = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.1, 0.5), toiletMat);
-    bowl.position.set(0, 0.45, 0);
-    tg.add(bowl);
-    const tank = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.5, 0.4), toiletMat);
-    tank.position.set(0.1, 0.65, 0);
-    tg.add(tank);
-    tg.position.set(x, floorY, z);
-    scene.add(tg);
-}
-createToilet(12.5, 3.0);
-createToilet(12.5, 7.0);
 
 const sinkBase = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.2, 0.8), new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.5, metalness: 0.7 }));
 sinkBase.position.set(7.35, 0.7, 5.0);
@@ -991,17 +942,6 @@ function checkSubwayCollisions(pos, r = 0.38) {
     }
     if (pos.z >= 1.0 - r && pos.z <= 1.0 + r && pos.x >= 7.5 - r && pos.x <= 15.0) {
         return true;
-    }
-    if (pos.z >= 5.0 - r && pos.z <= 5.0 + r && pos.x >= 9.0 - r && pos.x <= 15.0) {
-        return true;
-    }
-    if (pos.x >= 9.0 - r && pos.x <= 9.0 + r) {
-        const z = pos.z;
-        if ((z >= 1.0 - r && z <= 2.2 + r) || 
-            (z >= 3.8 - r && z <= 6.2 + r) || 
-            (z >= 7.8 - r && z <= 9.0 + r)) {
-            return true;
-        }
     }
     return false;
 }
@@ -1524,24 +1464,44 @@ function ensureYTPlayer(videoId, onReady) {
     });
 }
 
-// ── PROXIED AUDIO HELPER ──
 function getAudioUrl(track) {
     if (!track) return null;
     if (track.downloadUrl) {
         const urls = Array.isArray(track.downloadUrl) ? track.downloadUrl : [{ link: track.downloadUrl }];
-        const best = urls.find(u => u.quality === '96kbps') || urls.find(u => u.quality === '160kbps') || urls[urls.length - 1];
+        const best = urls.find(u => u.quality === '320kbps') || urls.find(u => u.quality === '160kbps') || urls.find(u => u.quality === '96kbps') || urls[urls.length - 1];
         return best && (best.link || best.url);
     }
     return null;
 }
 
-// ── PLAY TRACK ──
 async function playTrack(track, queueArr = null, queueIdx = 0) {
     if (!track) return;
     currentTrack = track;
     if (queueArr) { trackQueue = queueArr; trackIndex = queueIdx; }
     stopProgress();
     updateNowPlaying(track);
+    
+    const hasItunesPreview = track.downloadUrl && 
+        (Array.isArray(track.downloadUrl) 
+            ? track.downloadUrl.some(u => (u.link || u.url || '').includes('apple.com'))
+            : (track.downloadUrl.link || track.downloadUrl.url || '').includes('apple.com'));
+            
+    if (!track.downloadUrl || hasItunesPreview) {
+        try {
+            const queryStr = (track.title || '') + ' ' + (track.artist_name || track.artist || '');
+            const res = await fetch(`https://nepotuneapi.vercel.app/api/search/songs?query=${encodeURIComponent(queryStr)}&page=1&limit=1`);
+            const json = await res.json();
+            const results = json.data?.results || json.data || [];
+            if (results && results.length > 0) {
+                const fullTrack = normalizeSaavn(results[0]);
+                track.downloadUrl = fullTrack.downloadUrl;
+                track.duration = fullTrack.duration;
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
     const audioUrl = getAudioUrl(track);
     if (audioUrl) {
         activeSource = 'audio';
@@ -1563,10 +1523,13 @@ async function playTrack(track, queueArr = null, queueIdx = 0) {
         }
     } else {
         try {
-            const res = await fetch(`${API_BASE}/youtube-search?q=${encodeURIComponent((track.title||'') + ' ' + (track.artist_name||track.artist||''))}`);
-            const data = await res.json();
-            if (data.videoId) {
-                track.videoId = data.videoId;
+            const res = await fetch(`https://nepotuneapi.vercel.app/api/search/songs?query=${encodeURIComponent((track.title||'') + ' ' + (track.artist_name||track.artist||''))}&page=1&limit=1`);
+            const json = await res.json();
+            const results = json.data?.results || json.data || [];
+            if (results && results.length > 0) {
+                const fullTrack = normalizeSaavn(results[0]);
+                track.downloadUrl = fullTrack.downloadUrl;
+                track.duration = fullTrack.duration;
                 playTrack(track, queueArr, queueIdx);
             } else {
                 addChat(null, 'Could not find audio for this track.', true);
@@ -1732,15 +1695,22 @@ document.getElementById('search-input').addEventListener('input', e => {
     searchTimeout = setTimeout(() => doSearch(q, false), 400);
 });
 
-function normalizeItunes(t) {
+function normalizeSaavn(s) {
+    const art = s.image ? (s.image.find(img => img.quality === '500x500') || s.image.find(img => img.quality === '150x150') || s.image[s.image.length - 1]) : null;
+    let artists = 'Unknown Artist';
+    if (s.artists && s.artists.primary && s.artists.primary.length > 0) {
+        artists = s.artists.primary.map(a => a.name).join(', ');
+    } else if (s.artist) {
+        artists = s.artist;
+    }
     return {
-        id: String(t.trackId || t.collectionId || Math.random()),
-        title: t.trackName || t.collectionName || 'Unknown',
-        artist_name: t.artistName || 'Unknown Artist',
-        artwork_url: (t.artworkUrl100 || '').replace('100x100bb', '300x300bb'),
-        downloadUrl: t.previewUrl ? [{ link: t.previewUrl, quality: '128kbps' }] : null,
+        id: String(s.id || Math.random()),
+        title: s.name || 'Unknown',
+        artist_name: artists,
+        artwork_url: art ? art.url : '',
+        downloadUrl: s.downloadUrl || null,
         videoId: null,
-        duration: t.trackTimeMillis ? Math.floor(t.trackTimeMillis / 1000) : 0
+        duration: s.duration ? parseInt(s.duration) : 0
     };
 }
 async function doSearch(q, append = false) {
@@ -1749,15 +1719,15 @@ async function doSearch(q, append = false) {
     const resultsDiv = document.getElementById('searchResults');
     loader.style.display = 'block'; resultsDiv.style.display = 'none';
     try {
-        const offset = (currentSearchPage - 1) * 24;
-        const res = await fetch(`${ITUNES_API}?term=${encodeURIComponent(q)}&media=music&entity=song&limit=24&offset=${offset}`);
+        const res = await fetch(`https://nepotuneapi.vercel.app/api/search/songs?query=${encodeURIComponent(q)}&page=${currentSearchPage}&limit=24`);
         const json = await res.json();
-        const tracks = (json.results || []).map(normalizeItunes);
+        const results = json.data?.results || json.data || [];
+        const tracks = results.map(normalizeSaavn);
         if (append) allSearchResults = [...allSearchResults, ...tracks];
         else allSearchResults = tracks;
         loader.style.display = 'none'; resultsDiv.style.display = 'block';
         renderSearchResults(tracks, append);
-        document.getElementById('search-load-more').style.display = tracks.length >= 24 ? 'block' : 'none';
+        document.getElementById('search-load-more').style.display = results.length >= 24 ? 'block' : 'none';
     } catch(e) {
         loader.style.display = 'none';
         if (!append) {
@@ -1783,17 +1753,19 @@ function loadMoreResults() {
     doSearch(lastSearchQuery, true);
 }
 
-// ── POPULAR TRACKS ──
 async function loadPopularTracks() {
     try {
         const terms = ['The Weeknd', 'Drake', 'Dua Lipa', 'Bad Bunny', 'SZA', 'Tyler the Creator', 'Frank Ocean'];
         const picked = terms[Math.floor(Math.random() * terms.length)];
-        const res = await fetch(`${ITUNES_API}?term=${encodeURIComponent(picked)}&media=music&entity=song&limit=12`);
+        const res = await fetch(`https://nepotuneapi.vercel.app/api/search/songs?query=${encodeURIComponent(picked)}&page=1&limit=12`);
         const json = await res.json();
-        const tracks = (json.results || []).map(normalizeItunes);
+        const results = json.data?.results || json.data || [];
+        const tracks = results.map(normalizeSaavn);
         const grid = document.getElementById('popular-tracks');
-        grid.innerHTML = '';
-        tracks.forEach((track, i) => grid.appendChild(buildTrackCard(track, tracks, i)));
+        if (grid) {
+            grid.innerHTML = '';
+            tracks.forEach((track, i) => grid.appendChild(buildTrackCard(track, tracks, i)));
+        }
     } catch(e) {
         document.getElementById('popular-tracks').innerHTML = '<p style="color:var(--text-sub); font-size:0.82rem;">Could not load popular tracks.</p>';
     }
