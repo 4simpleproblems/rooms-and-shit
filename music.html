@@ -396,7 +396,7 @@ window.createImageBitmap = undefined;
 const loader3D = new THREE.GLTFLoader();
 const scene = new THREE.Scene();
 
-const ROOM_W = 60, ROOM_D = 36, ROOM_H = 9;
+const ROOM_W = 30, ROOM_D = 18, ROOM_H = 4.5;
 const floorY = 0;
 const CHARACTER_SCALE = 2.0;
 
@@ -410,9 +410,9 @@ let peer = null;
 let isPlaying = false;
 
 const players = [
-    { id:1, name:'Player 1', color:'#E2FF3D', mesh:null, position:new THREE.Vector3(0,floorY,ROOM_D/2-4), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false,shift:false}, isCustomizing:true, isSitting:false },
-    { id:2, name:'Player 2', color:'#7C3AED', mesh:null, position:new THREE.Vector3(-2,floorY,ROOM_D/2-4), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false,shift:false}, isCustomizing:false, isSitting:false },
-    { id:3, name:'Player 3', color:'#EC4899', mesh:null, position:new THREE.Vector3(2,floorY,ROOM_D/2-4), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false,shift:false}, isCustomizing:false, isSitting:false }
+    { id:1, name:'Player 1', color:'#E2FF3D', mesh:null, position:new THREE.Vector3(0,floorY,ROOM_D/2-2), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false,shift:false}, isCustomizing:true, isSitting:false },
+    { id:2, name:'Player 2', color:'#7C3AED', mesh:null, position:new THREE.Vector3(-1,floorY,ROOM_D/2-2), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false,shift:false}, isCustomizing:false, isSitting:false },
+    { id:3, name:'Player 3', color:'#EC4899', mesh:null, position:new THREE.Vector3(1,floorY,ROOM_D/2-2), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false,shift:false}, isCustomizing:false, isSitting:false }
 ];
 
 scene.background = new THREE.Color(0x05050f);
@@ -434,28 +434,27 @@ window.addEventListener('resize', () => {
 // ── LIGHTING ──
 scene.add(new THREE.AmbientLight(0x1a1a2e, 0.8));
 
-const purpleLight = new THREE.PointLight(0x7C3AED, 1.8, 30);
-purpleLight.position.set(0, ROOM_H - 0.5, 0);
+const purpleLight = new THREE.PointLight(0x7C3AED, 1.8, 18);
+purpleLight.position.set(0, ROOM_H - 0.3, 0);
 scene.add(purpleLight);
 
-[-20, 0, 20].forEach((x, i) => {
+[-10, 0, 10].forEach((x, i) => {
     const colors = [0x3b1d8a, 0x2d1a7a, 0x3b1d8a];
-    const pl = new THREE.PointLight(colors[i], 0.9, 22);
-    pl.position.set(x, ROOM_H - 0.8, 0);
+    const pl = new THREE.PointLight(colors[i], 0.9, 12);
+    pl.position.set(x, ROOM_H - 0.4, 0);
     scene.add(pl);
 });
 
-// Overhead strip lights (fluorescent effect along platform)
-const stripColors = [0x6644cc, 0x4433aa, 0x6644cc, 0x4433aa];
-[-15, -5, 5, 15].forEach((x, i) => {
-    const sp = new THREE.PointLight(0x8866ee, 0.7, 14);
-    sp.position.set(x, ROOM_H - 0.3, -4);
+// Overhead strip lights
+[-7, 0, 7].forEach(x => {
+    const sp = new THREE.PointLight(0x8866ee, 0.7, 8);
+    sp.position.set(x, ROOM_H - 0.2, -2);
     scene.add(sp);
 });
 
-// Warm accent near jukebox
-const jukeLight = new THREE.PointLight(0xFF6B00, 1.2, 8);
-jukeLight.position.set(20, 2, -5);
+// Warm accent near boomboxes
+const jukeLight = new THREE.PointLight(0xFF6B00, 1.2, 5);
+jukeLight.position.set(10, 1, -3);
 scene.add(jukeLight);
 
 // ── SUBWAY STATION GEOMETRY ──
@@ -467,108 +466,98 @@ const darkMat = new THREE.MeshStandardMaterial({ color: 0x0a0a14, roughness: 1.0
 const creamTile = new THREE.MeshStandardMaterial({ color: 0xc8b89a, roughness: 0.7 });
 
 // Floor — dark tile
-const floorGeo = new THREE.BoxGeometry(ROOM_W, 0.3, ROOM_D);
-const floorTileMat = new THREE.MeshStandardMaterial({ color: 0x111122, roughness: 0.8 });
-const floorMesh = new THREE.Mesh(floorGeo, floorTileMat);
+const floorMesh = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.3, ROOM_D), new THREE.MeshStandardMaterial({ color: 0x111122, roughness: 0.8 }));
 floorMesh.position.set(0, floorY - 0.15, 0);
 floorMesh.receiveShadow = true;
 scene.add(floorMesh);
 
-// Floor tile lines (grout effect)
-for (let i = -25; i <= 25; i += 4) {
+// Floor tile grout lines
+for (let i = -12; i <= 12; i += 2) {
     const grout = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.02, ROOM_D), new THREE.MeshStandardMaterial({ color: 0x0a0a1a }));
     grout.position.set(i, 0.01, 0);
     scene.add(grout);
 }
-for (let z = -15; z <= 15; z += 4) {
+for (let z = -8; z <= 8; z += 2) {
     const grout = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.02, 0.04), new THREE.MeshStandardMaterial({ color: 0x0a0a1a }));
     grout.position.set(0, 0.01, z);
     scene.add(grout);
 }
 
 // Ceiling
-const ceilMesh = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.4, ROOM_D), new THREE.MeshStandardMaterial({ color: 0x0a0a18, roughness: 1.0 }));
-ceilMesh.position.set(0, ROOM_H + 0.2, 0);
+const ceilMesh = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.3, ROOM_D), new THREE.MeshStandardMaterial({ color: 0x0a0a18, roughness: 1.0 }));
+ceilMesh.position.set(0, ROOM_H + 0.15, 0);
 scene.add(ceilMesh);
 
 // Ceiling panels
-for (let x = -24; x <= 24; x += 8) {
-    const panel = new THREE.Mesh(new THREE.BoxGeometry(7.5, 0.08, ROOM_D - 4), new THREE.MeshStandardMaterial({ color: 0x12122a, roughness: 0.9 }));
+for (let x = -12; x <= 12; x += 8) {
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(7, 0.07, ROOM_D - 2), new THREE.MeshStandardMaterial({ color: 0x12122a, roughness: 0.9 }));
     panel.position.set(x, ROOM_H, 0);
     scene.add(panel);
 }
 
-// Walls — sides
-const wallLeft = new THREE.Mesh(new THREE.BoxGeometry(0.4, ROOM_H, ROOM_D), new THREE.MeshStandardMaterial({ color: 0x111128, roughness: 0.9 }));
-wallLeft.position.set(-ROOM_W/2 - 0.2, ROOM_H/2, 0);
+// Side walls
+const wallLeft = new THREE.Mesh(new THREE.BoxGeometry(0.3, ROOM_H, ROOM_D), new THREE.MeshStandardMaterial({ color: 0x111128, roughness: 0.9 }));
+wallLeft.position.set(-ROOM_W/2 - 0.15, ROOM_H/2, 0);
 scene.add(wallLeft);
-const wallRight = new THREE.Mesh(new THREE.BoxGeometry(0.4, ROOM_H, ROOM_D), new THREE.MeshStandardMaterial({ color: 0x111128, roughness: 0.9 }));
-wallRight.position.set(ROOM_W/2 + 0.2, ROOM_H/2, 0);
+const wallRight = new THREE.Mesh(new THREE.BoxGeometry(0.3, ROOM_H, ROOM_D), new THREE.MeshStandardMaterial({ color: 0x111128, roughness: 0.9 }));
+wallRight.position.set(ROOM_W/2 + 0.15, ROOM_H/2, 0);
 scene.add(wallRight);
 
-// Back wall (behind audience)
-const backWall = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, ROOM_H, 0.4), new THREE.MeshStandardMaterial({ color: 0x0d0d22, roughness: 0.9 }));
-backWall.position.set(0, ROOM_H/2, ROOM_D/2 + 0.2);
+// Back wall
+const backWall = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, ROOM_H, 0.3), new THREE.MeshStandardMaterial({ color: 0x0d0d22, roughness: 0.9 }));
+backWall.position.set(0, ROOM_H/2, ROOM_D/2 + 0.15);
 scene.add(backWall);
 
-// Front wall (tracks side) with opening in middle
+// Front wall with tunnel opening (16 units wide, full height minus top beam)
 const fWallMat = new THREE.MeshStandardMaterial({ color: 0x0a0a18, roughness: 0.9 });
-const fWallL = new THREE.Mesh(new THREE.BoxGeometry(14, ROOM_H, 0.4), fWallMat);
-fWallL.position.set(-ROOM_W/2 + 7, ROOM_H/2, -ROOM_D/2 - 0.2);
+const openW = 16;
+const fWallL = new THREE.Mesh(new THREE.BoxGeometry((ROOM_W - openW) / 2, ROOM_H, 0.3), fWallMat);
+fWallL.position.set(-ROOM_W/2 + (ROOM_W - openW)/4, ROOM_H/2, -ROOM_D/2 - 0.15);
 scene.add(fWallL);
-const fWallR = new THREE.Mesh(new THREE.BoxGeometry(14, ROOM_H, 0.4), fWallMat);
-fWallR.position.set(ROOM_W/2 - 7, ROOM_H/2, -ROOM_D/2 - 0.2);
+const fWallR = new THREE.Mesh(new THREE.BoxGeometry((ROOM_W - openW) / 2, ROOM_H, 0.3), fWallMat);
+fWallR.position.set(ROOM_W/2 - (ROOM_W - openW)/4, ROOM_H/2, -ROOM_D/2 - 0.15);
 scene.add(fWallR);
-// Top of opening
-const fWallTop = new THREE.Mesh(new THREE.BoxGeometry(32, 2, 0.4), fWallMat);
-fWallTop.position.set(0, ROOM_H - 1, -ROOM_D/2 - 0.2);
+const fWallTop = new THREE.Mesh(new THREE.BoxGeometry(openW, 1.0, 0.3), fWallMat);
+fWallTop.position.set(0, ROOM_H - 0.5, -ROOM_D/2 - 0.15);
 scene.add(fWallTop);
 
-// Tunnel beyond opening (just dark void boxes)
-for (let depth = 1; depth <= 5; depth++) {
-    const tFrame = new THREE.Mesh(new THREE.BoxGeometry(34, ROOM_H + 1, 0.5), new THREE.MeshStandardMaterial({ color: 0x050510, roughness: 1.0 }));
-    tFrame.position.set(0, ROOM_H/2 - 0.5, -ROOM_D/2 - 0.2 - depth * 6);
-    scene.add(tFrame);
+// Tunnel void (dark boxes behind opening)
+for (let depth = 1; depth <= 6; depth++) {
+    const tf = new THREE.Mesh(new THREE.BoxGeometry(openW + 2, ROOM_H, 0.3), new THREE.MeshStandardMaterial({ color: 0x030308, roughness: 1.0 }));
+    tf.position.set(0, ROOM_H/2 - 0.5, -ROOM_D/2 - 0.15 - depth * 4);
+    scene.add(tf);
 }
 
-// ── TILE STRIPE WALL DECOR ──
-const stripeH = 2.5;
-// Yellow band running the length of wall
-const yellowStripe = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W - 2, stripeH, 0.12), tileYellow);
-yellowStripe.position.set(0, 1.5, ROOM_D/2 + 0.05);
+// ── TILE STRIPE DECOR ──
+const yellowStripe = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W - 1, 1.2, 0.08), tileYellow);
+yellowStripe.position.set(0, 0.8, ROOM_D/2 + 0.04);
 scene.add(yellowStripe);
-
-const orangeStripe = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W - 2, 0.5, 0.12), tileOrange);
-orangeStripe.position.set(0, stripeH + 0.25, ROOM_D/2 + 0.05);
+const orangeStripe = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W - 1, 0.25, 0.08), tileOrange);
+orangeStripe.position.set(0, 1.6, ROOM_D/2 + 0.04);
 scene.add(orangeStripe);
-
-// Tile panels on back wall
-for (let x = -24; x <= 24; x += 8) {
-    const tp = new THREE.Mesh(new THREE.BoxGeometry(7, 3, 0.08), creamTile);
-    tp.position.set(x, 4.5, ROOM_D/2 + 0.1);
+for (let x = -12; x <= 12; x += 4) {
+    const tp = new THREE.Mesh(new THREE.BoxGeometry(3.5, 1.5, 0.06), creamTile);
+    tp.position.set(x, 2.8, ROOM_D/2 + 0.06);
     scene.add(tp);
 }
 
 // ── PLATFORM EDGE ──
-const platEdge = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.35, 1.2), new THREE.MeshStandardMaterial({ color: 0x221122, roughness: 0.8 }));
-platEdge.position.set(0, floorY - 0.175, -ROOM_D/2 + 0.6);
+const platEdge = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.2, 0.6), new THREE.MeshStandardMaterial({ color: 0x221122, roughness: 0.8 }));
+platEdge.position.set(0, floorY - 0.1, -ROOM_D/2 + 0.3);
 scene.add(platEdge);
-// Edge stripe (yellow warning line)
-const edgeStripe = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.04, 0.2), new THREE.MeshStandardMaterial({ color: 0xFFD600, roughness: 0.6, emissive: 0x443300, emissiveIntensity: 0.3 }));
-edgeStripe.position.set(0, 0.02, -ROOM_D/2 + 1.2);
+const edgeStripe = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.03, 0.12), new THREE.MeshStandardMaterial({ color: 0xFFD600, roughness: 0.5, emissive: 0x443300, emissiveIntensity: 0.4 }));
+edgeStripe.position.set(0, 0.015, -ROOM_D/2 + 0.6);
 scene.add(edgeStripe);
 
 // ── COLUMNS ──
 const colMat = new THREE.MeshStandardMaterial({ color: 0x1a1a32, roughness: 0.8, metalness: 0.2 });
 const colAccMat = new THREE.MeshStandardMaterial({ color: 0x7C3AED, roughness: 0.4, emissive: 0x3d1d7a, emissiveIntensity: 0.5 });
-for (let x = -20; x <= 20; x += 10) {
-    // Main column shaft
-    const col = new THREE.Mesh(new THREE.BoxGeometry(0.9, ROOM_H, 0.9), colMat);
-    col.position.set(x, ROOM_H/2, -4);
+for (let x = -10; x <= 10; x += 10) {
+    const col = new THREE.Mesh(new THREE.BoxGeometry(0.5, ROOM_H, 0.5), colMat);
+    col.position.set(x, ROOM_H/2, -2);
     scene.add(col);
-    // Purple accent strip on column
-    const acc = new THREE.Mesh(new THREE.BoxGeometry(0.15, ROOM_H * 0.6, 0.15), colAccMat);
-    acc.position.set(x + 0.4, ROOM_H/2, -3.6);
+    const acc = new THREE.Mesh(new THREE.BoxGeometry(0.08, ROOM_H * 0.6, 0.08), colAccMat);
+    acc.position.set(x + 0.22, ROOM_H/2, -1.78);
     scene.add(acc);
 }
 
@@ -577,58 +566,81 @@ const benchMat = new THREE.MeshStandardMaterial({ color: 0x2a2a44, roughness: 0.
 const benchLegMat = new THREE.MeshStandardMaterial({ color: 0x1a1a30, roughness: 0.5, metalness: 0.6 });
 function createBench(x, z) {
     const g = new THREE.Group();
-    const seat = new THREE.Mesh(new THREE.BoxGeometry(4, 0.2, 0.9), benchMat);
-    seat.position.y = 0.85;
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(2, 0.12, 0.5), benchMat);
+    seat.position.y = 0.5;
     g.add(seat);
-    const back = new THREE.Mesh(new THREE.BoxGeometry(4, 0.6, 0.12), benchMat);
-    back.position.set(0, 1.25, 0.38);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(2, 0.35, 0.07), benchMat);
+    back.position.set(0, 0.75, 0.22);
     g.add(back);
-    for (let lx = -1.5; lx <= 1.5; lx += 3) {
-        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.8, 0.6), benchLegMat);
-        leg.position.set(lx, 0.4, 0);
+    for (let lx = -0.8; lx <= 0.8; lx += 1.6) {
+        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.5, 0.35), benchLegMat);
+        leg.position.set(lx, 0.25, 0);
         g.add(leg);
     }
     g.position.set(x, floorY, z);
     scene.add(g);
 }
-[-20, -10, 0, 10, 20].forEach(x => createBench(x, ROOM_D/2 - 5));
-[-12, 0, 12].forEach(x => createBench(x, -3));
+[-10, -4, 4, 10].forEach(x => createBench(x, ROOM_D/2 - 2.5));
+[-6, 0, 6].forEach(x => createBench(x, -1.5));
 
-// ── JUKEBOX (glowing, interactive) ──
-const jukeGroup = new THREE.Group();
-const jukeBody = new THREE.Mesh(new THREE.BoxGeometry(2.4, 3.8, 1.4), new THREE.MeshStandardMaterial({ color: 0x1a0a0a, roughness: 0.5, metalness: 0.5 }));
-jukeBody.position.y = 1.9;
-jukeGroup.add(jukeBody);
-const jukeTop = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.5, 1.4), new THREE.MeshStandardMaterial({ color: 0x2a1060, roughness: 0.4 }));
-jukeTop.position.y = 4.05;
-jukeGroup.add(jukeTop);
-// Jukebox screen
-const jukeScreen = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.2, 0.1), new THREE.MeshStandardMaterial({ color: 0x110033, emissive: 0x7C3AED, emissiveIntensity: 1.5, roughness: 0.2 }));
-jukeScreen.position.set(0, 2.6, 0.75);
-jukeGroup.add(jukeScreen);
-// Speaker grille
-const jukeGrill = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.0, 0.1), new THREE.MeshStandardMaterial({ color: 0x221144, roughness: 0.9 }));
-jukeGrill.position.set(0, 1.3, 0.75);
-jukeGroup.add(jukeGrill);
-// Accent lights on jukebox
-const jukeLightL = new THREE.Mesh(new THREE.BoxGeometry(0.15, 3.0, 0.1), new THREE.MeshStandardMaterial({ color: 0xFF6B00, emissive: 0xFF3300, emissiveIntensity: 2.0 }));
-jukeLightL.position.set(-1.1, 1.9, 0.75);
-jukeGroup.add(jukeLightL);
-const jukeLightR = jukeLightL.clone();
-jukeLightR.position.x = 1.1;
-jukeGroup.add(jukeLightR);
-jukeGroup.position.set(22, floorY, -10);
-jukeGroup.rotation.y = -Math.PI / 4;
-scene.add(jukeGroup);
+// ── BOOMBOXES (replace jukebox) ──
+function createBoombox(x, z, rotY = 0) {
+    const g = new THREE.Group();
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5, metalness: 0.5 });
+    const speakerMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.9 });
+    const accentMat = new THREE.MeshStandardMaterial({ color: 0xFF6B00, emissive: 0xFF3300, emissiveIntensity: 1.5 });
+    const screenMatB = new THREE.MeshStandardMaterial({ color: 0x110033, emissive: 0x7C3AED, emissiveIntensity: 2.0, roughness: 0.1 });
+    // Main body
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.55, 0.45), bodyMat);
+    body.position.y = 0.5;
+    g.add(body);
+    // Left speaker cone
+    const spkL = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.08, 12), speakerMat);
+    spkL.rotation.x = Math.PI/2;
+    spkL.position.set(-0.45, 0.5, 0.27);
+    g.add(spkL);
+    // Right speaker cone
+    const spkR = spkL.clone();
+    spkR.position.x = 0.45;
+    g.add(spkR);
+    // Center display
+    const disp = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.18, 0.06), screenMatB);
+    disp.position.set(0, 0.5, 0.26);
+    g.add(disp);
+    // Antenna left
+    const ant = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.5, 0.04), bodyMat);
+    ant.position.set(-0.6, 1.0, 0);
+    ant.rotation.z = -0.2;
+    g.add(ant);
+    // Antenna right
+    const ant2 = ant.clone();
+    ant2.position.x = 0.6;
+    ant2.rotation.z = 0.2;
+    g.add(ant2);
+    // Orange accent strip
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.06, 0.06), accentMat);
+    strip.position.set(0, 0.35, 0.26);
+    g.add(strip);
+    // Handle on top
+    const handle = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.08, 0.08), bodyMat);
+    handle.position.set(0, 0.82, 0);
+    g.add(handle);
+    g.position.set(x, floorY, z);
+    g.rotation.y = rotY;
+    scene.add(g);
+    return g;
+}
+const boombox1 = createBoombox(10, -4, -Math.PI / 6);
+const boombox2 = createBoombox(-10, -4, Math.PI / 6);
+const boombox3 = createBoombox(0, ROOM_D/2 - 3.5, Math.PI);
 
 // ── OVERHEAD LIGHT FIXTURES ──
-for (let x = -20; x <= 20; x += 10) {
-    const fixture = new THREE.Mesh(new THREE.BoxGeometry(4, 0.12, 0.5), new THREE.MeshStandardMaterial({ color: 0x8866ee, emissive: 0x5533bb, emissiveIntensity: 0.8 }));
-    fixture.position.set(x, ROOM_H - 0.1, -2);
+for (let x = -10; x <= 10; x += 10) {
+    const fixture = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.08, 0.3), new THREE.MeshStandardMaterial({ color: 0x8866ee, emissive: 0x5533bb, emissiveIntensity: 0.8 }));
+    fixture.position.set(x, ROOM_H - 0.06, -1);
     scene.add(fixture);
-    // Diffuser (bottom of fixture, glowing white)
-    const diff = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.05, 0.4), new THREE.MeshStandardMaterial({ color: 0xccbbff, emissive: 0x9977ff, emissiveIntensity: 1.0 }));
-    diff.position.set(x, ROOM_H - 0.18, -2);
+    const diff = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.04, 0.25), new THREE.MeshStandardMaterial({ color: 0xccbbff, emissive: 0x9977ff, emissiveIntensity: 1.0 }));
+    diff.position.set(x, ROOM_H - 0.11, -1);
     scene.add(diff);
 }
 
@@ -644,36 +656,98 @@ function makeSign(text, x, y, z, rot = 0) {
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(text, 256, 64);
     const tex = new THREE.CanvasTexture(canvas);
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 0.9), new THREE.MeshBasicMaterial({ map: tex }));
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2.5, 0.6), new THREE.MeshBasicMaterial({ map: tex }));
     mesh.position.set(x, y, z);
     mesh.rotation.y = rot;
     scene.add(mesh);
 }
-makeSign('THE STATION', -10, 5, ROOM_D/2 + 0.05);
-makeSign('DOWNTOWN', 10, 5, ROOM_D/2 + 0.05);
-makeSign('EXIT ↑', -25, 4, 0, Math.PI/2);
+makeSign('THE STATION', -6, 3.5, ROOM_D/2 + 0.04);
+makeSign('DOWNTOWN', 6, 3.5, ROOM_D/2 + 0.04);
+makeSign('EXIT ↑', -13, 2.8, 0, Math.PI/2);
 
 // ── TRACK / RAILS ──
 const railMat = new THREE.MeshStandardMaterial({ color: 0x444466, roughness: 0.6, metalness: 0.8 });
 for (let rx = -1; rx <= 1; rx += 2) {
-    const rail = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.15, 80), railMat);
-    rail.position.set(rx * 2.5, -1.0, -ROOM_D/2 - 20);
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 80), railMat);
+    rail.position.set(rx * 1.4, -0.55, -ROOM_D/2 - 15);
     scene.add(rail);
 }
-// Sleepers
-for (let z = -ROOM_D/2 - 40; z < -ROOM_D/2 + 2; z += 2.5) {
-    const sleeper = new THREE.Mesh(new THREE.BoxGeometry(7, 0.1, 0.4), new THREE.MeshStandardMaterial({ color: 0x1a1206, roughness: 1.0 }));
-    sleeper.position.set(0, -1.1, z);
+for (let z = -ROOM_D/2 - 36; z < -ROOM_D/2 + 1; z += 1.4) {
+    const sleeper = new THREE.Mesh(new THREE.BoxGeometry(4, 0.06, 0.22), new THREE.MeshStandardMaterial({ color: 0x1a1206, roughness: 1.0 }));
+    sleeper.position.set(0, -0.6, z);
     scene.add(sleeper);
 }
-// Pit (below platform edge)
-const pit = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 1.5, 12), new THREE.MeshStandardMaterial({ color: 0x050508, roughness: 1.0 }));
-pit.position.set(0, -1.0, -ROOM_D/2 - 4);
+const pit = new THREE.Mesh(new THREE.BoxGeometry(openW + 2, 0.9, 10), new THREE.MeshStandardMaterial({ color: 0x050508, roughness: 1.0 }));
+pit.position.set(0, -0.55, -ROOM_D/2 - 3);
 scene.add(pit);
 
+// ── TRAIN ──
+const trainGroup = new THREE.Group();
+const trainBodyMat = new THREE.MeshStandardMaterial({ color: 0x1a2a6c, roughness: 0.6, metalness: 0.5 });
+const trainStripeMat = new THREE.MeshStandardMaterial({ color: 0xFFD600, roughness: 0.5, emissive: 0x443300, emissiveIntensity: 0.3 });
+const trainWindowMat = new THREE.MeshStandardMaterial({ color: 0x88aacc, roughness: 0.2, transparent: true, opacity: 0.6, emissive: 0x334466, emissiveIntensity: 0.8 });
+const trainDoorMat = new THREE.MeshStandardMaterial({ color: 0x223355, roughness: 0.5 });
+const numCars = 3;
+const carLen = 5.5, carW = 2.6, carH = 2.0;
+const totalTrainLen = numCars * carLen + (numCars - 1) * 0.2;
+for (let c = 0; c < numCars; c++) {
+    const carZ = c * (carLen + 0.2);
+    const car = new THREE.Group();
+    // Body
+    const carBody = new THREE.Mesh(new THREE.BoxGeometry(carW, carH, carLen), trainBodyMat);
+    carBody.position.y = carH / 2;
+    car.add(carBody);
+    // Yellow stripe
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(carW + 0.01, 0.2, carLen + 0.01), trainStripeMat);
+    stripe.position.y = carH - 0.5;
+    car.add(stripe);
+    // Windows
+    for (let wz = -carLen/2 + 0.6; wz < carLen/2 - 0.3; wz += 1.1) {
+        const win = new THREE.Mesh(new THREE.BoxGeometry(carW + 0.02, 0.55, 0.6), trainWindowMat);
+        win.position.set(0, carH - 1.0, wz);
+        car.add(win);
+    }
+    // Doors (center)
+    const door = new THREE.Mesh(new THREE.BoxGeometry(carW + 0.02, carH * 0.7, 0.7), trainDoorMat);
+    door.position.set(0, carH * 0.35, 0);
+    car.add(door);
+    // Wheels (decorative)
+    for (let wx = -1; wx <= 1; wx += 2) {
+        for (let wz2 = -carLen/2 + 0.5; wz2 <= carLen/2 - 0.5; wz2 += carLen - 1) {
+            const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, carW + 0.1, 10), new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.5, metalness: 0.8 }));
+            wheel.rotation.z = Math.PI/2;
+            wheel.position.set(0, -0.05, wz2);
+            car.add(wheel);
+        }
+    }
+    car.position.z = carZ;
+    trainGroup.add(car);
+}
+// Headlights
+const headlightL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.1), new THREE.MeshStandardMaterial({ color: 0xffffcc, emissive: 0xffffcc, emissiveIntensity: 3.0 }));
+headlightL.position.set(-0.8, 0.6, -0.1);
+trainGroup.children[0].add(headlightL);
+const headlightR = headlightL.clone();
+headlightR.position.x = 0.8;
+trainGroup.children[0].add(headlightR);
+const trainLight = new THREE.PointLight(0xffffaa, 2.0, 6);
+trainLight.position.set(0, 0.8, -0.5);
+trainGroup.children[0].add(trainLight);
+trainGroup.position.set(0, -0.5, -ROOM_D/2 - 50);
+scene.add(trainGroup);
+
+let trainState = 'idle'; // idle | arriving | stopped | departing
+let trainTimer = 0;
+const TRAIN_ARRIVE_INTERVAL = 18;
+const TRAIN_STOP_DURATION = 4;
+const TRAIN_SPEED = 18;
+const TRAIN_STOP_Z = -ROOM_D/2 - totalTrainLen/2 - 0.5;
+const TRAIN_START_Z = -ROOM_D/2 - 55;
+const TRAIN_END_Z = -ROOM_D/2 + 15;
+
 // ── CAMERA ──
-const STAT_POS = new THREE.Vector3(0, 5, ROOM_D/2 - 2);
-const STAT_TARGET = new THREE.Vector3(0, 2, -ROOM_D/2);
+const STAT_POS = new THREE.Vector3(0, 3, ROOM_D/2 - 1);
+const STAT_TARGET = new THREE.Vector3(0, 1.2, -ROOM_D/2);
 function applyStationaryCamera() {
     camera.position.copy(STAT_POS);
     camera.lookAt(STAT_TARGET);
@@ -911,10 +985,41 @@ function animate() {
         rp.sprite.material.opacity = rp.life;
         if (rp.life <= 0) { scene.remove(rp.sprite); rp.sprite.material.dispose(); reactionParticles.splice(i, 1); }
     }
-    // Jukebox pulse
+    // Boombox pulse
     const t = Date.now() / 1000;
     if (isPlaying) {
         jukeLight.intensity = 1.0 + Math.sin(t * 4) * 0.5;
+    }
+    // ── TRAIN ANIMATION ──
+    trainTimer += delta;
+    if (trainState === 'idle') {
+        if (trainTimer >= TRAIN_ARRIVE_INTERVAL) {
+            trainState = 'arriving';
+            trainGroup.position.z = TRAIN_START_Z;
+            trainTimer = 0;
+            addChat(null, '🚇 A train is approaching...', true);
+        }
+    } else if (trainState === 'arriving') {
+        trainGroup.position.z += TRAIN_SPEED * delta;
+        if (trainGroup.position.z >= TRAIN_STOP_Z) {
+            trainGroup.position.z = TRAIN_STOP_Z;
+            trainState = 'stopped';
+            trainTimer = 0;
+            addChat(null, '🚇 Doors open. Stand clear.', true);
+        }
+    } else if (trainState === 'stopped') {
+        if (trainTimer >= TRAIN_STOP_DURATION) {
+            trainState = 'departing';
+            trainTimer = 0;
+            addChat(null, '🚇 Doors closing.', true);
+        }
+    } else if (trainState === 'departing') {
+        trainGroup.position.z += TRAIN_SPEED * 1.4 * delta;
+        if (trainGroup.position.z >= TRAIN_END_Z) {
+            trainGroup.position.z = TRAIN_START_Z;
+            trainState = 'idle';
+            trainTimer = 0;
+        }
     }
     const localP = players[localPlayerId - 1];
     if (isFirstPerson && localP && localP.mesh) {
@@ -1124,7 +1229,7 @@ function setupConn(conn, remoteId = null) {
 // ──  MUSIC PLAYER  ──────────────────────────
 // ═══════════════════════════════════════════
 
-const API_BASE = 'https://velium.vercel.app/music-api';
+const API_BASE = 'https://saavn.dev/api';
 
 let isShuffle = false, repeatMode = 'off';
 let currentTrack = null;
@@ -1417,6 +1522,23 @@ document.getElementById('search-input').addEventListener('input', e => {
     searchTimeout = setTimeout(() => doSearch(q, false), 400);
 });
 
+function normalizeSaavnTrack(t) {
+    const primaryArtist = (t.artists && t.artists.primary && t.artists.primary[0] && t.artists.primary[0].name)
+        || t.artist_name || t.artist || 'Unknown Artist';
+    const imgArr = Array.isArray(t.image) ? t.image : [];
+    const artwork = (imgArr[2] && imgArr[2].url) || (imgArr[1] && imgArr[1].url) || t.artwork_url || t.image || '';
+    const dlArr = Array.isArray(t.downloadUrl) ? t.downloadUrl : [];
+    const dlBest = dlArr.find(u => u.quality === '96kbps') || dlArr[dlArr.length - 1];
+    return {
+        id: t.id || '',
+        title: t.name || t.title || 'Unknown',
+        artist_name: primaryArtist,
+        artwork_url: artwork,
+        downloadUrl: dlBest ? [{ link: dlBest.url, quality: dlBest.quality }] : (t.downloadUrl || null),
+        videoId: t.videoId || null,
+        duration: t.duration || 0
+    };
+}
 async function doSearch(q, append = false) {
     if (!append) {
         currentSearchPage = 1;
@@ -1428,24 +1550,16 @@ async function doSearch(q, append = false) {
     loader.style.display = 'block';
     resultsDiv.style.display = 'none';
     try {
-        const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(q)}&page=${currentSearchPage}&limit=24`);
-        const data = await res.json();
-        const tracks = data.results || data.data || data.songs || data || [];
-        const normalizedTracks = tracks.map(t => ({
-            id: t.id || t.videoId || '',
-            title: t.title || t.name || '',
-            artist_name: t.artist_name || t.artist || (t.artists && t.artists[0] && t.artists[0].name) || '',
-            artwork_url: t.artwork_url || t.image || (t.image && t.image[2] && t.image[2].url) || '',
-            downloadUrl: t.downloadUrl || t.download_url || null,
-            videoId: t.videoId || t.youtube_id || null,
-            duration: t.duration || 0
-        }));
-        if (append) allSearchResults = [...allSearchResults, ...normalizedTracks];
-        else allSearchResults = normalizedTracks;
+        const res = await fetch(`${API_BASE}/search/songs?query=${encodeURIComponent(q)}&page=${currentSearchPage}&limit=24`);
+        const json = await res.json();
+        const raw = (json.data && json.data.results) || json.results || json.data || [];
+        const tracks = raw.map(normalizeSaavnTrack);
+        if (append) allSearchResults = [...allSearchResults, ...tracks];
+        else allSearchResults = tracks;
         loader.style.display = 'none';
         resultsDiv.style.display = 'block';
-        renderSearchResults(normalizedTracks, append);
-        document.getElementById('search-load-more').style.display = normalizedTracks.length >= 24 ? 'block' : 'none';
+        renderSearchResults(tracks, append);
+        document.getElementById('search-load-more').style.display = tracks.length >= 24 ? 'block' : 'none';
     } catch(e) {
         loader.style.display = 'none';
         if (!append) {
@@ -1477,17 +1591,10 @@ async function loadPopularTracks() {
     try {
         const artists = ['The Weeknd', 'Drake', 'Dua Lipa', 'Bad Bunny', 'SZA', 'Tyler the Creator', 'Frank Ocean'];
         const picked = artists[Math.floor(Math.random() * artists.length)];
-        const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(picked)}&limit=12`);
-        const data = await res.json();
-        const tracks = (data.results || data.data || data.songs || data || []).map(t => ({
-            id: t.id || t.videoId || '',
-            title: t.title || t.name || '',
-            artist_name: t.artist_name || t.artist || (t.artists && t.artists[0] && t.artists[0].name) || '',
-            artwork_url: t.artwork_url || t.image || (t.image && t.image[2] && t.image[2].url) || '',
-            downloadUrl: t.downloadUrl || null,
-            videoId: t.videoId || null,
-            duration: t.duration || 0
-        }));
+        const res = await fetch(`${API_BASE}/search/songs?query=${encodeURIComponent(picked)}&page=1&limit=12`);
+        const json = await res.json();
+        const raw = (json.data && json.data.results) || json.results || json.data || [];
+        const tracks = raw.map(normalizeSaavnTrack);
         const grid = document.getElementById('popular-tracks');
         grid.innerHTML = '';
         tracks.forEach((track, i) => grid.appendChild(buildTrackCard(track, tracks, i)));
