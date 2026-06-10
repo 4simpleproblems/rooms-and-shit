@@ -540,7 +540,7 @@
 
     <div id="fade-overlay"></div>
 
-    <video id="movie-video" crossorigin="anonymous" playsinline style="display:none;"></video>
+    <video id="movie-video" crossorigin="anonymous" playsinline autoplay muted style="display:none;"></video>
 
     <div id="customization-overlay">
         <div class="custom-card">
@@ -887,7 +887,10 @@
             videoElement.src = movie.url;
             videoElement.currentTime = time;
             videoElement.load();
-            videoElement.play().catch(e => console.warn("Auto-play failed:", e));
+            videoElement.play().catch(e => {
+                console.warn("Auto-play failed:", e);
+                handlePlayError();
+            });
             addChatMessageToLog(null, `Now playing: ${movie.title}`, true);
         }
 
@@ -915,11 +918,10 @@
         const screenTexture = new THREE.VideoTexture(videoElement);
         screenTexture.minFilter = THREE.LinearFilter;
         screenTexture.magFilter = THREE.LinearFilter;
-        screenTexture.format = THREE.RGBFormat;
 
-        const containerW = 20;
-        const containerH = 11.25;
-        const containerY = floorY + ROOM_H * 0.5 + 0.5;
+        const containerW = 12;
+        const containerH = 6.75;
+        const containerY = floorY + 3.8;
 
         const backingGeo = new THREE.PlaneGeometry(containerW, containerH);
         const backingMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
@@ -1623,8 +1625,7 @@
                 }
             }
 
-            if (videoElement && videoElement.readyState >= 2 && !videoElement.paused) {
-                // Video is playing and has data, ensure texture updates
+            if (screenTexture) {
                 screenTexture.needsUpdate = true;
             }
             
@@ -1786,7 +1787,10 @@
             isCustomizing = false;
             if (videoElement) {
                 videoElement.muted = false;
-                videoElement.play().catch(e => console.warn("Unmute/Play failed:", e));
+                videoElement.play().catch(e => {
+                    console.warn("Unmute/Play failed:", e);
+                    handlePlayError();
+                });
             }
             addChatMessageToLog(null, `${nameVal} entered the theater.`, true);
             savePreference('name', nameVal);
@@ -1834,7 +1838,10 @@
                 localP.isCustomizing = false; updatePlayerVisuals(localP);
                 if (videoElement) {
                     videoElement.muted = false;
-                    videoElement.play().catch(() => {});
+                    videoElement.play().catch(e => {
+                        console.warn("Pause/Play failed:", e);
+                        handlePlayError();
+                    });
                 }
                 savePreference('name', nameVal); savePreference('color', chosenColor);
                 if (isFirstPerson) renderer.domElement.requestPointerLock();
@@ -1987,7 +1994,10 @@
                     isCustomizing = false;
                     if (videoElement) {
                         videoElement.muted = false;
-                        videoElement.play().catch(() => {});
+                        videoElement.play().catch(e => {
+                            console.warn("Pref/Play failed:", e);
+                            handlePlayError();
+                        });
                     }
                     addChatMessageToLog(null, `${savedName} entered the theater.`, true);
                     broadcastConfig(); broadcastCustomizingState(false);
