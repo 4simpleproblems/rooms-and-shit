@@ -735,10 +735,9 @@
             
             mesh.traverse(o => {
                 if (o.isMesh) {
-                    o.castShadow = true; o.receiveShadow = true;
-                    if (o.name.includes('Body') || o.name.includes('leg') || o.name.includes('Leg')) {
-                        o.material = createToonMaterial(o.material.map, p.color);
-                    }
+                    o.castShadow = true;
+                    o.receiveShadow = true;
+                    o.material = createToonMaterial(o.material.map, p.color);
                 }
             });
             updatePlayerVisuals(p);
