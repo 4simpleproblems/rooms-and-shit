@@ -196,7 +196,8 @@
         camera.add(listener);
         const stormSound = new THREE.Audio(listener);
         const audioLoader = new THREE.AudioLoader();
-        audioLoader.load('https://www.soundjay.com/nature/sounds/wind-howl-01.mp3', function(buffer) {
+        audioLoader.setCrossOrigin('anonymous');
+        audioLoader.load('https://archive.org/download/SSE_Library_WIND/DESIGNED/WINDDsgn_Blizzard%20wind%20cold%3B%20canvas%20wind%20machine_CS_USC.mp3', function(buffer) {
             stormSound.setBuffer(buffer);
             stormSound.setLoop(true);
             stormSound.setVolume(0.4);
