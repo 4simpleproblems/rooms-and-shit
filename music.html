@@ -902,6 +902,17 @@ boomboxes.forEach(bb => {
     bb.mesh = result.group;
     bb.artworkMesh = result.artworkMesh;
     
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    bb.canvas = canvas;
+    bb.ctx = canvas.getContext('2d');
+    bb.texture = new THREE.CanvasTexture(canvas);
+    bb.texture.minFilter = THREE.LinearFilter;
+    bb.artworkMesh.material = new THREE.MeshBasicMaterial({ map: bb.texture });
+    bb.scrollOffset = 0;
+    bb.imageObj = null;
+    
     const audio = document.createElement('audio');
     audio.crossOrigin = 'anonymous';
     audio.loop = false;
@@ -1388,6 +1399,9 @@ function animate() {
         }
     }
     updateBoomboxVolumes();
+    boomboxes.forEach(bb => {
+        updateBoomboxCanvas(bb);
+    });
     if (isModalOpen && activeBoombox) {
         updateBBScreen();
     }
@@ -1760,18 +1774,159 @@ textureLoader.crossOrigin = 'anonymous';
 const defaultArtworkMat = new THREE.MeshBasicMaterial({ color: 0x222222 });
 
 function loadBoomboxArtwork(bb, track) {
-    if (!bb || !bb.artworkMesh) return;
-    const artUrl = track ? track.artwork_url : '';
-    if (!artUrl) {
-        bb.artworkMesh.material = defaultArtworkMat;
+    if (!bb) return;
+    if (!track || !track.artwork_url) {
+        bb.imageObj = null;
         return;
     }
-    textureLoader.load(artUrl, (texture) => {
-        bb.artworkMesh.material = new THREE.MeshBasicMaterial({ map: texture });
-    }, undefined, (err) => {
-        console.error(err);
-        bb.artworkMesh.material = defaultArtworkMat;
-    });
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+        bb.imageObj = img;
+    };
+    img.onerror = () => {
+        bb.imageObj = null;
+    };
+    img.src = track.artwork_url;
+}
+
+function updateBoomboxCanvas(bb) {
+    if (!bb.canvas || !bb.ctx || !bb.texture) return;
+    const ctx = bb.ctx;
+    const w = bb.canvas.width;
+    const h = bb.canvas.height;
+    
+    ctx.fillStyle = '#0d1e11';
+    ctx.fillRect(0, 0, w, h);
+    
+    ctx.strokeStyle = '#39ff14';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(0, 0, w, h);
+    
+    ctx.strokeStyle = '#1b3a22';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, 128);
+    ctx.lineTo(w, 128);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(110, 0);
+    ctx.lineTo(110, 128);
+    ctx.stroke();
+    
+    if (bb.imageObj) {
+        ctx.drawImage(bb.imageObj, 10, 19, 90, 90);
+    } else {
+        ctx.fillStyle = '#1b3a22';
+        ctx.fillRect(10, 19, 90, 90);
+        ctx.strokeStyle = '#39ff14';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(10, 19, 90, 90);
+        
+        ctx.fillStyle = '#39ff14';
+        ctx.font = '32px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🎵', 55, 64);
+    }
+    
+    ctx.fillStyle = '#39ff14';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    
+    let title = 'NO SONG';
+    let artist = 'LOOKUP SONG';
+    let durationStr = '--:--';
+    let currentStr = '0:00';
+    
+    if (bb.currentTrack) {
+        title = bb.currentTrack.name || 'Unknown Track';
+        artist = bb.currentTrack.artist || 'Unknown Artist';
+        if (bb.audio) {
+            const cur = bb.audio.currentTime || 0;
+            const dur = bb.audio.duration || bb.currentTrack.duration || 0;
+            
+            const formatTime = (secs) => {
+                if (isNaN(secs) || secs < 0) return '0:00';
+                const m = Math.floor(secs / 60);
+                const s = Math.floor(secs % 60);
+                return `${m}:${s < 10 ? '0' : ''}${s}`;
+            };
+            currentStr = formatTime(cur);
+            durationStr = formatTime(dur);
+        }
+    }
+    
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(115, 0, 135, 128);
+    ctx.clip();
+    
+    ctx.font = 'bold 18px Courier New, monospace';
+    const textToDraw = bb.currentTrack ? `${title} - ${artist}` : 'NO SONG PLAYING - RETRO BOOMBOX';
+    const textWidth = ctx.measureText(textToDraw).width;
+    
+    bb.scrollOffset += 0.8;
+    if (bb.scrollOffset > textWidth + 30) {
+        bb.scrollOffset = -135;
+    }
+    
+    ctx.fillText(textToDraw, 115 - bb.scrollOffset, 25);
+    
+    ctx.font = '14px Courier New, monospace';
+    ctx.fillText(`TIME:`, 115, 65);
+    ctx.fillText(`${currentStr}`, 115, 82);
+    ctx.fillText(`/ ${durationStr}`, 115, 99);
+    
+    ctx.restore();
+    
+    ctx.fillStyle = '#39ff14';
+    ctx.font = 'bold 14px Courier New, monospace';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('VOLUME LEVEL', 15, 140);
+    
+    const vol = bb.localVolume !== undefined ? bb.localVolume : 0.8;
+    const barWidth = 226;
+    const barHeight = 16;
+    
+    ctx.strokeStyle = '#1b3a22';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(15, 162, barWidth, barHeight);
+    ctx.strokeRect(15, 202, barWidth, barHeight);
+    
+    const maxSegments = 16;
+    const segmentsActive = Math.round(vol * maxSegments);
+    const segWidth = (barWidth - 4) / maxSegments;
+    
+    for (let i = 0; i < maxSegments; i++) {
+        const xPos = 17 + i * segWidth;
+        const isActive = i < segmentsActive;
+        
+        if (isActive) {
+            if (i < 10) {
+                ctx.fillStyle = '#39ff14';
+            } else if (i < 13) {
+                ctx.fillStyle = '#ffff00';
+            } else {
+                ctx.fillStyle = '#ff0000';
+            }
+            ctx.fillRect(xPos + 1, 164, segWidth - 2, barHeight - 4);
+            ctx.fillRect(xPos + 1, 204, segWidth - 2, barHeight - 4);
+        } else {
+            ctx.fillStyle = '#0a140c';
+            ctx.fillRect(xPos + 1, 164, segWidth - 2, barHeight - 4);
+            ctx.fillRect(xPos + 1, 204, segWidth - 2, barHeight - 4);
+        }
+    }
+    
+    ctx.fillStyle = '#39ff14';
+    ctx.font = '14px Courier New, monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(`${Math.round(vol * 100)}%`, 240, 140);
+    
+    bb.texture.needsUpdate = true;
 }
 
 function updateBoomboxVolumes() {
