@@ -999,6 +999,8 @@ const cameraFocusTarget = new THREE.Vector3();
 let activeBoombox = null;
 let bbSearchQueue = [];
 let isModalOpen = false;
+let stationAudioCtx = null;
+let announcementTimer = 0;
 
 const players = [
     { id:1, name: localStorage.getItem('4sp_player_name') || 'Player 1', color: localStorage.getItem('4sp_player_color') || '#E2FF3D', mesh:null, position:new THREE.Vector3(0,floorY,ROOM_D/2-2), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false,shift:false}, isCustomizing: !hasSavedName, isSitting:false },
@@ -1328,6 +1330,26 @@ function createBench(x, z, rotY = 0) {
 [-10, -4, 4, 10].forEach(x => createBench(x, 6.5, 0.0));
 createBench(-14.2, 0.0, -Math.PI / 2);
 createBench(14.2, 0.0, Math.PI / 2);
+
+function createTrashCan(x, z) {
+    const g = new THREE.Group();
+    const binMat = new THREE.MeshStandardMaterial({ color: 0x444448, metalness: 0.8, roughness: 0.3 });
+    const topMat = new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.9 });
+    const bin = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.75, 12), binMat);
+    bin.position.y = 0.375;
+    bin.castShadow = true;
+    bin.receiveShadow = true;
+    g.add(bin);
+    const topRing = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.05, 12), topMat);
+    topRing.position.y = 0.75;
+    g.add(topRing);
+    g.position.set(x, floorY, z);
+    scene.add(g);
+}
+createTrashCan(-11.8, 6.5);
+createTrashCan(11.8, 6.5);
+createTrashCan(-14.2, 1.6);
+createTrashCan(14.2, 1.6);
 
 function createBoombox(x, z, rotY = 0) {
     const g = new THREE.Group();
@@ -1841,6 +1863,18 @@ function checkSubwayCollisions(pos, r = 0.38) {
             return true;
         }
     }
+    const trashCans = [
+        { x: -11.8, z: 6.5 },
+        { x: 11.8, z: 6.5 },
+        { x: -14.2, z: 1.6 },
+        { x: 14.2, z: 1.6 }
+    ];
+    for (const tc of trashCans) {
+        if (pos.x >= tc.x - 0.35 - r && pos.x <= tc.x + 0.35 + r &&
+            pos.z >= tc.z - 0.35 - r && pos.z <= tc.z + 0.35 + r) {
+            return true;
+        }
+    }
     return false;
 }
 
@@ -1869,10 +1903,76 @@ function clampToRoom(p) {
     p.mesh.position.x = Math.max(-hw, Math.min(hw, p.mesh.position.x));
     p.mesh.position.z = Math.max(-hd, Math.min(hd, p.mesh.position.z));
 }
+function initStationAudio() {
+    if (!stationAudioCtx) {
+        stationAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (stationAudioCtx.state === 'suspended') {
+        stationAudioCtx.resume();
+    }
+}
+function playSubwayChime(type) {
+    if (!stationAudioCtx) return;
+    if (stationAudioCtx.state === 'suspended') stationAudioCtx.resume();
+    const now = stationAudioCtx.currentTime;
+    if (type === 'announcement') {
+        const tones = [261.63, 329.63, 392.00, 523.25];
+        tones.forEach((freq, idx) => {
+            const osc = stationAudioCtx.createOscillator();
+            const gain = stationAudioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, now + idx * 0.22);
+            gain.gain.setValueAtTime(0, now + idx * 0.22);
+            gain.gain.linearRampToValueAtTime(0.08, now + idx * 0.22 + 0.03);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.22 + 0.5);
+            osc.connect(gain);
+            gain.connect(stationAudioCtx.destination);
+            osc.start(now + idx * 0.22);
+            osc.stop(now + idx * 0.22 + 0.6);
+        });
+    } else if (type === 'door_warning') {
+        const beepCount = 6;
+        const beepDur = 0.08;
+        const beepGap = 0.12;
+        for (let i = 0; i < beepCount; i++) {
+            const start = now + i * (beepDur + beepGap);
+            const osc = stationAudioCtx.createOscillator();
+            const gain = stationAudioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1000, start);
+            gain.gain.setValueAtTime(0, start);
+            gain.gain.linearRampToValueAtTime(0.06, start + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.0001, start + beepDur);
+            osc.connect(gain);
+            gain.connect(stationAudioCtx.destination);
+            osc.start(start);
+            osc.stop(start + beepDur);
+        }
+    } else if (type === 'turnstile') {
+        const osc = stationAudioCtx.createOscillator();
+        const gain = stationAudioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1800, now);
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.05, now + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+        osc.connect(gain);
+        gain.connect(stationAudioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.1);
+    }
+}
+window.addEventListener('click', initStationAudio);
+window.addEventListener('keydown', initStationAudio);
 const clock = new THREE.Clock();
 function animate() {
     requestAnimationFrame(animate);
     const delta = Math.min(clock.getDelta(), 0.05);
+    announcementTimer += delta;
+    if (announcementTimer >= 30) {
+        announcementTimer = 0;
+        playSubwayChime('announcement');
+    }
     const hw = ROOM_W / 2 - 0.5, hd = ROOM_D / 2 - 0.5;
     for (const p of players) {
         if (!p.mesh) continue;
@@ -2044,6 +2144,7 @@ function animate() {
         trainTimer = 0;
         trainX = TRAIN_START_X;
         currentTrainInterval = 20 + Math.random() * 20;
+        playSubwayChime('door_warning');
         
         const rand = Math.random();
         if (rand < 0.15) {
@@ -2088,6 +2189,15 @@ function animate() {
         trainBackLight.intensity = backInt;
     }
     if (localP && localP.mesh) {
+        const nearEntrance = (localP.mesh.position.z < -8.2 && Math.abs(localP.mesh.position.x) < 3.5);
+        if (localP.wasNearEntrance === undefined) {
+            localP.wasNearEntrance = nearEntrance;
+        }
+        if (nearEntrance && !localP.wasNearEntrance) {
+            playSubwayChime('turnstile');
+        }
+        localP.wasNearEntrance = nearEntrance;
+
         if (isFirstPerson) {
             const headPos = localP.mesh.position.clone().add(new THREE.Vector3(0, 0.65, 0));
             camera.position.copy(headPos);
@@ -2099,6 +2209,10 @@ function animate() {
             cameraFocusTarget.copy(localP.mesh.position);
             controls.target.lerp(cameraFocusTarget, 0.25);
             controls.update();
+            const camR = 0.35;
+            camera.position.x = THREE.MathUtils.clamp(camera.position.x, -ROOM_W/2 + camR, ROOM_W/2 - camR);
+            camera.position.z = THREE.MathUtils.clamp(camera.position.z, -ROOM_D/2 + camR, ROOM_D/2 - camR);
+            camera.position.y = THREE.MathUtils.clamp(camera.position.y, 0.1 + camR, ROOM_H - camR);
         }
     }
     if (localP && localP.mesh && connections.length > 0) {
