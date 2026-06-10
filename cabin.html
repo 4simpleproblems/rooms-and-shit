@@ -405,6 +405,54 @@
         #fade-overlay.fade-out-active {
             opacity: 0;
         }
+        #book-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(8, 7, 16, 0.65);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 300;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.4s ease, visibility 0.4s;
+        }
+        .book-card {
+            background: #f7ebd3;
+            border: 6px solid var(--black-outline);
+            box-shadow: 10px 10px 0px var(--black-outline);
+            padding: 16px;
+            width: 80vw;
+            height: 85vh;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-sizing: border-box;
+        }
+        .book-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: 'Alfa Slab One', cursive;
+            font-size: 1.1rem;
+            color: #3d2b1f;
+            border-bottom: 4px solid var(--black-outline);
+            padding-bottom: 10px;
+        }
+        .book-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .book-iframe {
+            width: 100%;
+            flex-grow: 1;
+            border: 4px solid var(--black-outline);
+            background: #ffffff;
+        }
     </style>
 </head>
 <body>
@@ -437,6 +485,22 @@
         <div class="custom-card">
             <h2 class="custom-title">PAUSED</h2>
             <button id="resume-btn" class="ui-btn primary" style="width: 100%; justify-content: center; font-size: 1.2rem;">RESUME</button>
+        </div>
+    </div>
+
+    <div id="book-overlay" class="hidden">
+        <div class="book-card">
+            <div class="book-header">
+                <span>THE GREAT GATSBY</span>
+                <div class="book-controls">
+                    <button id="book-prev-btn" class="ui-btn" style="padding: 4px 8px; font-size: 0.85rem;"><i class="fa-solid fa-chevron-left"></i></button>
+                    <span style="font-family: sans-serif; font-size: 0.95rem; font-weight: bold; color: #3d2b1f;">Page <input type="number" id="book-page-input" value="1" min="1" max="1000" style="width: 50px; text-align: center; border: 3px solid var(--black-outline); font-family: sans-serif; font-weight: bold; background: #fff; padding: 2px;" /></span>
+                    <button id="book-next-btn" class="ui-btn" style="padding: 4px 8px; font-size: 0.85rem;"><i class="fa-solid fa-chevron-right"></i></button>
+                    <button id="book-bookmark-btn" class="ui-btn primary" style="padding: 4px 12px; font-size: 0.85rem;"><i class="fa-solid fa-bookmark"></i> Bookmark</button>
+                </div>
+                <button id="book-close-btn" class="ui-btn" style="padding: 4px 12px; font-size: 0.85rem;"><i class="fa-solid fa-xmark"></i> Close</button>
+            </div>
+            <iframe id="book-iframe" class="book-iframe" src=""></iframe>
         </div>
     </div>
 
@@ -917,6 +981,7 @@
         tableGroup.add(bookGroup);
         tableGroup.position.set(0, 0, -0.8);
         scene.add(tableGroup);
+        interactions.push({ x: 0.25, z: -0.7, type: 'Book', range: 1.0 });
 
         const sideTableGroup = new THREE.Group();
         const sTop = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.5), tableTopMat);
@@ -1256,6 +1321,40 @@
             }
         }
 
+        let isReadingBook = false;
+        let bookCurrentPage = 1;
+
+        function openBookReader() {
+            if (document.pointerLockElement) {
+                document.exitPointerLock();
+            }
+            isReadingBook = true;
+            isCustomizing = true;
+            const savedPage = localStorage.getItem('gatsby_bookmark_page');
+            bookCurrentPage = savedPage ? parseInt(savedPage) : 1;
+            document.getElementById('book-page-input').value = bookCurrentPage;
+            document.getElementById('book-iframe').src = `book/thegreatgatsby.pdf#page=${bookCurrentPage}`;
+            document.getElementById('book-overlay').classList.remove('hidden');
+        }
+
+        function closeBookReader() {
+            isReadingBook = false;
+            isCustomizing = false;
+            localStorage.setItem('gatsby_bookmark_page', bookCurrentPage);
+            document.getElementById('book-overlay').classList.add('hidden');
+            document.getElementById('book-iframe').src = 'about:blank';
+        }
+
+        function changeBookPage(page) {
+            let p = parseInt(page);
+            if (isNaN(p) || p < 1) p = 1;
+            if (p > 1000) p = 1000;
+            bookCurrentPage = p;
+            document.getElementById('book-page-input').value = bookCurrentPage;
+            document.getElementById('book-iframe').src = `book/thegreatgatsby.pdf#page=${bookCurrentPage}`;
+            localStorage.setItem('gatsby_bookmark_page', bookCurrentPage);
+        }
+
         let isFirstPerson = false, fpYaw = Math.PI, fpPitch = 0;
         let isCustomizing = true, isPaused = false, isSitting = false;
         let targetCameraPos = null;
@@ -1462,7 +1561,19 @@
             const prompt = document.getElementById('interaction-prompt');
             if (nearInteraction || nearSeat) {
                 prompt.style.display = 'block';
-                prompt.innerText = isSitting ? "Press E to Stand" : (nearInteraction ? (nearInteraction.type === 'Radio' ? (radioPlaying ? "Press E to Turn Off Radio" : "Press E to Turn On Radio") : `Press E to Add Log`) : "Press E to Sit");
+                let text = "Press E to Sit";
+                if (isSitting) {
+                    text = "Press E to Stand";
+                } else if (nearInteraction) {
+                    if (nearInteraction.type === 'Radio') {
+                        text = radioPlaying ? "Press E to Turn Off Radio" : "Press E to Turn On Radio";
+                    } else if (nearInteraction.type === 'Book') {
+                        text = "Press E to Read The Great Gatsby";
+                    } else {
+                        text = "Press E to Add Log";
+                    }
+                }
+                prompt.innerText = text;
             } else { prompt.style.display = 'none'; }
 
             let baseStandingY = 0;
@@ -1689,9 +1800,18 @@
         }
 
         window.addEventListener('keydown', e => {
+            if (isReadingBook) {
+                if (e.key === 'Escape' || (e.key.toLowerCase() === 'e' && document.activeElement.tagName !== 'INPUT')) {
+                    closeBookReader();
+                    e.preventDefault();
+                }
+                return;
+            }
             if (document.activeElement.tagName === 'INPUT') {
                 if (e.key === 'Enter') {
-                    sendChatMessage();
+                    if (document.activeElement.id === 'chat-input') {
+                        sendChatMessage();
+                    }
                     document.activeElement.blur();
                 }
                 return;
@@ -1717,6 +1837,8 @@
                     showSpeechBubble("Warmth +1!");
                 } else if (Math.hypot(p.mesh.position.x - 1.5, p.mesh.position.z - 2.1) < 0.9) {
                     toggleRadio();
+                } else if (Math.hypot(p.mesh.position.x - 0.25, p.mesh.position.z - (-0.7)) < 1.0) {
+                    openBookReader();
                 } else {
                     toggleSit();
                 }
@@ -1840,6 +1962,28 @@
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
+
+        document.getElementById('book-prev-btn').addEventListener('click', () => changeBookPage(bookCurrentPage - 1));
+        document.getElementById('book-next-btn').addEventListener('click', () => changeBookPage(bookCurrentPage + 1));
+        document.getElementById('book-page-input').addEventListener('change', (e) => changeBookPage(e.target.value));
+        document.getElementById('book-page-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                changeBookPage(e.target.value);
+                e.target.blur();
+            }
+        });
+        
+        const bookmarkBtn = document.getElementById('book-bookmark-btn');
+        bookmarkBtn.addEventListener('click', () => {
+            localStorage.setItem('gatsby_bookmark_page', bookCurrentPage);
+            bookmarkBtn.innerHTML = '<i class="fa-solid fa-check"></i> Bookmarked!';
+            setTimeout(() => {
+                bookmarkBtn.innerHTML = '<i class="fa-solid fa-bookmark"></i> Bookmark';
+            }, 1500);
+            addSystemMessage(`Saved bookmark at Page ${bookCurrentPage}`);
+        });
+        
+        document.getElementById('book-close-btn').addEventListener('click', closeBookReader);
 
         loadModels();
     </script>
