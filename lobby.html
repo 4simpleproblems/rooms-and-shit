@@ -1919,10 +1919,12 @@
             scene.add(leaves);
 
             const trunkHitbox = new THREE.Mesh(
-                new THREE.BoxGeometry(0.5, 1.5, 0.5),
+                new THREE.CylinderGeometry(0.5, 0.5, 1, 8),
                 new THREE.MeshBasicMaterial({ visible: false })
             );
+            trunkHitbox.userData.shapeType = 'cylinder';
             trunkHitbox.position.copy(trunk.position);
+            trunkHitbox.scale.set(0.4, 1.5, 0.4);
             scene.add(trunkHitbox);
             customPlatforms.push(trunkHitbox);
         }
@@ -1954,11 +1956,13 @@
         scene.add(support2);
 
         const logCollision = new THREE.Mesh(
-            new THREE.BoxGeometry(1, 1, 1),
+            new THREE.CylinderGeometry(0.5, 0.5, 1, 12),
             new THREE.MeshBasicMaterial({ visible: false })
         );
+        logCollision.userData.shapeType = 'cylinder';
         logCollision.position.set(27, parkTopY + 0.35, -1.0);
-        logCollision.scale.set(0.7, 0.7, 3.6);
+        logCollision.scale.set(0.7, 3.6, 0.7);
+        logCollision.rotation.x = Math.PI / 2;
         scene.add(logCollision);
         customPlatforms.push(logCollision);
 
@@ -2099,6 +2103,21 @@
             const localPos = new THREE.Vector3().copy(playerPos).sub(plat.position);
             const q = new THREE.Quaternion().copy(plat.quaternion);
             localPos.applyQuaternion(q.invert());
+
+            if (plat.userData.shapeType === 'cylinder') {
+                const radius = plat.scale.x / 2;
+                const halfY = plat.scale.y / 2;
+                const distXZ = Math.hypot(localPos.x, localPos.z);
+                const overlapXZ = Math.max(0, (radius + charRadius) - distXZ);
+                const pMinY = localPos.y;
+                const pMaxY = localPos.y + playerHeight;
+                const overlapY = Math.max(0, Math.min(pMaxY, halfY) - Math.max(pMinY, -halfY));
+                if (overlapXZ > 0 && overlapY > 0) {
+                    return Math.min(overlapXZ, overlapY);
+                }
+                return 0;
+            }
+
             const halfX = plat.scale.x / 2;
             const halfY = plat.scale.y / 2;
             const halfZ = plat.scale.z / 2;
