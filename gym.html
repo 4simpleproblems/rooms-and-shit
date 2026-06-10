@@ -914,23 +914,61 @@
             setupConnection(conn);
         }
 
-        // Player Rendering
+        // --- MODELS & ANIMATIONS ---
+        let charGltfMaster = null;
+        let animationsMaster = [];
+
+        async function loadModels() {
+            const cacheBust = "?t=" + Date.now();
+            try {
+                const [gltf, animJson] = await Promise.all([
+                    loader.loadAsync("model/character.gltf" + cacheBust),
+                    fetch("animations.json" + cacheBust).then(r => r.json())
+                ]);
+                charGltfMaster = gltf;
+                animationsMaster = animJson.map(a => {
+                    const tracks = a.tracks.map(t => {
+                        const nodeName = t.nodeName || (t.name ? t.name.split('.')[0] : 'unknown');
+                        const property = t.property || (t.name ? t.name.split('.')[1] : 'position');
+                        return new THREE.KeyframeTrack(nodeName + '.' + property, t.times, t.values);
+                    });
+                    return new THREE.AnimationClip(a.name, a.duration, tracks);
+                });
+                
+                await setupLocalPlayer();
+                initPeer();
+                animate();
+            } catch (err) {
+                console.error("Error loading gym models:", err);
+            }
+        }
+
+        async function setupLocalPlayer() {
+            const p = players[0];
+            await createPlayerMesh(p);
+        }
+
         async function createPlayerMesh(p) {
-            const gltf = await loadCharacterModel();
-            const mesh = gltf.scene.clone();
+            if (!charGltfMaster) return;
+            const mesh = charGltfMaster.scene.clone();
             mesh.scale.set(CHARACTER_SCALE, CHARACTER_SCALE, CHARACTER_SCALE);
             scene.add(mesh);
             p.mesh = mesh;
             p.mixer = new THREE.AnimationMixer(mesh);
             p.actions = {};
-            gltf.animations.forEach(clip => {
+            
+            animationsMaster.forEach(clip => {
                 p.actions[clip.name.toLowerCase()] = p.mixer.clipAction(clip);
             });
             
-            // Set Color
+            // Set Color and Material
             mesh.traverse(o => {
-                if (o.isMesh && o.name.includes('Body')) {
-                    o.material = new THREE.MeshStandardMaterial({ color: p.color });
+                if (o.isMesh) {
+                    o.castShadow = true;
+                    o.receiveShadow = true;
+                    if (o.name.includes('Body')) {
+                        o.material = createToonMaterial(o.material.map, p.color);
+                    }
                 }
             });
             
@@ -940,16 +978,20 @@
             div.textContent = p.name;
             div.style.position = 'absolute';
             div.style.color = 'white';
+            div.style.fontFamily = "'Inter', sans-serif";
             div.style.fontWeight = '900';
+            div.style.fontSize = '0.9rem';
             div.style.textShadow = '2px 2px 0px black';
+            div.style.pointerEvents = 'none';
+            div.style.zIndex = '100';
             document.body.appendChild(div);
             p.nametag = div;
+            
+            updatePlayerVisuals(p);
         }
 
         async function init() {
-            await createPlayerMesh(players[0]);
-            initPeer();
-            animate();
+            await loadModels();
         }
 
         function getGroundY(playerId, pos) {
@@ -1165,20 +1207,16 @@
         // UI Handlers
         document.getElementById('start-gym-btn').addEventListener('click', () => {
             const name = document.getElementById('custom-name-input').value.trim() || 'Lifter';
-            players[0].name = name;
+            const p = players[0];
+            p.name = name;
             localStorage.setItem('4sp_player_name', name);
             localStorage.setItem('4sp_player_color', chosenColor);
-            players[0].color = chosenColor;
-            players[0].nametag.textContent = name;
+            p.color = chosenColor;
             
-            // Set Color on mesh
-            players[0].mesh.traverse(o => {
-                if (o.isMesh && o.name.includes('Body')) {
-                    o.material.color.set(chosenColor);
-                }
-            });
-
+            if (p.nametag) p.nametag.textContent = name;
+            
             isCustomizing = false;
+            updatePlayerVisuals(p);
             document.getElementById('customization-overlay').classList.add('hidden');
         });
 
