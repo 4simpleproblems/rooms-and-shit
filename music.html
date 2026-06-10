@@ -116,12 +116,12 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 680px;
-            height: 480px;
-            background: linear-gradient(180deg, #4c4c4c 0%, #2c2c2c 50%, #1a1a1a 100%);
-            border: 6px solid #666;
+            width: 820px;
+            height: 530px;
+            background: linear-gradient(180deg, #b0b5b8 0%, #7d8285 50%, #53585a 100%);
+            border: 6px solid #4a4f52;
             border-radius: 12px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.9), inset 0 1px 0 rgba(255,255,255,0.2);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.9), inset 0 1px 0 rgba(255,255,255,0.3);
             z-index: 100;
             display: flex;
             flex-direction: column;
@@ -266,7 +266,7 @@
         }
         .bb-controls-panel {
             flex: 1.8;
-            background: linear-gradient(180deg, #3a3a3a 0%, #1a1a1a 100%);
+            background: linear-gradient(180deg, #373b3e 0%, #1e2225 100%);
             border: 3px solid #111;
             border-radius: 8px;
             padding: 15px;
@@ -274,7 +274,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: space-between;
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.15), 0 5px 15px rgba(0,0,0,0.5);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 5px 15px rgba(0,0,0,0.6);
         }
         .bb-hardware-row {
             display: flex;
@@ -283,29 +283,60 @@
             align-items: center;
         }
         .bb-speaker {
-            width: 80px;
-            height: 80px;
+            width: 120px;
+            height: 120px;
             border-radius: 50%;
-            background: radial-gradient(circle at 50% 50%, #444 0%, #222 25%, #050505 80%);
-            border: 4px solid #111;
-            box-shadow: inset 0 4px 8px rgba(0,0,0,0.8), 0 2px 4px rgba(255,255,255,0.1);
+            background: radial-gradient(circle, #2d2d2d 0%, #181818 60%, #0a0a0a 100%);
+            border: 6px solid #444;
+            box-shadow: inset 0 8px 16px rgba(0,0,0,0.85), 0 3px 6px rgba(255,255,255,0.15), 0 0 15px rgba(0,0,0,0.9);
             display: flex;
             align-items: center;
             justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .bb-speaker::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: 
+                radial-gradient(circle, transparent 15%, #050505 16%, #050505 18%, transparent 19%),
+                radial-gradient(circle, transparent 35%, #050505 36%, #050505 38%, transparent 39%),
+                radial-gradient(circle, transparent 55%, #050505 56%, #050505 58%, transparent 59%),
+                radial-gradient(circle, transparent 75%, #050505 76%, #050505 78%, transparent 79%),
+                radial-gradient(circle, transparent 95%, #050505 96%, #050505 98%, transparent 99%);
+            background-size: 100% 100%;
+            opacity: 0.65;
+            pointer-events: none;
+            z-index: 3;
+        }
+        .bb-speaker::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: 
+                repeating-linear-gradient(45deg, rgba(0,0,0,0.4) 0px, rgba(0,0,0,0.4) 1px, transparent 1px, transparent 3px),
+                repeating-linear-gradient(-45deg, rgba(0,0,0,0.4) 0px, rgba(0,0,0,0.4) 1px, transparent 1px, transparent 3px);
+            opacity: 0.8;
+            pointer-events: none;
+            z-index: 4;
         }
         .bb-speaker-inner {
-            width: 36px;
-            height: 36px;
+            width: 46px;
+            height: 46px;
             border-radius: 50%;
-            background: radial-gradient(circle, #666 0%, #333 60%, #111 100%);
-            border: 2px solid #222;
+            background: radial-gradient(circle, #555 0%, #222 50%, #0a0a0a 100%);
+            border: 2px solid #111;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.8), inset 0 2px 4px rgba(255,255,255,0.3);
+            position: relative;
+            z-index: 2;
         }
         .bb-screen {
             flex: 1;
             margin: 0 15px;
-            height: 70px;
+            height: 80px;
             background-color: #0d1e11;
-            border: 3px solid #222;
+            border: 3px solid #3a3f42;
             border-radius: 4px;
             box-shadow: inset 0 3px 8px rgba(0,0,0,0.9);
             padding: 8px;
@@ -519,6 +550,7 @@
         <div class="ctrl-row"><span>Move</span><span class="ctrl-key">WASD</span></div>
         <div class="ctrl-row"><span>Jump</span><span class="ctrl-key">SPACE</span></div>
         <div class="ctrl-row"><span>Sprint</span><span class="ctrl-key">SHIFT</span></div>
+        <div class="ctrl-row"><span>Interact/Sit</span><span class="ctrl-key">E</span></div>
         <div class="ctrl-row"><span>Cam Mode</span><span class="ctrl-key">V / C</span></div>
         <div class="ctrl-row"><span>Boombox</span><span class="ctrl-key">P</span></div>
         <div class="ctrl-row"><span>Music</span><span class="ctrl-key">M</span></div>
@@ -784,22 +816,31 @@ function createBench(x, z) {
 
 function createBoombox(x, z, rotY = 0) {
     const g = new THREE.Group();
-    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5, metalness: 0.5 });
-    const speakerMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.9 });
-    const accentMat = new THREE.MeshStandardMaterial({ color: 0xFF6B00, emissive: 0xFF3300, emissiveIntensity: 1.5 });
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.2, metalness: 0.8 });
+    const speakerMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.6, metalness: 0.3 });
+    const accentMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.15, metalness: 0.95 });
     
     const body = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.55, 0.45), bodyMat);
     body.position.y = 0.5;
     g.add(body);
     
-    const spkL = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.08, 12), speakerMat);
-    spkL.rotation.x = Math.PI/2;
-    spkL.position.set(-0.45, 0.5, 0.23);
-    g.add(spkL);
+    const spkRingL = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.08, 16), accentMat);
+    spkRingL.rotation.x = Math.PI/2;
+    spkRingL.position.set(-0.45, 0.5, 0.23);
+    g.add(spkRingL);
     
-    const spkR = spkL.clone();
-    spkR.position.x = 0.45;
-    g.add(spkR);
+    const spkConeL = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.082, 16), speakerMat);
+    spkConeL.rotation.x = Math.PI/2;
+    spkConeL.position.set(-0.45, 0.5, 0.231);
+    g.add(spkConeL);
+    
+    const spkRingR = spkRingL.clone();
+    spkRingR.position.x = 0.45;
+    g.add(spkRingR);
+    
+    const spkConeR = spkConeL.clone();
+    spkConeR.position.x = 0.45;
+    g.add(spkConeR);
     
     const defaultArtworkMat = new THREE.MeshBasicMaterial({ color: 0x222222 });
     const artworkMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.35, 0.35), defaultArtworkMat);
@@ -1096,8 +1137,13 @@ loadModels();
 // ── ANIMATION STATES ──
 function updateAnimState(p, speed) {
     if (!p.mixer || !p.actions) return;
-    const isMoving = speed > 0.15, isSprinting = speed > 4.5;
-    let next = isMoving ? (isSprinting ? p.actions['Sprint'] : p.actions['Stomp']) : p.actions['Idle'];
+    let next = null;
+    if (p.isSitting) {
+        next = p.actions['Sit'];
+    } else {
+        const isMoving = speed > 0.15, isSprinting = speed > 4.5;
+        next = isMoving ? (isSprinting ? p.actions['Sprint'] : p.actions['Stomp']) : p.actions['Idle'];
+    }
     if (next && p.currentAction !== next) {
         if (p.currentAction) p.currentAction.fadeOut(0.15);
         next.reset().fadeIn(0.15).play();
@@ -1140,14 +1186,19 @@ function spawnEmotion(type) {
 
 // ── PHYSICS & MOVEMENT ──
 function checkSubwayCollisions(pos, r = 0.38) {
-    if (pos.x >= 4.0 - r && pos.x <= 4.0 + r && pos.z >= 1.0 - r) {
-        return true;
+    const cols = [-10, 0, 10];
+    for (const cx of cols) {
+        if (pos.x >= cx - 0.25 - r && pos.x <= cx + 0.25 + r &&
+            pos.z >= -2.0 - 0.25 - r && pos.z <= -2.0 + 0.25 + r) {
+            return true;
+        }
     }
-    if (pos.z >= 1.0 - r && pos.z <= 1.0 + r && pos.x >= 4.0 && pos.x <= 5.0 + r) {
-        return true;
-    }
-    if (pos.z >= 1.0 - r && pos.z <= 1.0 + r && pos.x >= 7.5 - r && pos.x <= 15.0) {
-        return true;
+    const bbs = [-6.0, 6.0];
+    for (const bx of bbs) {
+        if (pos.x >= bx - 0.7 - r && pos.x <= bx + 0.7 + r &&
+            pos.z >= 4.0 - 0.225 - r && pos.z <= 4.0 + 0.225 + r) {
+            return true;
+        }
     }
     return false;
 }
@@ -1159,21 +1210,6 @@ function constrainCamera(camPos, targetPos) {
     camPos.z = Math.max(-hd, Math.min(hd, camPos.z));
     camPos.y = Math.max(0.2, Math.min(ROOM_H - pad, camPos.y));
     
-    const playerInBath = (targetPos.x >= 4.0 && targetPos.z >= 1.0);
-    if (playerInBath) {
-        camPos.x = Math.max(4.0 + pad, Math.min(hw, camPos.x));
-        camPos.z = Math.max(1.0 + pad, Math.min(hd, camPos.z));
-    } else {
-        if (camPos.x > 4.0 - pad && camPos.z > 1.0 - pad) {
-            const distToX = camPos.x - (4.0 - pad);
-            const distToZ = camPos.z - (1.0 - pad);
-            if (distToX < distToZ) {
-                camPos.x = 4.0 - pad;
-            } else {
-                camPos.z = 1.0 - pad;
-            }
-        }
-    }
     const colPositions = [-10, 0, 10];
     for (const cx of colPositions) {
         const dx = camPos.x - cx;
@@ -1203,6 +1239,27 @@ function animate() {
         if (p.isCustomizing || p.isRemote) {
             if (p.mixer) { p.mixer.update(delta); const spd = Math.hypot(p.mesh.position.x - prevX, p.mesh.position.z - prevZ) / Math.max(0.001, delta); updateAnimState(p, spd); }
             continue;
+        }
+        if (p.isSitting) {
+            const wantsToStand = p.keys.up || p.keys.down || p.keys.left || p.keys.right || p.keys.space;
+            if (wantsToStand) {
+                p.isSitting = false;
+                if (p.mesh.position.z > 3.0) {
+                    p.mesh.position.z = 5.6;
+                } else {
+                    p.mesh.position.z = -2.4;
+                }
+                p.mesh.position.y = floorY;
+            } else {
+                p.vx = 0; p.vz = 0; p.yVelocity = 0;
+                p.isJumping = false;
+                p.mesh.position.y = floorY + 0.5;
+                if (p.mixer) {
+                    p.mixer.update(delta);
+                    updateAnimState(p, 0);
+                }
+                continue;
+            }
         }
         let mx = 0, mz = 0;
         if (p.keys.up) mz -= 1;
@@ -1265,6 +1322,7 @@ function animate() {
     }
     
     let nearBB = null;
+    let nearBench = null;
     const localP = players[localPlayerId - 1];
     if (localP && localP.mesh) {
         boomboxes.forEach(bb => {
@@ -1279,10 +1337,32 @@ function animate() {
                 closeBoomboxModal();
             }
         }
+        if (!nearBB && !localP.isSitting) {
+            const benches = [
+                { x: -10, z: 6.5 },
+                { x: -4, z: 6.5 },
+                { x: 4, z: 6.5 },
+                { x: 10, z: 6.5 },
+                { x: -6, z: -1.5 },
+                { x: 0, z: -1.5 },
+                { x: 6, z: -1.5 }
+            ];
+            benches.forEach(bench => {
+                const dx = localP.mesh.position.x - bench.x;
+                const dz = localP.mesh.position.z - bench.z;
+                if (Math.abs(dx) < 1.2 && Math.abs(dz) < 1.2) {
+                    nearBench = bench;
+                }
+            });
+        }
     }
     const hudPrompt = document.getElementById('boombox-hud-prompt');
     if (hudPrompt) {
         if (nearBB) {
+            hudPrompt.textContent = "PRESS E TO INTERACT WITH BOOMBOX";
+            hudPrompt.classList.remove('hidden');
+        } else if (nearBench) {
+            hudPrompt.textContent = "PRESS E TO SIT ON BENCH";
             hudPrompt.classList.remove('hidden');
         } else {
             hudPrompt.classList.add('hidden');
@@ -1322,7 +1402,7 @@ function animate() {
         }
     }
     if (localP && localP.mesh && connections.length > 0) {
-        connections.forEach(c => { if (c.open) c.send({ type: 'move', id: localPlayerId, x: localP.mesh.position.x, y: localP.mesh.position.y, z: localP.mesh.position.z, ry: localP.mesh.rotation.y, isJumping: localP.isJumping }); });
+        connections.forEach(c => { if (c.open) c.send({ type: 'move', id: localPlayerId, x: localP.mesh.position.x, y: localP.mesh.position.y, z: localP.mesh.position.z, ry: localP.mesh.rotation.y, isJumping: localP.isJumping, isSitting: localP.isSitting }); });
     }
     renderer.render(scene, camera);
 }
@@ -1347,6 +1427,16 @@ window.addEventListener('keydown', e => {
     else if (k === 'e' && !e.repeat) {
         const localP = players[localPlayerId - 1];
         if (localP && !localP.isCustomizing) {
+            if (localP.isSitting) {
+                localP.isSitting = false;
+                if (localP.mesh.position.z > 3.0) {
+                    localP.mesh.position.z = 5.6;
+                } else {
+                    localP.mesh.position.z = -2.4;
+                }
+                localP.mesh.position.y = floorY;
+                return;
+            }
             let closest = null;
             let minDist = Infinity;
             boomboxes.forEach(bb => {
@@ -1362,6 +1452,36 @@ window.addEventListener('keydown', e => {
                 } else {
                     activeBoombox = closest;
                     openBoomboxModal();
+                }
+            } else {
+                const benches = [
+                    { x: -10, z: 6.5 },
+                    { x: -4, z: 6.5 },
+                    { x: 4, z: 6.5 },
+                    { x: 10, z: 6.5 },
+                    { x: -6, z: -1.5 },
+                    { x: 0, z: -1.5 },
+                    { x: 6, z: -1.5 }
+                ];
+                let closestBench = null;
+                let minBenchDist = Infinity;
+                benches.forEach(bench => {
+                    const dx = localP.mesh.position.x - bench.x;
+                    const dz = localP.mesh.position.z - bench.z;
+                    const dist = Math.hypot(dx, dz);
+                    if (Math.abs(dx) < 1.2 && Math.abs(dz) < 1.2 && dist < minBenchDist) {
+                        minBenchDist = dist;
+                        closestBench = bench;
+                    }
+                });
+                if (closestBench) {
+                    localP.isSitting = true;
+                    localP.vx = 0;
+                    localP.vz = 0;
+                    localP.yVelocity = 0;
+                    localP.isJumping = false;
+                    localP.mesh.position.set(closestBench.x, floorY + 0.5, closestBench.z);
+                    localP.mesh.rotation.set(0, Math.PI, 0);
                 }
             }
         }
@@ -1537,7 +1657,7 @@ function setupConn(conn, remoteId = null) {
         const id = remoteId || data.id;
         if (data.type === 'move') {
             const p = players[id - 1];
-            if (p && p.mesh) { p.mesh.position.set(data.x, data.y, data.z); p.mesh.rotation.y = data.ry; }
+            if (p && p.mesh) { p.mesh.position.set(data.x, data.y, data.z); p.mesh.rotation.y = data.ry; p.isSitting = !!data.isSitting; }
             if (isHost) connections.forEach(c => { if (c !== conn && c.open) c.send(data); });
         } else if (data.type === 'chat') {
             showSpeechBubble(id, data.text);
