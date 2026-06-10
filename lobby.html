@@ -1514,10 +1514,60 @@
             }
         }
 
+        let bridgeCurrentLoadX = 16.5;
+        let bridgeCurrentLoadY = -0.4;
+        function getBridgeY(x) {
+            if (x < bridgeStartX || x > bridgeEndX) return -999;
+            const t = (x - bridgeStartX) / (bridgeEndX - bridgeStartX);
+            const naturalSag = -0.5 * Math.sin(Math.PI * t);
+            const defaultY = THREE.MathUtils.lerp(bridgeYStart, bridgeYEnd, t) + naturalSag;
+            
+            // Apply load influence
+            const tLoad = (bridgeCurrentLoadX - bridgeStartX) / (bridgeEndX - bridgeStartX);
+            const loadDist = Math.abs(x - bridgeCurrentLoadX);
+            const influence = Math.max(0, 1 - loadDist / 5.0);
+            const sagDepth = (bridgeCurrentLoadY - (THREE.MathUtils.lerp(bridgeYStart, bridgeYEnd, tLoad) + (-0.5 * Math.sin(Math.PI * tLoad))));
+            
+            return defaultY + sagDepth * influence;
+        }
+
+        function getCeilingY(playerId, pos) {
+            const charRadius = 0.12 * CHARACTER_SCALE;
+            let ceilingY = 999.0;
+
+            for (const plat of customPlatforms) {
+                const localPos = new THREE.Vector3().copy(pos).sub(plat.position);
+                const q = new THREE.Quaternion().copy(plat.quaternion);
+                localPos.applyQuaternion(q.invert());
+                const halfX = plat.scale.x / 2;
+                const halfY = plat.scale.y / 2;
+                const halfZ = plat.scale.z / 2;
+                if (localPos.x >= -halfX - charRadius * 0.5 && localPos.x <= halfX + charRadius * 0.5 &&
+                    localPos.z >= -halfZ - charRadius * 0.5 && localPos.z <= halfZ + charRadius * 0.5) {
+                    
+                    const bottomYLocal = -halfY;
+                    const bottomYWorld = new THREE.Vector3(localPos.x, bottomYLocal, localPos.z).applyQuaternion(plat.quaternion).add(plat.position).y;
+                    
+                    if (pos.y + 0.1 < bottomYWorld) {
+                        if (bottomYWorld < ceilingY) ceilingY = bottomYWorld;
+                    }
+                }
+            }
+            return ceilingY;
+        }
+
         function getGroundY(playerId, pos) {
+            const charRadius = 0.12 * CHARACTER_SCALE;
             const onPlatform = (pos.y >= floorY - 0.2) && (pos.x >= -PLATFORM_SIZE / 2 && pos.x <= PLATFORM_SIZE / 2 && pos.z >= -PLATFORM_SIZE / 2 && pos.z <= PLATFORM_SIZE / 2);
             let groundY = onPlatform ? floorY : -999.0;
-            const charRadius = 0.12 * CHARACTER_SCALE;
+
+            // Bridge Ground
+            if (pos.x >= bridgeStartX - 0.2 && pos.x <= bridgeEndX + 0.2 && Math.abs(pos.z) <= 1.5) {
+                const bY = getBridgeY(pos.x);
+                if (pos.y >= bY - 0.6) {
+                    if (bY > groundY) groundY = bY;
+                }
+            }
 
             // Pond shallow walking
             const pdx = pos.x - pondData.center.x;
@@ -1584,8 +1634,8 @@
             if (!playerA.mesh || !playerB.mesh) return false;
             if (playerA.isJumping) return false;
             if (playerB.keys.shift) return false;
-            const posA = playerA.lastFramePosition || playerA.mesh.position;
-            const posB = playerB.lastFramePosition || playerB.mesh.position;
+            const posA = playerA.lastFramePos || playerA.mesh.position;
+            const posB = playerB.lastFramePos || playerB.mesh.position;
             const dx = posA.x - posB.x;
             const dz = posA.z - posB.z;
             const distH = Math.sqrt(dx * dx + dz * dz);
@@ -1602,8 +1652,8 @@
         function isStandingOnIgnoreSprint(playerA, playerB) {
             if (!playerA.mesh || !playerB.mesh) return false;
             if (playerA.isJumping) return false;
-            const posA = playerA.lastFramePosition || playerA.mesh.position;
-            const posB = playerB.lastFramePosition || playerB.mesh.position;
+            const posA = playerA.lastFramePos || playerA.mesh.position;
+            const posB = playerB.lastFramePos || playerB.mesh.position;
             const dx = posA.x - posB.x;
             const dz = posA.z - posB.z;
             const distH = Math.sqrt(dx * dx + dz * dz);
@@ -1641,7 +1691,7 @@
                 if (other.id === p.id || !other.mesh) continue;
                 if (isStandingOn(p, other)) {
                     updateStackPhysicsRecursive(other, completed);
-                    const lastPosOther = other.lastFramePosition || other.mesh.position;
+                    const lastPosOther = other.lastFramePos || other.mesh.position;
                     const relX = p.mesh.position.x - lastPosOther.x;
                     const relZ = p.mesh.position.z - lastPosOther.z;
                     const theta = other.displacementRotY || 0;
@@ -1652,14 +1702,11 @@
                     const oldPosX = p.mesh.position.x;
                     const oldPosZ = p.mesh.position.z;
                     const oldRotY = p.mesh.rotation.y;
-                    const isWalking = p.keys && (p.keys.up || p.keys.down || p.keys.left || p.keys.right);
-                    if (isWalking) {
-                        p.mesh.position.x = other.mesh.position.x + rotRelX;
-                        p.mesh.position.z = other.mesh.position.z + rotRelZ;
-                    } else {
-                        p.mesh.position.x = other.mesh.position.x;
-                        p.mesh.position.z = other.mesh.position.z;
-                    }
+                    
+                    // Maintain relative position without snapping to center
+                    p.mesh.position.x = other.mesh.position.x + rotRelX;
+                    p.mesh.position.z = other.mesh.position.z + rotRelZ;
+                    
                     p.mesh.position.y = other.mesh.position.y + 0.65;
                     p.vx = 0;
                     p.vz = 0;
@@ -2483,67 +2530,45 @@
                 }
             }
 
-            let sumX = 0;
-            let bridgePlayerCount = 0;
+            let bridgeSumX = 0;
+            let bridgePlrCount = 0;
             for (const p of players) {
                 if (!p.mesh) continue;
                 const px = p.mesh.position.x;
                 const py = p.mesh.position.y;
                 const pz = p.mesh.position.z;
-                
                 if (px >= bridgeStartX - 0.2 && px <= bridgeEndX + 0.2 && Math.abs(pz) <= 1.5) {
-                    const t = (px - bridgeStartX) / (bridgeEndX - bridgeStartX);
-                    const defaultYAtPx = THREE.MathUtils.lerp(bridgeYStart, bridgeYEnd, t) - 0.5 * Math.sin(Math.PI * t);
-                    
-                    if (py <= defaultYAtPx + 0.1 && py >= defaultYAtPx - 0.8) {
-                        sumX += px;
-                        bridgePlayerCount++;
+                    const bY = getBridgeY(px);
+                    if (py <= bY + 0.5 && py >= bY - 1.2) {
+                        bridgeSumX += px; bridgePlrCount++;
                     }
                 }
             }
 
-            const hasPlayers = bridgePlayerCount > 0;
-            let loadX = 0;
-            if (hasPlayers) {
-                loadX = Math.max(bridgeStartX + 0.1, Math.min(bridgeEndX - 0.1, sumX / bridgePlayerCount));
+            if (bridgePlrCount > 0) {
+                const targetLX = bridgeSumX / bridgePlrCount;
+                bridgeCurrentLoadX = THREE.MathUtils.lerp(bridgeCurrentLoadX, targetLX, 0.1);
+                const tL = (bridgeCurrentLoadX - bridgeStartX) / (bridgeEndX - bridgeStartX);
+                const bridgeYAtL = THREE.MathUtils.lerp(bridgeYStart, bridgeYEnd, tL) + (-0.5 * Math.sin(Math.PI * tL));
+                bridgeCurrentLoadY = THREE.MathUtils.lerp(bridgeCurrentLoadY, bridgeYAtL - 0.75, 0.1);
+            } else {
+                const centerBX = (bridgeStartX + bridgeEndX) / 2;
+                bridgeCurrentLoadX = THREE.MathUtils.lerp(bridgeCurrentLoadX, centerBX, 0.05);
+                const tL = (bridgeCurrentLoadX - bridgeStartX) / (bridgeEndX - bridgeStartX);
+                const bridgeYAtL = THREE.MathUtils.lerp(bridgeYStart, bridgeYEnd, tL) + (-0.5 * Math.sin(Math.PI * tL));
+                bridgeCurrentLoadY = THREE.MathUtils.lerp(bridgeCurrentLoadY, bridgeYAtL, 0.05);
             }
-
-            const maxSag = 0.65;
 
             for (let i = 0; i < numPlanks; i++) {
                 const plank = bridgePlanks[i];
-                let targetY = plank.defaultY;
-                let targetRotZ = 0;
-
-                if (hasPlayers) {
-                    const tLoad = (loadX - bridgeStartX) / (bridgeEndX - bridgeStartX);
-                    const defaultYAtLoad = THREE.MathUtils.lerp(bridgeYStart, bridgeYEnd, tLoad) - 0.5 * Math.sin(Math.PI * tLoad);
-                    const loadY = defaultYAtLoad - maxSag;
-
-                    if (plank.x < loadX) {
-                        const tSeg = (plank.x - bridgeStartX) / (loadX - bridgeStartX);
-                        targetY = THREE.MathUtils.lerp(bridgeYStart, loadY, tSeg);
-                        targetRotZ = Math.atan2(loadY - bridgeYStart, loadX - bridgeStartX);
-                    } else {
-                        const tSeg = (plank.x - loadX) / (bridgeEndX - loadX);
-                        targetY = THREE.MathUtils.lerp(loadY, bridgeYEnd, tSeg);
-                        targetRotZ = Math.atan2(bridgeYEnd - loadY, bridgeEndX - loadX);
-                    }
-                } else {
-                    const prevY = (i === 0) ? bridgeYStart : bridgePlanks[i - 1].y;
-                    const nextY = (i === numPlanks - 1) ? bridgeYEnd : bridgePlanks[i + 1].y;
-                    const prevX = (i === 0) ? bridgeStartX : bridgePlanks[i - 1].x;
-                    const nextX = (i === numPlanks - 1) ? bridgeEndX : bridgePlanks[i + 1].x;
-                    targetRotZ = Math.atan2(nextY - prevY, nextX - prevX);
-                }
-
+                const targetY = getBridgeY(plank.x);
                 plank.y = THREE.MathUtils.lerp(plank.y, targetY, 0.15);
-                plank.z = 0;
-                plank.rotZ = THREE.MathUtils.lerp(plank.rotZ || 0, targetRotZ, 0.15);
-
                 plank.mesh.position.y = plank.y;
-                plank.mesh.position.z = 0;
-                plank.mesh.rotation.z = plank.rotZ;
+                const prevY = (i === 0) ? bridgeYStart : bridgePlanks[i - 1].y;
+                const nextY = (i === numPlanks - 1) ? bridgeYEnd : bridgePlanks[i + 1].y;
+                const prevX = (i === 0) ? bridgeStartX : bridgePlanks[i - 1].x;
+                const nextX = (i === numPlanks - 1) ? bridgeEndX : bridgePlanks[i + 1].x;
+                plank.mesh.rotation.z = Math.atan2(nextY - prevY, nextX - prevX);
                 plank.mesh.rotation.y = 0;
                 plank.mesh.rotation.x = 0;
             }
@@ -2813,7 +2838,19 @@
                 if (p.isJumping) {
                     let grav = (p.keys.space && (p.jumpHoldTimer||0) < 0.25) ? 6.0 : 18.0;
                     if (p.keys.space) p.jumpHoldTimer = (p.jumpHoldTimer||0) + delta;
-                    p.yVelocity -= grav * delta; p.mesh.position.y += p.yVelocity * delta;
+                    p.yVelocity -= grav * delta; 
+                    
+                    const nextY = p.mesh.position.y + p.yVelocity * delta;
+                    const charHeight = 0.65;
+                    const ceilY = getCeilingY(p.id, p.mesh.position);
+                    
+                    if (nextY + charHeight >= ceilY) {
+                        p.mesh.position.y = ceilY - charHeight - 0.01;
+                        p.yVelocity = 0;
+                    } else {
+                        p.mesh.position.y = nextY;
+                    }
+                    
                     if (p.mesh.position.y <= grY) { p.mesh.position.y = grY; p.isJumping = false; p.yVelocity = 0; }
                 }
                 if (p.mesh.position.y < -15.0) respawnPlayer(p.id);
@@ -2834,10 +2871,9 @@
 
             for (const p of players) {
                 if (p.mesh) {
-                    if (p.lastFramePosition) {
-                        p.lastFramePosition.copy(p.mesh.position);
-                    }
-                    p.lastFrameRotationY = p.mesh.rotation.y;
+                    if (!p.lastFramePos) p.lastFramePos = p.mesh.position.clone();
+                    else p.lastFramePos.copy(p.mesh.position);
+                    p.lastFrameRotY = p.mesh.rotation.y;
                 }
             }
 
