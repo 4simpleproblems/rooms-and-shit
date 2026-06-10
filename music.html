@@ -407,6 +407,7 @@ let isCustomizing = true, isPaused = false;
 let chosenColor = '#E2FF3D';
 const connections = [];
 let peer = null;
+let isPlaying = false;
 
 const players = [
     { id:1, name:'Player 1', color:'#E2FF3D', mesh:null, position:new THREE.Vector3(0,floorY,ROOM_D/2-4), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false,shift:false}, isCustomizing:true, isSitting:false },
@@ -1125,7 +1126,7 @@ function setupConn(conn, remoteId = null) {
 
 const API_BASE = 'https://velium.vercel.app/music-api';
 
-let isPlaying = false, isShuffle = false, repeatMode = 'off';
+let isShuffle = false, repeatMode = 'off';
 let currentTrack = null;
 let trackQueue = [], trackIndex = 0;
 let ytPlayer = null, ytReady = false;

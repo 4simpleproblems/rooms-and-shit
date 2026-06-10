@@ -416,41 +416,41 @@
         function createChair(x, z, idx) {
             const group = new THREE.Group();
             
-            // Puffy seat — scaled 2x for character scale
-            const seat = new THREE.Mesh(new THREE.BoxGeometry(2.8, 1.0, 2.6), chairMat);
-            seat.position.y = 1.1;
+            // Seat — 0.5x original size
+            const seat = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.25, 0.65), chairMat);
+            seat.position.y = 0.275;
             seat.castShadow = true;
             group.add(seat);
 
             // Reclined back
-            const back = new THREE.Mesh(new THREE.BoxGeometry(2.8, 2.8, 0.8), chairMat);
-            back.position.set(0, 2.4, 1.2);
+            const back = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, 0.2), chairMat);
+            back.position.set(0, 0.6, 0.3);
             back.rotation.x = -0.15;
             back.castShadow = true;
             group.add(back);
 
             // Headrest
-            const headrest = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.0, 0.8), chairMat);
-            headrest.position.set(0, 4.0, 1.4);
+            const headrest = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.25, 0.2), chairMat);
+            headrest.position.set(0, 1.0, 0.35);
             headrest.rotation.x = -0.15;
             headrest.castShadow = true;
             group.add(headrest);
 
             // Arm rests
-            const armGeo = new THREE.BoxGeometry(0.4, 0.4, 2.2);
+            const armGeo = new THREE.BoxGeometry(0.1, 0.1, 0.55);
             const arm1 = new THREE.Mesh(armGeo, chairMat);
-            arm1.position.set(-1.6, 1.8, 0.2);
+            arm1.position.set(-0.4, 0.45, 0.05);
             group.add(arm1);
             const arm2 = new THREE.Mesh(armGeo, chairMat);
-            arm2.position.set(1.6, 1.8, 0.2);
+            arm2.position.set(0.4, 0.45, 0.05);
             group.add(arm2);
 
             // Legs
-            const legGeo = new THREE.BoxGeometry(0.3, 1.0, 0.3);
-            [-1.2, 1.2].forEach(lx => {
-                [-0.9, 0.9].forEach(lz => {
+            const legGeo = new THREE.BoxGeometry(0.08, 0.25, 0.08);
+            [-0.3, 0.3].forEach(lx => {
+                [-0.22, 0.22].forEach(lz => {
                     const leg = new THREE.Mesh(legGeo, chairMat);
-                    leg.position.set(lx, 0.5, lz);
+                    leg.position.set(lx, 0.125, lz);
                     group.add(leg);
                 });
             });
@@ -458,7 +458,7 @@
             group.position.set(x, floorY, z);
             scene.add(group);
 
-            seatSpots.push({ x, z, y: floorY + 1.6 });
+            seatSpots.push({ x, z, y: floorY + 0.35 });
         }
 
         for (let r = 0; r < rows; r++) {
