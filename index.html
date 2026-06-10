@@ -18,6 +18,7 @@
             --color-theater: #FF3366;
             --color-lobby: #E2FF3D;
             --color-station: #8A2BE2;
+            --color-gym: #FF6B00;
             
             /* Structural Colors */
             --black-outline: #09090B;
@@ -105,6 +106,9 @@
 
         #station { top: 35%; left: 75%; }
         #station .node-square { background-color: var(--color-station); }
+
+        #gym { top: 15%; left: 50%; }
+        #gym .node-square { background-color: var(--color-gym); }
 
         .node-label {
             font-family: 'Alfa Slab One', cursive;
@@ -254,6 +258,7 @@
             #theater { top: 28%; left: 25%; }
             #lobby { top: 62%; left: 50%; }
             #station { top: 28%; left: 75%; }
+            #gym { top: 10%; left: 50%; }
             .join-container {
                 left: 20px;
                 right: 20px;
@@ -314,6 +319,11 @@
         <div class="node-label">THE STATION</div>
     </div>
 
+    <div class="node-container" id="gym">
+        <div class="node-square"><i class="fa-solid fa-dumbbell"></i></div>
+        <div class="node-label">ROOFTOP GYM</div>
+    </div>
+
     <script>
         // ROUTING & ANIMATION LOGIC
         const nodes = document.querySelectorAll('.node-container');
@@ -332,6 +342,8 @@
                         window.location.href = 'lobby.html'; 
                     } else if (node.id === 'station') {
                         window.location.href = 'station.html';
+                    } else if (node.id === 'gym') {
+                        window.location.href = 'gym.html';
                     }
                 }, 1500); 
             });
