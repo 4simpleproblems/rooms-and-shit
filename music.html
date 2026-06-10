@@ -789,48 +789,16 @@ function createTunnel(xSide) {
 createTunnel(-15);
 createTunnel(15);
 
-// ── ADVERTISEMENT PLACEHOLDERS ──
-function createAdMaterial(label, w, h) {
-    const canvas = document.createElement('canvas');
-    canvas.width = w;
-    canvas.height = h;
-    const ctx = canvas.getContext('2d');
-    
-    ctx.fillStyle = '#1e1e24';
-    ctx.fillRect(0, 0, w, h);
-    
-    ctx.strokeStyle = '#2d2d35';
-    ctx.lineWidth = 2;
-    for (let x = 0; x < w; x += 32) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, h);
-        ctx.stroke();
-    }
-    for (let y = 0; y < h; y += 32) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(w, y);
-        ctx.stroke();
-    }
-    
-    ctx.strokeStyle = '#7C3AED';
-    ctx.lineWidth = 16;
-    ctx.strokeRect(0, 0, w, h);
-    
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 36px Arial, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(label, w / 2, h / 2 - 20);
-    
-    ctx.fillStyle = '#aaaaaa';
-    ctx.font = '24px Arial, sans-serif';
-    ctx.fillText(`${w}x${h} Ratio`, w / 2, h / 2 + 30);
-    
-    const texture = new THREE.CanvasTexture(canvas);
-    return new THREE.MeshStandardMaterial({ map: texture, roughness: 0.5 });
-}
+const textureLoader = new THREE.TextureLoader();
+const psaTex = textureLoader.load('advertisements/subway-psa.png');
+const boomboxTex = textureLoader.load('advertisements/echotech-boombox.png');
+const waterTex = textureLoader.load('advertisements/clarity-water.png');
+const koreTex = textureLoader.load('advertisements/kore-kinetics-food.png');
+
+const psaAdMat = new THREE.MeshStandardMaterial({ map: psaTex, roughness: 0.5 });
+const boomboxAdMat = new THREE.MeshStandardMaterial({ map: boomboxTex, roughness: 0.5 });
+const waterAdMat = new THREE.MeshStandardMaterial({ map: waterTex, roughness: 0.5 });
+const koreAdMat = new THREE.MeshStandardMaterial({ map: koreTex, roughness: 0.5 });
 
 function createAdPlaceholder(x, y, z, width, height, mat, rotY = 0) {
     const g = new THREE.Group();
@@ -845,18 +813,14 @@ function createAdPlaceholder(x, y, z, width, height, mat, rotY = 0) {
     scene.add(g);
 }
 
-const wideAdMat = createAdMaterial('WIDE BANNER', 512, 256);
-const posterAdMat = createAdMaterial('POSTER AD', 384, 512);
-const squareAdMat = createAdMaterial('SQUARE SIGN', 512, 512);
+createAdPlaceholder(-8.5, 2.4, ROOM_D/2 - 0.02, 3.0, 1.5, boomboxAdMat, Math.PI);
+createAdPlaceholder(8.5, 2.4, ROOM_D/2 - 0.02, 3.0, 1.5, boomboxAdMat, Math.PI);
 
-createAdPlaceholder(-8.5, 2.4, ROOM_D/2 - 0.02, 3.0, 1.5, wideAdMat, Math.PI);
-createAdPlaceholder(8.5, 2.4, ROOM_D/2 - 0.02, 3.0, 1.5, wideAdMat, Math.PI);
+createAdPlaceholder(-3.0, 2.3, ROOM_D/2 - 0.02, 1.8, 2.4, waterAdMat, Math.PI);
+createAdPlaceholder(3.0, 2.3, ROOM_D/2 - 0.02, 1.8, 2.4, waterAdMat, Math.PI);
 
-createAdPlaceholder(-3.0, 2.3, ROOM_D/2 - 0.02, 1.8, 2.4, posterAdMat, Math.PI);
-createAdPlaceholder(3.0, 2.3, ROOM_D/2 - 0.02, 1.8, 2.4, posterAdMat, Math.PI);
-
-createAdPlaceholder(-ROOM_W/2 + 0.05, 2.4, 0, 2.2, 2.2, squareAdMat, Math.PI / 2);
-createAdPlaceholder(ROOM_W/2 - 0.05, 2.4, 0, 2.2, 2.2, squareAdMat, -Math.PI / 2);
+createAdPlaceholder(-ROOM_W/2 + 0.05, 2.4, 0, 2.2, 2.2, psaAdMat, Math.PI / 2);
+createAdPlaceholder(ROOM_W/2 - 0.05, 2.4, 0, 2.2, 2.2, koreAdMat, -Math.PI / 2);
 
 // ── TILE STRIPE DECOR (Gray) ──
 const yellowStripe = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W - 1, 1.2, 0.08), tileYellow);
