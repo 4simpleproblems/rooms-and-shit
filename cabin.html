@@ -4,97 +4,419 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rooms & Shit | The Cabin</title>
-    
     <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Inter:wght@500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
-    
     <style>
         :root {
-            --bg-midnight: #050510;
-            --color-cabin: #FF8C00; 
-            --black-outline: #09090B;
-            --white-ui: #FFFFFF;
+            --bg-midnight: #080710;
+            --color-cabin: #FF7A00;
+            --color-cabin-dark: #D45D00;
+            --color-cabin-light: #FF9E43;
+            --black-outline: #0C0C0E;
+            --white-ui: #FFFDF9;
+            --glass-bg: rgba(254, 252, 245, 0.85);
+            --shadow-color: #0C0C0E;
         }
-
         body {
             margin: 0;
             padding: 0;
             background-color: var(--bg-midnight);
             font-family: 'Inter', sans-serif;
-            overflow: hidden; 
+            overflow: hidden;
             color: var(--black-outline);
             user-select: none;
         }
-
-        #canvas-container { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; }
-        .ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+        }
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+        }
         .ui-panel {
-            pointer-events: auto; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px);
-            border: 6px solid var(--black-outline); box-shadow: 8px 8px 0px var(--black-outline);
-            padding: 16px; position: absolute; box-sizing: border-box;
+            pointer-events: auto;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 4px solid var(--black-outline);
+            box-shadow: 6px 6px 0px var(--shadow-color);
+            padding: 16px;
+            position: absolute;
+            box-sizing: border-box;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
         }
-
-        .header-panel { top: 24px; left: 24px; display: flex; align-items: center; gap: 16px; }
-        .header-title { font-family: 'Alfa Slab One', cursive; font-size: 1.4rem; letter-spacing: 1px; margin: 0; }
-
+        .header-panel {
+            top: 24px;
+            left: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .header-title {
+            font-family: 'Alfa Slab One', cursive;
+            font-size: 1.4rem;
+            letter-spacing: 1px;
+            margin: 0;
+            color: var(--black-outline);
+            text-shadow: 2px 2px 0px var(--color-cabin-light);
+        }
         .ui-btn {
-            font-family: 'Inter', sans-serif; font-weight: 900; font-size: 1rem; text-transform: uppercase;
-            background: var(--white-ui); border: 4px solid var(--black-outline); box-shadow: 4px 4px 0px var(--black-outline);
-            cursor: pointer; padding: 10px 16px; transition: transform 0.05s linear, box-shadow 0.05s linear;
-            display: inline-flex; align-items: center; gap: 8px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 900;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            background: var(--white-ui);
+            border: 4px solid var(--black-outline);
+            box-shadow: 4px 4px 0px var(--shadow-color);
+            cursor: pointer;
+            padding: 10px 16px;
+            transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.1s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--black-outline);
         }
-        .ui-btn:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0px var(--black-outline); }
-        .ui-btn:active { transform: translate(4px, 4px); box-shadow: 0px 0px 0px var(--black-outline); }
-        .ui-btn.primary { background: var(--color-cabin); color: #FFFFFF; }
-
-        .controls-panel { top: 24px; right: 24px; width: 260px; }
-        .controls-panel h3 { font-family: 'Alfa Slab One', cursive; font-size: 1rem; margin: 0 0 10px 0; color: var(--color-cabin); }
-        .control-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem; font-weight: 700; }
-        .control-key { background: #E4E4E7; border: 2px solid var(--black-outline); border-radius: 4px; padding: 2px 6px; box-shadow: 1px 1px 0px var(--black-outline); font-family: monospace; font-weight: 900; }
-
-        .chat-panel { bottom: 24px; left: 24px; width: 380px; display: flex; gap: 12px; }
-        .chat-input { flex-grow: 1; border: 4px solid var(--black-outline); padding: 10px 12px; font-family: 'Inter', sans-serif; font-weight: 700; font-size: 0.9rem; outline: none; background: #FFFFFF; }
-
+        .ui-btn:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0px var(--shadow-color);
+        }
+        .ui-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px var(--shadow-color);
+        }
+        .ui-btn.primary {
+            background: var(--color-cabin);
+            color: var(--white-ui);
+        }
+        .ui-btn.primary:hover {
+            background: var(--color-cabin-light);
+        }
+        .controls-panel {
+            top: 24px;
+            right: 24px;
+            width: 280px;
+        }
+        .controls-panel.collapsed {
+            transform: translateX(340px);
+            opacity: 0;
+            pointer-events: none;
+        }
+        .controls-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .controls-panel h3 {
+            font-family: 'Alfa Slab One', cursive;
+            font-size: 1rem;
+            margin: 0;
+            color: var(--color-cabin-dark);
+        }
+        .controls-close-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.1rem;
+            color: var(--black-outline);
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .control-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+        .control-key {
+            background: var(--white-ui);
+            border: 2px solid var(--black-outline);
+            border-radius: 4px;
+            padding: 2px 6px;
+            box-shadow: 2px 2px 0px var(--shadow-color);
+            font-family: monospace;
+            font-weight: 900;
+        }
+        #controls-tab-btn {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            z-index: 9;
+            display: none;
+        }
+        #controls-tab-btn.visible {
+            display: inline-flex;
+        }
+        #chat-log-panel {
+            position: absolute;
+            bottom: 96px;
+            left: 24px;
+            width: 380px;
+            height: 180px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 4px solid var(--black-outline);
+            box-shadow: 6px 6px 0px var(--shadow-color);
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            padding: 12px;
+            z-index: 10;
+            opacity: 0.35;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            pointer-events: none;
+        }
+        #chat-log-panel:hover, #chat-log-panel.opaque {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        #chat-log-list {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+        .chat-msg {
+            line-height: 1.4;
+            word-break: break-word;
+        }
+        .chat-msg-name {
+            font-weight: 900;
+            margin-right: 4px;
+        }
+        .chat-msg-system {
+            color: var(--color-cabin-dark);
+            font-style: italic;
+        }
+        .chat-panel {
+            bottom: 24px;
+            left: 24px;
+            width: 380px;
+            display: flex;
+            gap: 12px;
+        }
+        .chat-input {
+            flex-grow: 1;
+            border: 4px solid var(--black-outline);
+            padding: 10px 12px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 700;
+            font-size: 0.9rem;
+            outline: none;
+            background: #FFFFFF;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .chat-input:focus {
+            border-color: var(--color-cabin);
+            box-shadow: 2px 2px 0px var(--shadow-color);
+        }
         #cam-mode-indicator {
-            position: absolute; top: 24px; left: 50%; transform: translateX(-50%); background: var(--color-cabin);
-            border: 3px solid var(--black-outline); box-shadow: 3px 3px 0px var(--black-outline); padding: 6px 12px;
-            font-family: 'Inter', sans-serif; font-weight: 900; font-size: 0.8rem; color: #FFFFFF; pointer-events: none; z-index: 40; text-transform: uppercase;
+            position: absolute;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--color-cabin);
+            border: 3px solid var(--black-outline);
+            box-shadow: 3px 3px 0px var(--shadow-color);
+            padding: 6px 12px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 900;
+            font-size: 0.8rem;
+            color: var(--white-ui);
+            pointer-events: none;
+            z-index: 40;
+            text-transform: uppercase;
         }
-
         #interaction-prompt {
-            position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
-            background: var(--white-ui); border: 4px solid var(--black-outline); box-shadow: 4px 4px 0px var(--black-outline);
-            padding: 8px 16px; font-family: 'Inter', sans-serif; font-weight: 900; font-size: 1rem;
-            z-index: 50; display: none;
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--white-ui);
+            border: 4px solid var(--black-outline);
+            box-shadow: 4px 4px 0px var(--shadow-color);
+            padding: 8px 16px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 900;
+            font-size: 1rem;
+            z-index: 50;
+            display: none;
+            pointer-events: none;
+            animation: pulsePrompt 1.5s infinite alternate;
         }
-
+        @keyframes pulsePrompt {
+            from { transform: translateX(-50%) scale(1); }
+            to { transform: translateX(-50%) scale(1.05); }
+        }
         #customization-overlay, #pause-overlay {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); z-index: 200;
-            display: flex; justify-content: center; align-items: center; transition: opacity 0.5s ease, visibility 0.5s;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(8, 7, 16, 0.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 200;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.4s ease, visibility 0.4s;
         }
-        .hidden { opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; }
-
-        .custom-card { background: var(--white-ui); border: 6px solid var(--black-outline); box-shadow: 12px 12px 0px var(--black-outline); padding: 32px; width: 380px; max-width: 90%; display: flex; flex-direction: column; gap: 20px; pointer-events: auto; }
-        .custom-title { font-family: 'Alfa Slab One', cursive; font-size: 1.8rem; margin: 0; text-align: center; color: var(--color-cabin); }
-        .custom-field { display: flex; flex-direction: column; gap: 8px; }
-        .custom-field label { font-family: 'Inter', sans-serif; font-weight: 900; font-size: 0.9rem; text-transform: uppercase; }
-        input[type="text"] { border: 4px solid var(--black-outline); padding: 12px; font-family: 'Inter', sans-serif; font-weight: 700; font-size: 1.1rem; outline: none; background: #FFFFFF; }
-
-        .color-options { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
-        .color-btn { aspect-ratio: 1; border: 4px solid var(--black-outline); cursor: pointer; box-shadow: 2px 2px 0px var(--black-outline); transition: transform 0.05s, box-shadow 0.05s; }
-        .color-btn.active { transform: translate(-2px, -2px); box-shadow: 4px 4px 0px var(--black-outline); outline: none; }
+        .hidden {
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+        }
+        .custom-card {
+            background: var(--white-ui);
+            border: 5px solid var(--black-outline);
+            box-shadow: 10px 10px 0px var(--shadow-color);
+            padding: 32px;
+            width: 380px;
+            max-width: 90%;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            pointer-events: auto;
+        }
+        .custom-title {
+            font-family: 'Alfa Slab One', cursive;
+            font-size: 1.8rem;
+            margin: 0;
+            text-align: center;
+            color: var(--color-cabin);
+            text-shadow: 2px 2px 0px var(--black-outline);
+        }
+        .custom-field {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .custom-field label {
+            font-family: 'Inter', sans-serif;
+            font-weight: 900;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            color: var(--black-outline);
+        }
+        .color-options {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+        }
+        .color-btn {
+            aspect-ratio: 1;
+            border: 4px solid var(--black-outline);
+            cursor: pointer;
+            box-shadow: 2px 2px 0px var(--shadow-color);
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+        }
+        .color-btn.active {
+            transform: scale(1.1) translate(-2px, -2px);
+            box-shadow: 4px 4px 0px var(--shadow-color);
+            outline: none;
+        }
+        #speech-bubble {
+            position: absolute;
+            background: var(--white-ui);
+            border: 4px solid var(--black-outline);
+            box-shadow: 4px 4px 0px var(--shadow-color);
+            padding: 8px 14px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: var(--black-outline);
+            border-radius: 4px;
+            pointer-events: none;
+            z-index: 100;
+            display: none;
+            transform: translate(-50%, -100%);
+            white-space: nowrap;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            opacity: 0;
+        }
+        #speech-bubble.visible {
+            opacity: 1;
+            transform: translate(-50%, -120%);
+        }
+        #speech-bubble.fade-out {
+            opacity: 0;
+            transform: translate(-50%, -140%);
+        }
+        #speech-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 8px solid var(--black-outline);
+        }
+        #speech-bubble::before {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 6px solid var(--white-ui);
+            z-index: 1;
+        }
+        #fade-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: var(--white-ui);
+            z-index: 300;
+            opacity: 1;
+            pointer-events: none;
+            transition: opacity 0.8s ease-in-out;
+        }
+        #fade-overlay.fade-out-active {
+            opacity: 0;
+        }
     </style>
 </head>
 <body>
+
+    <div id="fade-overlay"></div>
 
     <div id="customization-overlay">
         <div class="custom-card">
             <h2 class="custom-title">THE CABIN</h2>
             <div class="custom-field">
                 <label>YOUR NAME</label>
-                <input type="text" id="custom-name-input" value="Lumberjack" maxlength="15" />
+                <input type="text" id="custom-name-input" class="chat-input" value="Lumberjack" maxlength="15" autocomplete="off" />
             </div>
             <div class="custom-field">
                 <label>CHOOSE COLOR</label>
@@ -119,17 +441,24 @@
     </div>
 
     <div id="interaction-prompt">Press E to Interact</div>
+    <div id="speech-bubble"></div>
+
+    <button id="controls-tab-btn" class="ui-btn"><i class="fa-solid fa-keyboard"></i> Controls</button>
 
     <div class="ui-layer">
         <div class="ui-panel header-panel">
             <button id="back-btn" class="ui-btn"><i class="fa-solid fa-arrow-left"></i> Map</button>
+            <button id="mute-btn" class="ui-btn"><i class="fa-solid fa-volume-high"></i></button>
             <h1 class="header-title">THE CABIN</h1>
         </div>
 
         <div id="cam-mode-indicator">📽 THIRD PERSON — Press V for First Person</div>
 
-        <div class="ui-panel controls-panel" style="width: 320px;">
-            <h3>CABIN CONTROLS</h3>
+        <div class="ui-panel controls-panel">
+            <div class="controls-panel-header">
+                <h3>CABIN CONTROLS</h3>
+                <button id="controls-close-btn" class="controls-close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
             <div class="control-row"><span>Move</span><span class="control-key">WASD</span></div>
             <div class="control-row"><span>Jump</span><span class="control-key">Space</span></div>
             <div class="control-row"><span>Interact</span><span class="control-key">E</span></div>
@@ -137,9 +466,13 @@
             <div class="control-row"><span>Pause</span><span class="control-key">Esc</span></div>
         </div>
 
+        <div id="chat-log-panel">
+            <div id="chat-log-list"></div>
+        </div>
+
         <div class="ui-panel chat-panel">
             <input type="text" id="chat-input" class="chat-input" placeholder="Say something..." maxlength="80" autocomplete="off" />
-            <button class="ui-btn primary"><i class="fa-solid fa-paper-plane"></i></button>
+            <button id="chat-send-btn" class="ui-btn primary"><i class="fa-solid fa-paper-plane"></i></button>
         </div>
     </div>
 
@@ -151,47 +484,51 @@
     <script src="character.js"></script>
 
     <script>
-        // --- Core Setup ---
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x050510);
         scene.fog = new THREE.FogExp2(0x050510, 0.15);
 
         const aspect = window.innerWidth / window.innerHeight;
         const camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
-        camera.position.set(0, 2, 3);
+        camera.position.set(0, 0.8, 1.6);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
         renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.getElementById('canvas-container').appendChild(renderer.domElement);
 
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
-        controls.maxDistance = 4; 
+        controls.maxDistance = 6;
         controls.minDistance = 0.5;
-        controls.maxPolarAngle = Math.PI / 2 - 0.1;
+        controls.maxPolarAngle = Math.PI / 2 - 0.05;
+        controls.target.set(0, 0.5, 0);
+        controls.update();
 
         const clock = new THREE.Clock();
         const loader = new THREE.GLTFLoader();
 
-        // --- Lighting ---
-        const ambientLight = new THREE.AmbientLight(0x101020, 0.5);
+        const ambientLight = new THREE.AmbientLight(0x121224, 0.4);
         scene.add(ambientLight);
 
         let fireIntensity = 1.0;
         let fireBonusTime = 0;
 
-        const fireLight = new THREE.PointLight(0xff6600, 2.0, 6);
-        fireLight.position.set(-2, 0.8, -2);
+        const fireLight = new THREE.PointLight(0xff7700, 2.5, 8);
+        fireLight.position.set(-2.2, 0.8, -2.2);
         fireLight.castShadow = true;
         scene.add(fireLight);
 
-        const stormLight = new THREE.PointLight(0x4466ff, 0.5, 8);
-        stormLight.position.set(0, 3, 4);
-        scene.add(stormLight);
+        const moonLight = new THREE.DirectionalLight(0x5577aa, 1.5);
+        moonLight.position.set(-5, 4, 5);
+        moonLight.castShadow = true;
+        moonLight.shadow.mapSize.width = 1024;
+        moonLight.shadow.mapSize.height = 1024;
+        moonLight.shadow.bias = -0.001;
+        scene.add(moonLight);
 
-        // --- Sound ---
         const listener = new THREE.AudioListener();
         camera.add(listener);
         const stormSound = new THREE.Audio(listener);
@@ -203,31 +540,45 @@
             stormSound.setVolume(0.4);
         });
 
-        // --- Materials ---
-        const logMat = new THREE.MeshStandardMaterial({ color: 0x3d2b1f, roughness: 0.9 });
-        const floorMat = new THREE.MeshStandardMaterial({ color: 0x2b1d12, roughness: 0.8 });
-        const brickMat = new THREE.MeshStandardMaterial({ color: 0x6e261d, roughness: 1.0 });
-        const rugMat = new THREE.MeshStandardMaterial({ color: 0x882222, roughness: 1.0 });
-        const couchMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.9 });
-        const tableMat = new THREE.MeshStandardMaterial({ color: 0x4d3319, roughness: 0.7 });
-
-        // --- Cabin Layout (Scaled Down) ---
         const colliders = [];
         const seatSpots = [];
         const interactions = [];
 
-        // Floor (6x6)
-        const floor = new THREE.Mesh(new THREE.BoxGeometry(6, 0.5, 6), floorMat);
-        floor.receiveShadow = true;
-        scene.add(floor);
+        const floorGroup = new THREE.Group();
+        scene.add(floorGroup);
 
-        // Rug
-        const rug = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.05, 2.5), rugMat);
-        rug.position.set(0, 0.26, 0);
-        rug.receiveShadow = true;
-        scene.add(rug);
+        const plankW = 0.38;
+        const plankD = 5.8;
+        const plankH = 0.08;
+        const plankColors = [0x2f1f17, 0x3a281d, 0x271911];
+        for (let i = -7; i <= 7; i++) {
+            const pColor = plankColors[Math.abs(i) % plankColors.length];
+            const c = new THREE.Color(pColor);
+            c.r += (Math.random() - 0.5) * 0.03;
+            c.g += (Math.random() - 0.5) * 0.03;
+            c.b += (Math.random() - 0.5) * 0.03;
+            const plankMat = new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, metalness: 0.1 });
+            const plank = new THREE.Mesh(new THREE.BoxGeometry(plankW, plankH, plankD), plankMat);
+            plank.position.set(i * (plankW + 0.02), 0.25, 0);
+            plank.position.y += (Math.random() - 0.5) * 0.004;
+            plank.receiveShadow = true;
+            floorGroup.add(plank);
+        }
 
-        // Walls
+        const rugGroup = new THREE.Group();
+        const rugBase = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.04, 2.4), new THREE.MeshStandardMaterial({ color: 0x8c2d2d, roughness: 1.0 }));
+        rugBase.position.set(0, 0.3, -0.6);
+        rugBase.receiveShadow = true;
+        rugGroup.add(rugBase);
+        const borderMat = new THREE.MeshStandardMaterial({ color: 0xebdcb9, roughness: 1.0 });
+        const fringeL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.042, 2.4), borderMat);
+        fringeL.position.set(-1.85, 0.3, -0.6);
+        const fringeR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.042, 2.4), borderMat);
+        fringeR.position.set(1.85, 0.3, -0.6);
+        rugGroup.add(fringeL, fringeR);
+        scene.add(rugGroup);
+
+        const logMat = new THREE.MeshStandardMaterial({ color: 0x3d2b1f, roughness: 0.9 });
         function createLogWall(x, z, rotY, hasWindow = false, isGable = false) {
             const group = new THREE.Group();
             const logCount = isGable ? 16 : 12;
@@ -236,151 +587,699 @@
             for (let i = 0; i < logCount; i++) {
                 let logW = 6;
                 if (isGable && i >= 12) {
-                    logW = 6 - (i - 11) * 1.5; 
+                    logW = 6 - (i - 11) * 1.5;
                 }
-
                 if (hasWindow && i > 3 && i < 9) {
                     const l1 = new THREE.Mesh(new THREE.CylinderGeometry(logRadius, logRadius, 2), logMat);
-                    l1.rotation.z = Math.PI / 2; l1.position.set(-2, i * logSpacing, 0); group.add(l1);
+                    l1.rotation.z = Math.PI / 2;
+                    l1.position.set(-2, i * logSpacing, 0);
+                    l1.castShadow = true;
+                    l1.receiveShadow = true;
+                    group.add(l1);
                     const l2 = new THREE.Mesh(new THREE.CylinderGeometry(logRadius, logRadius, 2), logMat);
-                    l2.rotation.z = Math.PI / 2; l2.position.set(2, i * logSpacing, 0); group.add(l2);
+                    l2.rotation.z = Math.PI / 2;
+                    l2.position.set(2, i * logSpacing, 0);
+                    l2.castShadow = true;
+                    l2.receiveShadow = true;
+                    group.add(l2);
                 } else {
                     const log = new THREE.Mesh(new THREE.CylinderGeometry(logRadius, logRadius, logW), logMat);
                     log.rotation.z = Math.PI / 2;
                     log.position.y = i * logSpacing;
+                    log.castShadow = true;
+                    log.receiveShadow = true;
                     group.add(log);
                 }
             }
-            group.position.set(x, 0, z);
+            if (hasWindow) {
+                const frameMat = new THREE.MeshStandardMaterial({ color: 0x22140a, roughness: 0.8 });
+                const fTop = new THREE.Mesh(new THREE.BoxGeometry(2.08, 0.08, 0.2), frameMat);
+                fTop.position.set(0, 7.5 * logSpacing, 0);
+                const fBot = new THREE.Mesh(new THREE.BoxGeometry(2.08, 0.08, 0.2), frameMat);
+                fBot.position.set(0, 3.5 * logSpacing, 0);
+                const fLeft = new THREE.Mesh(new THREE.BoxGeometry(0.08, 4 * logSpacing, 0.2), frameMat);
+                fLeft.position.set(-1.0, 5.5 * logSpacing, 0);
+                const fRight = new THREE.Mesh(new THREE.BoxGeometry(0.08, 4 * logSpacing, 0.2), frameMat);
+                fRight.position.set(1.0, 5.5 * logSpacing, 0);
+                const fDivV = new THREE.Mesh(new THREE.BoxGeometry(0.03, 4 * logSpacing, 0.15), frameMat);
+                fDivV.position.set(0, 5.5 * logSpacing, 0);
+                const fDivH = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.03, 0.15), frameMat);
+                fDivH.position.set(0, 5.5 * logSpacing, 0);
+                group.add(fTop, fBot, fLeft, fRight, fDivV, fDivH);
+                const glassMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.18, metalness: 0.9, roughness: 0.1, side: THREE.DoubleSide });
+                const glassPane = new THREE.Mesh(new THREE.PlaneGeometry(2, 4 * logSpacing), glassMat);
+                glassPane.position.set(0, 5.5 * logSpacing, 0);
+                group.add(glassPane);
+            }
+            group.position.set(x, 0.25, z);
             group.rotation.y = rotY;
             scene.add(group);
         }
 
-        createLogWall(0, -3, 0, false, true); 
-        createLogWall(-3, 0, Math.PI / 2); 
-        createLogWall(3, 0, Math.PI / 2); 
-        createLogWall(0, 3, 0, true, true); 
+        createLogWall(0, -3, 0, false, true);
+        createLogWall(-3, 0, Math.PI / 2, true, false);
+        createLogWall(3, 0, Math.PI / 2, false, false);
+        createLogWall(0, 3, 0, true, true);
 
-        // Glass
-        const glassMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.15, metalness: 0.9, roughness: 0.1, side: THREE.DoubleSide });
-        const glass = new THREE.Mesh(new THREE.PlaneGeometry(2, 1.2), glassMat);
-        glass.position.set(0, 1.2, 3);
-        scene.add(glass);
-
-        // Roof
         const roofGroup = new THREE.Group();
         const roofMat = new THREE.MeshStandardMaterial({ color: 0x2b1d12, roughness: 0.9 });
         const roofSideA = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.2, 6.5), roofMat);
         roofSideA.rotation.z = 0.7;
-        roofSideA.position.set(-1.8, 3, 0);
+        roofSideA.position.set(-1.8, 3.25, 0);
+        roofSideA.castShadow = true;
+        roofSideA.receiveShadow = true;
         const roofSideB = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.2, 6.5), roofMat);
         roofSideB.rotation.z = -0.7;
-        roofSideB.position.set(1.8, 3, 0);
+        roofSideB.position.set(1.8, 3.25, 0);
+        roofSideB.castShadow = true;
+        roofSideB.receiveShadow = true;
         roofGroup.add(roofSideA, roofSideB);
         scene.add(roofGroup);
 
-        // Fireplace
-        const fireplace = new THREE.Group();
-        const mantel = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.0, 0.8), brickMat);
-        mantel.position.set(-2.2, 1.0, -2.2);
-        fireplace.add(mantel);
-        scene.add(fireplace);
-        colliders.push({ x: -2.2, z: -2.2, w: 1.5, d: 0.8 });
+        const beamsGroup = new THREE.Group();
+        const beamMat = new THREE.MeshStandardMaterial({ color: 0x3d2b1f, roughness: 0.9 });
+        for (let z = -2; z <= 2; z += 2) {
+            const beam = new THREE.Mesh(new THREE.BoxGeometry(6.2, 0.25, 0.18), beamMat);
+            beam.position.set(0, 2.55, z);
+            beam.castShadow = true;
+            beamsGroup.add(beam);
+        }
+        scene.add(beamsGroup);
 
-        // Flames
+        const fireGroup = new THREE.Group();
+        const brickMat = new THREE.MeshStandardMaterial({ color: 0x5a2d22, roughness: 1.0 });
+        const darkBackMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 1.0 });
+
+        const fBase = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.15, 1.1), brickMat);
+        fBase.position.set(0, 0.075, 0.2);
+        fBase.castShadow = true;
+        fBase.receiveShadow = true;
+        fireGroup.add(fBase);
+
+        const fPillarL = new THREE.Mesh(new THREE.BoxGeometry(0.35, 1.6, 0.7), brickMat);
+        fPillarL.position.set(-0.625, 0.95, 0.1);
+        fPillarL.castShadow = true;
+        const fPillarR = new THREE.Mesh(new THREE.BoxGeometry(0.35, 1.6, 0.7), brickMat);
+        fPillarR.position.set(0.625, 0.95, 0.1);
+        fPillarR.castShadow = true;
+        fireGroup.add(fPillarL, fPillarR);
+
+        const fArch = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.4, 0.7), brickMat);
+        fArch.position.set(0, 1.75, 0.1);
+        fArch.castShadow = true;
+        fireGroup.add(fArch);
+
+        const fMantel = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.12, 0.85), new THREE.MeshStandardMaterial({ color: 0x3d2b1f, roughness: 0.5 }));
+        fMantel.position.set(0, 1.95, 0.15);
+        fMantel.castShadow = true;
+        fireGroup.add(fMantel);
+
+        const fBack = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.6, 0.1), darkBackMat);
+        fBack.position.set(0, 0.95, -0.22);
+        fireGroup.add(fBack);
+
+        const woodLogMat = new THREE.MeshStandardMaterial({ color: 0x281810, roughness: 0.9 });
+        const logA = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.6, 8), woodLogMat);
+        logA.rotation.z = Math.PI / 2 + 0.15;
+        logA.position.set(-0.15, 0.22, 0.1);
+        logA.castShadow = true;
+        const logB = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.6, 8), woodLogMat);
+        logB.rotation.z = Math.PI / 2 - 0.2;
+        logB.rotation.y = 0.3;
+        logB.position.set(0.15, 0.22, 0.08);
+        logB.castShadow = true;
+        const logC = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.5, 8), woodLogMat);
+        logC.rotation.z = Math.PI / 2;
+        logC.position.set(0, 0.32, 0.12);
+        logC.castShadow = true;
+        fireGroup.add(logA, logB, logC);
+
+        const candleGroup = new THREE.Group();
+        const waxMat = new THREE.MeshStandardMaterial({ color: 0xfaebd7, roughness: 0.7 });
+        const flameBMat = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
+        const candlesFlames = [];
+        for (let cx of [-0.6, 0.6]) {
+            const wax = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.15, 6), waxMat);
+            wax.position.set(cx, 2.085, 0.2);
+            wax.castShadow = true;
+            candleGroup.add(wax);
+            const cFlame = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.05, 4), flameBMat);
+            cFlame.position.set(cx, 2.18, 0.2);
+            cFlame.userData = { phase: Math.random() * Math.PI * 2 };
+            candleGroup.add(cFlame);
+            candlesFlames.push(cFlame);
+        }
+        fireGroup.add(candleGroup);
+        fireGroup.position.set(-2.2, 0.25, -2.2);
+        scene.add(fireGroup);
+        colliders.push({ x: -2.2, z: -2.2, w: 1.8, d: 1.3 });
+
         const flameCount = 12;
         const flames = new THREE.Group();
-        for(let i=0; i<flameCount; i++) {
+        for (let i = 0; i < flameCount; i++) {
             const f = new THREE.Mesh(
-                new THREE.ConeGeometry(0.05 + Math.random()*0.1, 0.2 + Math.random()*0.2, 6),
-                new THREE.MeshBasicMaterial({color: 0xffaa00, transparent: true, opacity: 0.8})
+                new THREE.ConeGeometry(0.05 + Math.random() * 0.1, 0.2 + Math.random() * 0.2, 6),
+                new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.8 })
             );
-            f.position.set(-2.2 + (Math.random()-0.5)*0.5, 0.4, -2.0 + (Math.random()-0.5)*0.2);
-            f.userData = { baseOpacity: 0.8, phase: Math.random()*Math.PI*2, speed: 2 + Math.random()*3 };
+            f.position.set(-2.2 + (Math.random() - 0.5) * 0.5, 0.65, -2.0 + (Math.random() - 0.5) * 0.2);
+            f.userData = { baseOpacity: 0.8, phase: Math.random() * Math.PI * 2, speed: 2 + Math.random() * 3 };
             flames.add(f);
         }
         scene.add(flames);
 
-        // Furniture
-        function createCouch(x, z, rotY) {
-            const group = new THREE.Group();
-            const base = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.4, 0.8), couchMat);
-            base.position.y = 0.2;
-            const back = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.6, 0.2), couchMat);
-            back.position.set(0, 0.5, -0.3);
-            const armL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.35, 0.8), couchMat);
-            armL.position.set(-0.8, 0.375, 0);
-            const armR = armL.clone(); armR.position.x = 0.8;
-            group.add(base, back, armL, armR);
-            group.position.set(x, 0.25, z);
-            group.rotation.y = rotY;
-            scene.add(group);
-            colliders.push({ x, z, w: 1.8, d: 0.8, rotY });
-            seatSpots.push({ x, z, y: 0.4, type: 'Couch', rotY });
+        const emberCount = 30;
+        const embers = [];
+        const emberGeo = new THREE.SphereGeometry(0.015, 4, 4);
+        const emberMat = new THREE.MeshBasicMaterial({ color: 0xff8800, transparent: true });
+        for (let i = 0; i < emberCount; i++) {
+            const ember = new THREE.Mesh(emberGeo, emberMat.clone());
+            resetEmber(ember);
+            scene.add(ember);
+            embers.push(ember);
         }
-        createCouch(0, -1.8, 0); 
+        function resetEmber(ember) {
+            ember.position.set(
+                -2.2 + (Math.random() - 0.5) * 0.5,
+                0.65 + Math.random() * 0.1,
+                -2.0 + (Math.random() - 0.5) * 0.2
+            );
+            ember.userData = {
+                vx: (Math.random() - 0.5) * 0.2,
+                vy: 0.4 + Math.random() * 0.5,
+                vz: (Math.random() - 0.5) * 0.2,
+                life: 1.0,
+                decay: 0.6 + Math.random() * 0.8
+            };
+            ember.material.opacity = 1.0;
+        }
+
+        const couchGroup = new THREE.Group();
+        const couchC = 0x2e4235;
+        const pillowC = 0xebdcb9;
+        const woodC = 0x3d2b1f;
+        const couchMat = new THREE.MeshStandardMaterial({ color: couchC, roughness: 0.8 });
+        const pillowMat = new THREE.MeshStandardMaterial({ color: pillowC, roughness: 0.9 });
+        const legMat = new THREE.MeshStandardMaterial({ color: woodC, roughness: 0.7 });
+
+        const cBase = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.3, 0.9), couchMat);
+        cBase.position.y = 0.35;
+        cBase.castShadow = true;
+        cBase.receiveShadow = true;
+        couchGroup.add(cBase);
+
+        for (let i = -1; i <= 1; i++) {
+            const cush = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.15, 0.8), couchMat);
+            cush.position.set(i * 0.7, 0.5, 0.02);
+            cush.castShadow = true;
+            cush.receiveShadow = true;
+            couchGroup.add(cush);
+        }
+        const cBack = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.7, 0.2), couchMat);
+        cBack.position.set(0, 0.8, -0.35);
+        cBack.castShadow = true;
+        couchGroup.add(cBack);
+
+        const cArmL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.55, 0.9), couchMat);
+        cArmL.position.set(-1.1, 0.6, 0);
+        cArmL.castShadow = true;
+        const cArmR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.55, 0.9), couchMat);
+        cArmR.position.set(1.1, 0.6, 0);
+        cArmR.castShadow = true;
+        couchGroup.add(cArmL, cArmR);
+
+        for (let x = -1; x <= 1; x += 2) {
+            for (let z = -1; z <= 1; z += 2) {
+                const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.25, 0.08), legMat);
+                leg.position.set(x * 1.0, 0.125, z * 0.38);
+                leg.castShadow = true;
+                couchGroup.add(leg);
+            }
+        }
+        const pillow1 = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 0.15), pillowMat);
+        pillow1.position.set(-0.85, 0.65, 0.2);
+        pillow1.rotation.y = 0.3;
+        pillow1.rotation.z = 0.2;
+        const pillow2 = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 0.15), pillowMat);
+        pillow2.position.set(0.85, 0.65, 0.2);
+        pillow2.rotation.y = -0.3;
+        pillow2.rotation.z = -0.2;
+        couchGroup.add(pillow1, pillow2);
+
+        couchGroup.position.set(0, 0.25, -1.8);
+        scene.add(couchGroup);
+        colliders.push({ x: 0, z: -1.8, w: 2.4, d: 1.1 });
+        seatSpots.push({ x: 0, z: -1.8, y: 0.45, type: 'Couch', rotY: 0 });
 
         function createBeanBag(x, z, color) {
-            const bb = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 8), new THREE.MeshStandardMaterial({color, roughness: 1.0}));
+            const bb = new THREE.Mesh(new THREE.SphereGeometry(0.4, 12, 8), new THREE.MeshStandardMaterial({ color, roughness: 1.0 }));
             bb.scale.y = 0.6;
-            bb.position.set(x, 0.4, z);
+            bb.position.set(x, 0.5, z);
+            bb.castShadow = true;
+            bb.receiveShadow = true;
             scene.add(bb);
-            colliders.push({ x, z, w: 0.7, d: 0.7 });
+            colliders.push({ x, z, w: 0.8, d: 0.8 });
             seatSpots.push({ x, z, y: 0.35, type: 'BeanBag' });
         }
-        createBeanBag(1.8, -1.2, 0x224488);
-        createBeanBag(-1.8, 1.8, 0x884422);
+        createBeanBag(1.8, -0.8, 0x224488);
+        createBeanBag(-1.8, 1.2, 0x884422);
 
-        function createSideTable(x, z) {
-            const group = new THREE.Group();
-            const top = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.05, 0.6), tableMat);
-            const leg = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.4, 0.06), tableMat);
-            leg.position.y = -0.2;
-            group.add(top, leg);
-            group.position.set(x, 0.45, z);
-            scene.add(group);
-            colliders.push({ x, z, w: 0.6, d: 0.6 });
+        const tableGroup = new THREE.Group();
+        const tableTopMat = new THREE.MeshStandardMaterial({ color: 0x5a3e2e, roughness: 0.6 });
+        const tableLegMat = new THREE.MeshStandardMaterial({ color: 0x3d2b1f, roughness: 0.8 });
+        const tTop = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.08, 0.7), tableTopMat);
+        tTop.position.y = 0.45;
+        tTop.castShadow = true;
+        tTop.receiveShadow = true;
+        tableGroup.add(tTop);
+        for (let x = -1; x <= 1; x += 2) {
+            for (let z = -1; z <= 1; z += 2) {
+                const tLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.45), tableLegMat);
+                tLeg.position.set(x * 0.55, 0.225, z * 0.28);
+                tLeg.castShadow = true;
+                tableGroup.add(tLeg);
+            }
         }
-        createSideTable(1.2, -2.1);
+        const mugGroup = new THREE.Group();
+        const mugMat = new THREE.MeshStandardMaterial({ color: 0xc93b3b, roughness: 0.5 });
+        const drinkMat = new THREE.MeshStandardMaterial({ color: 0x50301a, roughness: 0.9 });
+        const creamMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1.0 });
+        const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.14, 8), mugMat);
+        mug.position.y = 0.07;
+        mug.castShadow = true;
+        mugGroup.add(mug);
+        const drink = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.02, 8), drinkMat);
+        drink.position.y = 0.13;
+        mugGroup.add(drink);
+        const mallow = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.02, 0.02), creamMat);
+        mallow.position.set(0.01, 0.135, 0.01);
+        mallow.rotation.set(0.2, 0.5, 0.1);
+        mugGroup.add(mallow);
+        const handleGeo = new THREE.TorusGeometry(0.035, 0.01, 4, 8, Math.PI);
+        const handle = new THREE.Mesh(handleGeo, mugMat);
+        handle.position.set(-0.06, 0.07, 0);
+        handle.rotation.z = Math.PI / 2;
+        mugGroup.add(handle);
+        mugGroup.position.set(-0.25, 0.49, 0);
+        tableGroup.add(mugGroup);
+        const bookGroup = new THREE.Group();
+        const coverMat = new THREE.MeshStandardMaterial({ color: 0x2d4f8f, roughness: 0.7 });
+        const pageMat = new THREE.MeshStandardMaterial({ color: 0xfaeed6, roughness: 0.9 });
+        const coverL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.01, 0.18), coverMat);
+        coverL.position.set(-0.06, 0.005, 0);
+        coverL.rotation.z = -0.08;
+        const coverR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.01, 0.18), coverMat);
+        coverR.position.set(0.06, 0.005, 0);
+        coverR.rotation.z = 0.08;
+        const pagesL = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.015, 0.17), pageMat);
+        pagesL.position.set(-0.058, 0.012, 0);
+        pagesL.rotation.z = -0.06;
+        const pagesR = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.015, 0.17), pageMat);
+        pagesR.position.set(0.058, 0.012, 0);
+        pagesR.rotation.z = 0.06;
+        bookGroup.add(coverL, coverR, pagesL, pagesR);
+        bookGroup.position.set(0.25, 0.49, 0.1);
+        bookGroup.rotation.y = 0.4;
+        tableGroup.add(bookGroup);
+        tableGroup.position.set(0, 0.25, -0.8);
+        scene.add(tableGroup);
+        colliders.push({ x: 0, z: -0.8, w: 1.4, d: 0.8 });
 
-        // Logs Stack
+        const sideTableGroup = new THREE.Group();
+        const sTop = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.5), tableTopMat);
+        sTop.position.y = 0.45;
+        sTop.castShadow = true;
+        sTop.receiveShadow = true;
+        const sLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.45), tableLegMat);
+        sLeg.position.y = 0.225;
+        sLeg.castShadow = true;
+        sideTableGroup.add(sTop, sLeg);
+        sideTableGroup.position.set(1.2, 0.25, -2.1);
+        scene.add(sideTableGroup);
+        colliders.push({ x: 1.2, z: -2.1, w: 0.7, d: 0.7 });
+
+        let radioPlaying = false;
+        let radioInterval = null;
+        let audioCtx = null;
+        let radioIndicatorLight = null;
+
+        const radioGroup = new THREE.Group();
+        const casingMat = new THREE.MeshStandardMaterial({ color: 0xd49b2c, roughness: 0.4 });
+        const faceMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8 });
+        const grillMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.9 });
+        const knobMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.3 });
+        const dialLightMat = new THREE.MeshBasicMaterial({ color: 0x330000 });
+        const casing = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.2, 0.16), casingMat);
+        casing.position.y = 0.1;
+        casing.castShadow = true;
+        radioGroup.add(casing);
+        const face = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.16, 0.02), faceMat);
+        face.position.set(0, 0.1, 0.08);
+        radioGroup.add(face);
+        const grill = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.12, 0.01), grillMat);
+        grill.position.set(-0.05, 0.1, 0.091);
+        radioGroup.add(grill);
+        const dial = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.04, 0.01), dialLightMat);
+        dial.position.set(0.07, 0.13, 0.091);
+        radioGroup.add(dial);
+        const knobA = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.015, 6), knobMat);
+        knobA.rotation.x = Math.PI / 2;
+        knobA.position.set(0.05, 0.08, 0.095);
+        const knobB = knobA.clone();
+        knobB.position.set(0.09, 0.08, 0.095);
+        radioGroup.add(knobA, knobB);
+        const rHandle = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.02, 0.02), knobMat);
+        rHandle.position.set(0, 0.21, 0);
+        radioGroup.add(rHandle);
+        radioIndicatorLight = new THREE.Mesh(new THREE.SphereGeometry(0.012, 4, 4), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
+        radioIndicatorLight.position.set(0.07, 0.16, 0.092);
+        radioGroup.add(radioIndicatorLight);
+        radioGroup.position.set(1.2, 0.7, -2.1);
+        radioGroup.rotation.y = -0.5;
+        scene.add(radioGroup);
+        interactions.push({ x: 1.2, z: -2.1, type: 'Radio', range: 0.9 });
+
+        const shelfGroup = new THREE.Group();
+        const shelfWoodMat = new THREE.MeshStandardMaterial({ color: 0x4a2e1d, roughness: 0.8 });
+        const backBoard = new THREE.Mesh(new THREE.BoxGeometry(0.05, 2.0, 1.2), shelfWoodMat);
+        backBoard.position.set(-0.175, 1.0, 0);
+        backBoard.castShadow = true;
+        shelfGroup.add(backBoard);
+        const leftBoard = new THREE.Mesh(new THREE.BoxGeometry(0.35, 2.0, 0.05), shelfWoodMat);
+        leftBoard.position.set(0, 1.0, -0.575);
+        leftBoard.castShadow = true;
+        shelfGroup.add(leftBoard);
+        const rightBoard = new THREE.Mesh(new THREE.BoxGeometry(0.35, 2.0, 0.05), shelfWoodMat);
+        rightBoard.position.set(0, 1.0, 0.575);
+        rightBoard.castShadow = true;
+        shelfGroup.add(rightBoard);
+        const topBoard = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.05, 1.2), shelfWoodMat);
+        topBoard.position.set(-0.025, 2.0, 0);
+        topBoard.castShadow = true;
+        shelfGroup.add(topBoard);
+        const shelfHeights = [0.1, 0.5, 0.9, 1.3, 1.7];
+        shelfHeights.forEach(sh => {
+            const sBoard = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.04, 1.15), shelfWoodMat);
+            sBoard.position.set(0, sh, 0);
+            sBoard.castShadow = true;
+            sBoard.receiveShadow = true;
+            shelfGroup.add(sBoard);
+        });
+        const bookColors = [0x992b2b, 0x2b5999, 0x2b9959, 0x8a2be2, 0xd4a017, 0x444444];
+        for (let sIdx = 1; sIdx < shelfHeights.length; sIdx++) {
+            const yPos = shelfHeights[sIdx - 1] + 0.02;
+            const maxH = shelfHeights[sIdx] - shelfHeights[sIdx - 1] - 0.08;
+            let zStart = -0.5;
+            while (zStart < 0.5) {
+                if (Math.random() < 0.25) {
+                    zStart += 0.15;
+                    continue;
+                }
+                const bookW = 0.04 + Math.random() * 0.04;
+                const bookH = maxH * (0.65 + Math.random() * 0.35);
+                const bookD = 0.2 + Math.random() * 0.08;
+                const bMat = new THREE.MeshStandardMaterial({
+                    color: bookColors[Math.floor(Math.random() * bookColors.length)],
+                    roughness: 0.8
+                });
+                const book = new THREE.Mesh(new THREE.BoxGeometry(bookD, bookH, bookW), bMat);
+                book.position.set(0.05 - (0.28 - bookD) / 2, yPos + bookH / 2, zStart);
+                book.castShadow = true;
+                if (Math.random() < 0.2 && zStart < 0.38) {
+                    book.rotation.z = 0.25;
+                    book.position.x -= 0.02;
+                    book.position.y -= 0.01;
+                    zStart += 0.18;
+                } else {
+                    zStart += bookW + 0.03;
+                }
+                shelfGroup.add(book);
+            }
+        }
+        shelfGroup.position.set(-2.75, 0.25, 0.3);
+        scene.add(shelfGroup);
+        colliders.push({ x: -2.75, z: 0.3, w: 0.5, d: 1.3 });
+
+        const deskGroup = new THREE.Group();
+        const deskWoodMat = new THREE.MeshStandardMaterial({ color: 0x5a3e2e, roughness: 0.6 });
+        const deskMetalMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.8, roughness: 0.2 });
+        const deskTop = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.06, 0.7), deskWoodMat);
+        deskTop.position.y = 0.72;
+        deskTop.castShadow = true;
+        deskTop.receiveShadow = true;
+        deskGroup.add(deskTop);
+        const legL = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.72, 0.6), deskMetalMat);
+        legL.position.set(-0.54, 0.36, 0);
+        legL.castShadow = true;
+        const legR = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.72, 0.6), deskMetalMat);
+        legR.position.set(0.54, 0.36, 0);
+        legR.castShadow = true;
+        deskGroup.add(legL, legR);
+        const chairGroup = new THREE.Group();
+        const seatMat = new THREE.MeshStandardMaterial({ color: 0x2e4235, roughness: 0.8 });
+        const chairSeat = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.05, 0.4), seatMat);
+        chairSeat.position.y = 0.45;
+        chairSeat.castShadow = true;
+        chairGroup.add(chairSeat);
+        const chairBack = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.05), seatMat);
+        chairBack.position.set(0, 0.65, -0.18);
+        chairBack.castShadow = true;
+        chairGroup.add(chairBack);
+        const cLeg1 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.45, 0.04), deskMetalMat);
+        cLeg1.position.set(-0.16, 0.225, -0.16);
+        cLeg1.castShadow = true;
+        chairGroup.add(cLeg1);
+        const cLeg2 = cLeg1.clone(); cLeg2.position.set(0.16, 0.225, -0.16);
+        const cLeg3 = cLeg1.clone(); cLeg3.position.set(-0.16, 0.225, 0.16);
+        const cLeg4 = cLeg1.clone(); cLeg4.position.set(0.16, 0.225, 0.16);
+        chairGroup.add(cLeg2, cLeg3, cLeg4);
+        chairGroup.position.set(0, 0, -0.45);
+        chairGroup.rotation.y = 0.4;
+        deskGroup.add(chairGroup);
+        const lampGroup = new THREE.Group();
+        const brassMat = new THREE.MeshStandardMaterial({ color: 0xd4a017, metalness: 0.9, roughness: 0.1 });
+        const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.02, 8), brassMat);
+        lampBase.position.y = 0.01;
+        lampGroup.add(lampBase);
+        const lampArm = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.25, 6), brassMat);
+        lampArm.position.set(0.04, 0.13, 0);
+        lampArm.rotation.z = -0.4;
+        lampGroup.add(lampArm);
+        const lampShade = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.1, 8), brassMat);
+        lampShade.position.set(0.11, 0.24, 0);
+        lampShade.rotation.z = -1.2;
+        lampGroup.add(lampShade);
+        lampGroup.position.set(-0.4, 0.75, -0.15);
+        deskGroup.add(lampGroup);
+        const lampLight = new THREE.PointLight(0xffdd66, 1.2, 3);
+        lampLight.position.set(-0.29, 0.95, -0.15);
+        lampLight.castShadow = true;
+        deskGroup.add(lampLight);
+        const dBook = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.02, 0.16), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 }));
+        dBook.position.set(0.1, 0.76, 0.05);
+        dBook.rotation.y = -0.2;
+        deskGroup.add(dBook);
+        deskGroup.position.set(2.2, 0.25, 2.2);
+        deskGroup.rotation.y = -Math.PI / 4;
+        scene.add(deskGroup);
+        colliders.push({ x: 2.2, z: 2.2, w: 1.3, d: 1.3, rotY: -Math.PI / 4 });
+
         const logStack = new THREE.Group();
-        for(let i=0; i<3; i++) {
+        for (let i = 0; i < 3; i++) {
             const log = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.6), logMat);
-            log.rotation.z = Math.PI/2;
-            log.position.set(0, 0.08, i*0.2 - 0.2);
+            log.rotation.z = Math.PI / 2;
+            log.position.set(0, 0.08, i * 0.2 - 0.2);
+            log.castShadow = true;
             logStack.add(log);
         }
         const topLog = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.6), logMat);
-        topLog.rotation.z = Math.PI/2;
+        topLog.rotation.z = Math.PI / 2;
         topLog.position.set(0, 0.2, 0);
+        topLog.castShadow = true;
         logStack.add(topLog);
         logStack.position.set(-1.8, 0.25, 2.2);
         scene.add(logStack);
         interactions.push({ x: -1.8, z: 2.2, type: 'Logs', range: 0.8 });
-        colliders.push({ x: -1.8, z: 2.2, w: 0.6, d: 0.6 });
+        colliders.push({ x: -1.8, z: 2.2, w: 0.7, d: 0.7 });
 
-        // --- Snow Particles ---
-        const snowCount = 2000;
+        const lanternGroup = new THREE.Group();
+        const glassGlowMat = new THREE.MeshBasicMaterial({ color: 0xffeedd });
+        const lCap = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.03, 8), brassMat);
+        lCap.position.y = 0.2;
+        lCap.castShadow = true;
+        lanternGroup.add(lCap);
+        const lBulb = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.12, 8), glassGlowMat);
+        lBulb.position.y = 0.12;
+        lanternGroup.add(lBulb);
+        const lCage = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.16, 0.14), new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8, roughness: 0.2 }));
+        lCage.position.y = 0.12;
+        lCage.castShadow = true;
+        lanternGroup.add(lCage);
+        const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.5, 4), new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 }));
+        chain.position.y = 0.45;
+        lanternGroup.add(chain);
+        lanternGroup.position.set(0, 1.95, 0);
+        scene.add(lanternGroup);
+        const lanternLight = new THREE.PointLight(0xffddaa, 0.8, 6);
+        lanternLight.position.set(0, 1.95, 0);
+        lanternLight.castShadow = true;
+        scene.add(lanternLight);
+
+        const treesGroup = new THREE.Group();
+        const trunkMat = new THREE.MeshStandardMaterial({ color: 0x23140e, roughness: 1.0 });
+        const leavesMat = new THREE.MeshStandardMaterial({ color: 0x12241e, roughness: 1.0 });
+        const snowMat = new THREE.MeshStandardMaterial({ color: 0xddddff, roughness: 0.9 });
+        function createPineTree(x, z, scale) {
+            const tree = new THREE.Group();
+            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.1 * scale, 0.15 * scale, 1.2 * scale, 8), trunkMat);
+            trunk.position.y = 0.6 * scale;
+            trunk.castShadow = true;
+            tree.add(trunk);
+            for (let i = 0; i < 3; i++) {
+                const r = (0.7 - i * 0.18) * scale;
+                const h = (1.0 - i * 0.15) * scale;
+                const leaves = new THREE.Mesh(new THREE.ConeGeometry(r, h, 6), leavesMat);
+                leaves.position.y = (1.1 + i * 0.6) * scale;
+                leaves.castShadow = true;
+                tree.add(leaves);
+                const snowCap = new THREE.Mesh(new THREE.ConeGeometry(r * 0.9, h * 0.3, 6), snowMat);
+                snowCap.position.y = (1.1 + i * 0.6 + h * 0.35) * scale;
+                tree.add(snowCap);
+            }
+            tree.position.set(x, 0.25, z);
+            treesGroup.add(tree);
+        }
+        createPineTree(1.2, 4.2, 1.1);
+        createPineTree(-1.5, 4.8, 0.95);
+        createPineTree(-4.4, -0.8, 1.2);
+        createPineTree(-4.2, 1.2, 1.0);
+        scene.add(treesGroup);
+
+        const snowGround = new THREE.Mesh(
+            new THREE.PlaneGeometry(25, 25),
+            new THREE.MeshStandardMaterial({ color: 0xddddff, roughness: 0.9 })
+        );
+        snowGround.rotation.x = -Math.PI / 2;
+        snowGround.position.set(0, 0.24, 0);
+        snowGround.receiveShadow = true;
+        scene.add(snowGround);
+
+        const snowCount = 1200;
         const snowGeo = new THREE.BufferGeometry();
         const snowPos = new Float32Array(snowCount * 3);
         const snowVel = [];
-        for(let i = 0; i < snowCount; i++) {
-            snowPos[i*3] = (Math.random() - 0.5) * 30;
-            snowPos[i*3+1] = Math.random() * 10;
-            snowPos[i*3+2] = 4 + Math.random() * 5;
-            snowVel.push({ x: -1.0 - Math.random() * 1.5, y: -0.05 - Math.random() * 0.1 });
+        for (let i = 0; i < snowCount; i++) {
+            let sx, sy, sz;
+            if (Math.random() < 0.5) {
+                sx = -10 + Math.random() * 7;
+                sz = -10 + Math.random() * 20;
+            } else {
+                sx = -10 + Math.random() * 20;
+                sz = 3 + Math.random() * 7;
+            }
+            sy = Math.random() * 8;
+            snowPos[i * 3] = sx;
+            snowPos[i * 3 + 1] = sy;
+            snowPos[i * 3 + 2] = sz;
+            snowVel.push({
+                x: -0.5 - Math.random() * 0.8,
+                y: -0.8 - Math.random() * 0.6,
+                z: (Math.random() - 0.5) * 0.2
+            });
         }
         snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPos, 3));
-        const snowMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.05, transparent: true, opacity: 0.5 });
-        const snowParticles = new THREE.Points(snowGeo, snowMat);
+        const snowParticlesMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.05, transparent: true, opacity: 0.6 });
+        const snowParticles = new THREE.Points(snowGeo, snowParticlesMat);
         scene.add(snowParticles);
 
-        // --- Player Data ---
+        const notes = [];
+        const noteGeo = new THREE.SphereGeometry(0.018, 4, 4);
+        const noteMat = new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true });
+        let noteSpawnTimer = 0;
+        function spawnNote() {
+            if (notes.length >= 8) return;
+            const note = new THREE.Mesh(noteGeo, noteMat.clone());
+            note.position.set(1.2 + (Math.random() - 0.5) * 0.1, 0.85, -2.1 + (Math.random() - 0.5) * 0.1);
+            note.userData = {
+                vy: 0.15 + Math.random() * 0.2,
+                vx: (Math.random() - 0.5) * 0.1,
+                vz: (Math.random() - 0.5) * 0.1,
+                life: 1.0,
+                decay: 0.5 + Math.random() * 0.4
+            };
+            scene.add(note);
+            notes.push(note);
+        }
+
+        const chords = [
+            [261.63, 329.63, 392.00, 493.88],
+            [220.00, 261.63, 329.63, 392.00],
+            [293.66, 349.23, 440.00, 523.25],
+            [196.00, 246.94, 293.66, 392.00]
+        ];
+        let currentChordIdx = 0;
+        let noteBeat = 0;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+        function playRadioMusic() {
+            initAudio();
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            radioInterval = setInterval(() => {
+                if (audioCtx.state === 'suspended' || audioMuted) return;
+                const chord = chords[currentChordIdx];
+                const now = audioCtx.currentTime;
+                const noteOffset = noteBeat % 4;
+                const freq = chord[noteOffset];
+                playRadioNote(freq, now, 2.0);
+                if (noteOffset === 0) {
+                    playRadioNote(freq / 2, now, 3.5);
+                }
+                noteBeat++;
+                if (noteBeat % 4 === 0) {
+                    currentChordIdx = (currentChordIdx + 1) % chords.length;
+                }
+            }, 1400);
+        }
+        function playRadioNote(freq, startTime, duration) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            const filter = audioCtx.createBiquadFilter();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, startTime);
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(320, startTime);
+            filter.Q.setValueAtTime(1, startTime);
+            gainNode.gain.setValueAtTime(0, startTime);
+            gainNode.gain.linearRampToValueAtTime(0.07, startTime + 0.15);
+            gainNode.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+            osc.connect(filter);
+            filter.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            osc.start(startTime);
+            osc.stop(startTime + duration);
+        }
+        function stopRadioMusic() {
+            if (radioInterval) {
+                clearInterval(radioInterval);
+                radioInterval = null;
+            }
+        }
+
         let isFirstPerson = false, fpYaw = Math.PI, fpPitch = 0;
         let isCustomizing = true, isPaused = false, isSitting = false;
+        let targetCameraPos = null;
+        let targetControlsTarget = null;
+        let audioMuted = false;
+        let chatFocused = false;
+        let chatLogTimeout = null;
+
         const players = [
-            { id: 1, name: 'Lumberjack', color: '#FF8C00', mesh: null, position: new THREE.Vector3(0,0,0), isJumping: false, yVelocity: 0, keys:{up:false,down:false,left:false,right:false,space:false,shift:false}, isCustomizing: true }
+            { id: 1, name: 'Lumberjack', color: '#FF8C00', mesh: null, position: new THREE.Vector3(0, 0, 0), isJumping: false, yVelocity: 0, keys: { up: false, down: false, left: false, right: false, space: false, shift: false }, isCustomizing: true, chatText: null, chatTimeout: null }
         ];
 
         let charGltfMaster = null, animationsMaster = [];
@@ -408,7 +1307,9 @@
         function setupLocalPlayer() {
             const p = players[0];
             const mesh = charGltfMaster.scene.clone();
-            mesh.scale.set(0.7, 0.7, 0.7); 
+            mesh.scale.set(0.7, 0.7, 0.7);
+            mesh.position.set(0, 0, 0);
+            mesh.rotation.y = 0;
             scene.add(mesh);
             p.mesh = mesh;
             p.mixer = new THREE.AnimationMixer(mesh);
@@ -416,22 +1317,39 @@
             animationsMaster.forEach(clip => { p.actions[clip.name.toLowerCase()] = p.mixer.clipAction(clip); });
             mesh.traverse(o => {
                 if (o.isMesh) {
-                    o.castShadow = true; o.receiveShadow = true;
+                    o.castShadow = true;
+                    o.receiveShadow = true;
                     if (o.name.includes('Body') || o.name.includes('Leg')) o.material = createToonMaterial(o.material.map, p.color);
                 }
             });
             updatePlayerVisuals(p);
         }
 
+        function updatePlayerVisuals(p) {
+            if (!p || !p.mesh) return;
+            const firstPersonMode = (typeof isFirstPerson !== 'undefined') ? isFirstPerson : false;
+            p.mesh.visible = !firstPersonMode;
+            p.mesh.traverse((child) => {
+                if (child.isMesh && child.material && child.material.uniforms) {
+                    child.material.uniforms.color.value.setStyle(p.color);
+                    const isCustomizingVal = !!p.isCustomizing;
+                    child.material.uniforms.opacity.value = isCustomizingVal ? 0.75 : 1.0;
+                    child.material.uniforms.isGreyscale.value = 0.0;
+                    child.material.transparent = isCustomizingVal;
+                    child.material.depthWrite = true;
+                }
+            });
+        }
+
         function playAnim(p, name) {
             if (!p.actions || !p.actions[name] || p.currentAnim === name) return;
-            if (p.currentAnim && p.actions[p.currentAnim]) p.actions[p.currentAnim].fadeOut(0.2);
-            p.actions[name].reset().fadeIn(0.2).play();
+            if (p.currentAnim && p.actions[p.currentAnim]) p.actions[p.currentAnim].fadeOut(0.25);
+            p.actions[name].reset().fadeIn(0.25).play();
             p.currentAnim = name;
         }
 
         function checkCollision(pos) {
-            if (Math.abs(pos.x) > 2.7 || Math.abs(pos.z) > 2.7) return true;
+            if (Math.abs(pos.x) > 2.75 || Math.abs(pos.z) > 2.75) return true;
             for (const c of colliders) {
                 let dx = pos.x - c.x, dz = pos.z - c.z;
                 if (c.rotY) {
@@ -440,7 +1358,7 @@
                     const nz = dx * s + dz * cc;
                     dx = nx; dz = nz;
                 }
-                if (Math.abs(dx) < c.w/2 + 0.15 && Math.abs(dz) < c.d/2 + 0.15) return true;
+                if (Math.abs(dx) < c.w / 2 + 0.15 && Math.abs(dz) < c.d / 2 + 0.15) return true;
             }
             return false;
         }
@@ -451,25 +1369,90 @@
             const time = clock.elapsedTime;
 
             if (fireBonusTime > 0) { fireBonusTime -= delta; fireIntensity = 1.8; } else { fireIntensity = 1.0; }
-            fireLight.intensity = (1.5 + Math.random()) * fireIntensity;
+            fireLight.intensity = (2.0 + Math.sin(time * 8) * 0.4) * fireIntensity;
             flames.children.forEach(f => {
-                const s = 0.5 + Math.sin(time * f.userData.speed + f.userData.phase) * 0.1;
+                const s = 0.6 + Math.sin(time * f.userData.speed + f.userData.phase) * 0.15;
                 f.scale.set(s * fireIntensity, s * fireIntensity * 1.5, s * fireIntensity);
-                f.material.opacity = (0.6 + Math.random()*0.4) * fireIntensity;
-                f.position.y = 0.4 + (f.scale.y - 0.5)*0.1;
+                f.material.opacity = (0.5 + Math.random() * 0.5) * fireIntensity;
+                f.position.y = 0.65 + (f.scale.y - 0.5) * 0.1;
             });
 
+            candlesFlames.forEach(cf => {
+                cf.scale.setScalar(0.8 + Math.sin(time * 12 + cf.userData.phase) * 0.2);
+            });
+
+            embers.forEach(ember => {
+                ember.userData.life -= delta * ember.userData.decay;
+                if (ember.userData.life <= 0) {
+                    resetEmber(ember);
+                } else {
+                    ember.position.x += ember.userData.vx * delta;
+                    ember.position.y += ember.userData.vy * delta;
+                    ember.position.z += ember.userData.vz * delta;
+                    ember.material.opacity = ember.userData.life;
+                    ember.scale.setScalar(ember.userData.life);
+                    ember.position.x += Math.sin(time * 6 + ember.position.y) * 0.003;
+                }
+            });
+
+            if (radioPlaying) {
+                noteSpawnTimer += delta;
+                if (noteSpawnTimer > 0.8) {
+                    spawnNote();
+                    noteSpawnTimer = 0;
+                }
+            }
+            for (let i = notes.length - 1; i >= 0; i--) {
+                const note = notes[i];
+                note.userData.life -= delta * note.userData.decay;
+                if (note.userData.life <= 0) {
+                    scene.remove(note);
+                    notes.splice(i, 1);
+                } else {
+                    note.position.x += note.userData.vx * delta;
+                    note.position.y += note.userData.vy * delta;
+                    note.position.z += note.userData.vz * delta;
+                    note.material.opacity = note.userData.life;
+                    note.scale.setScalar(note.userData.life * (1.0 + Math.sin(time * 10) * 0.2));
+                }
+            }
+
             const positions = snowParticles.geometry.attributes.position.array;
-            for(let i = 0; i < snowCount; i++) {
-                positions[i*3] += snowVel[i].x; positions[i*3+1] += snowVel[i].y;
-                if (positions[i*3] < -15) positions[i*3] = 15;
-                if (positions[i*3+1] < 0) positions[i*3+1] = 10;
+            for (let i = 0; i < snowCount; i++) {
+                positions[i * 3] += snowVel[i].x * delta;
+                positions[i * 3 + 1] += snowVel[i].y * delta;
+                positions[i * 3 + 2] += snowVel[i].z * delta;
+                if (positions[i * 3 + 1] < 0.25 || positions[i * 3] < -10) {
+                    if (Math.random() < 0.5) {
+                        positions[i * 3] = -10 + Math.random() * 7;
+                        positions[i * 3 + 2] = -10 + Math.random() * 20;
+                    } else {
+                        positions[i * 3] = -10 + Math.random() * 20;
+                        positions[i * 3 + 2] = 3 + Math.random() * 7;
+                    }
+                    positions[i * 3 + 1] = 8;
+                }
             }
             snowParticles.geometry.attributes.position.needsUpdate = true;
 
             const p = players[0];
-            if (!p.mesh || isCustomizing || isPaused) {
+            if (!p.mesh || isPaused) {
+                renderer.render(scene, camera);
+                return;
+            }
+
+            if (isCustomizing) {
                 if (p.mixer) p.mixer.update(delta);
+                playAnim(p, 'idle');
+                if (targetCameraPos) {
+                    camera.position.lerp(targetCameraPos, 0.05);
+                    if (camera.position.distanceTo(targetCameraPos) < 0.02) targetCameraPos = null;
+                }
+                if (targetControlsTarget) {
+                    controls.target.lerp(targetControlsTarget, 0.05);
+                    if (controls.target.distanceTo(targetControlsTarget) < 0.02) targetControlsTarget = null;
+                }
+                controls.update();
                 renderer.render(scene, camera);
                 return;
             }
@@ -482,7 +1465,7 @@
             const prompt = document.getElementById('interaction-prompt');
             if (nearInteraction || nearSeat) {
                 prompt.style.display = 'block';
-                prompt.innerText = isSitting ? "Press E to Stand" : (nearInteraction ? `Press E to Use ${nearInteraction.type}` : "Press E to Sit");
+                prompt.innerText = isSitting ? "Press E to Stand" : (nearInteraction ? (nearInteraction.type === 'Radio' ? (radioPlaying ? "Press E to Turn Off Radio" : "Press E to Turn On Radio") : `Press E to Add Log`) : "Press E to Sit");
             } else { prompt.style.display = 'none'; }
 
             if (!isSitting) {
@@ -491,10 +1474,10 @@
                 if (p.keys.left) dx -= 1; if (p.keys.right) dx += 1;
 
                 if (dx !== 0 || dz !== 0) {
-                    const camF = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion); camF.y = 0; camF.normalize();
-                    const camR = new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion); camR.y = 0; camR.normalize();
+                    const camF = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion); camF.y = 0; camF.normalize();
+                    const camR = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion); camR.y = 0; camR.normalize();
                     const moveDir = new THREE.Vector3().addScaledVector(camF, -dz).addScaledVector(camR, dx).normalize();
-                    const speed = p.keys.shift ? 4 : 2;
+                    const speed = p.keys.shift ? 4.2 : 2.2;
                     const nextPos = p.mesh.position.clone().addScaledVector(moveDir, speed * delta);
                     
                     if (!checkCollision(nextPos)) { p.mesh.position.copy(nextPos); } else {
@@ -509,7 +1492,7 @@
                     while (diff > Math.PI) diff -= Math.PI * 2;
                     p.mesh.rotation.y += diff * 0.15;
                 }
-                if (p.keys.space && !p.isJumping) { p.isJumping = true; p.yVelocity = 3.5; }
+                if (p.keys.space && !p.isJumping) { p.isJumping = true; p.yVelocity = 3.6; }
                 if (p.isJumping) {
                     p.yVelocity -= 10.0 * delta; p.mesh.position.y += p.yVelocity * delta;
                     if (p.mesh.position.y <= 0) { p.mesh.position.y = 0; p.isJumping = false; p.yVelocity = 0; }
@@ -522,7 +1505,22 @@
                 }
             } else {
                 if (p.mixer) p.mixer.update(delta);
-                playAnim(p, 'idle'); 
+                playAnim(p, 'idle');
+            }
+
+            if (targetCameraPos) {
+                camera.position.lerp(targetCameraPos, 0.04);
+                if (camera.position.distanceTo(targetCameraPos) < 0.04) {
+                    camera.position.copy(targetCameraPos);
+                    targetCameraPos = null;
+                }
+            }
+            if (targetControlsTarget) {
+                controls.target.lerp(targetControlsTarget, 0.04);
+                if (controls.target.distanceTo(targetControlsTarget) < 0.04) {
+                    controls.target.copy(targetControlsTarget);
+                    targetControlsTarget = null;
+                }
             }
 
             if (isFirstPerson) {
@@ -531,74 +1529,290 @@
                 controls.enabled = false;
             } else {
                 controls.enabled = true;
-                const target = p.mesh.position.clone().add(new THREE.Vector3(0, 0.5, 0));
-                controls.target.lerp(target, 0.1);
+                if (!targetCameraPos) {
+                    const target = p.mesh.position.clone().add(new THREE.Vector3(0, 0.5, 0));
+                    controls.target.lerp(target, 0.1);
+                }
                 controls.update();
             }
+
+            updateSpeechBubble();
             renderer.render(scene, camera);
         }
 
         function toggleSit() {
             const p = players[0];
-            if (isSitting) { isSitting = false; p.mesh.position.y = 0; } else {
+            if (isSitting) {
+                isSitting = false;
+                p.mesh.position.y = 0;
+                showSpeechBubble("Back on my feet.");
+            } else {
                 let closestSeat = null;
                 seatSpots.forEach(seat => { if (Math.hypot(p.mesh.position.x - seat.x, p.mesh.position.z - seat.z) < 0.6) closestSeat = seat; });
                 if (closestSeat) {
-                    isSitting = true; p.mesh.position.set(closestSeat.x, closestSeat.y, closestSeat.z);
+                    isSitting = true;
+                    p.mesh.position.set(closestSeat.x, closestSeat.y, closestSeat.z);
                     if (closestSeat.rotY !== undefined) p.mesh.rotation.y = closestSeat.rotY + Math.PI;
+                    showSpeechBubble("Ah, comfy.");
                 }
             }
         }
 
+        function toggleRadio() {
+            radioPlaying = !radioPlaying;
+            if (radioIndicatorLight) {
+                radioIndicatorLight.material.color.setHex(radioPlaying ? 0x00ff00 : 0xff0000);
+                radioIndicatorLight.material.needsUpdate = true;
+            }
+            if (radioPlaying) {
+                playRadioMusic();
+                addSystemMessage("Radio playing cozy lofi tunes...");
+                showSpeechBubble("Playing some cozy tunes.");
+            } else {
+                stopRadioMusic();
+                addSystemMessage("Radio turned off.");
+                showSpeechBubble("Radio turned off.");
+            }
+        }
+
+        function spawnEmbersFlurry() {
+            embers.forEach(ember => {
+                ember.position.set(
+                    -2.2 + (Math.random() - 0.5) * 0.4,
+                    0.65 + Math.random() * 0.1,
+                    -2.0 + (Math.random() - 0.5) * 0.2
+                );
+                ember.userData.vy = 1.2 + Math.random() * 1.6;
+                ember.userData.vx = (Math.random() - 0.5) * 0.8;
+                ember.userData.vz = (Math.random() - 0.5) * 0.8;
+                ember.userData.life = 1.0;
+                ember.material.opacity = 1.0;
+            });
+        }
+
+        function showSpeechBubble(message) {
+            const p = players[0];
+            p.chatText = message;
+            clearTimeout(p.chatTimeout);
+            const bubble = document.getElementById('speech-bubble');
+            bubble.innerText = message;
+            bubble.style.display = 'block';
+            bubble.classList.remove('fade-out');
+            bubble.classList.add('visible');
+            p.chatTimeout = setTimeout(() => {
+                bubble.classList.remove('visible');
+                bubble.classList.add('fade-out');
+                setTimeout(() => {
+                    p.chatText = null;
+                    bubble.style.display = 'none';
+                }, 300);
+            }, 3500);
+        }
+
+        function addSystemMessage(text) {
+            const logList = document.getElementById('chat-log-list');
+            if (!logList) return;
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'chat-msg chat-msg-system';
+            msgDiv.innerText = text;
+            logList.appendChild(msgDiv);
+            logList.scrollTop = logList.scrollHeight;
+            
+            const panel = document.getElementById('chat-log-panel');
+            if (panel) {
+                panel.classList.add('opaque');
+                clearTimeout(chatLogTimeout);
+                chatLogTimeout = setTimeout(() => {
+                    if (!chatFocused) panel.classList.remove('opaque');
+                }, 4000);
+            }
+        }
+
+        function sendChatMessage() {
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if (!text) return;
+            input.value = '';
+            const logList = document.getElementById('chat-log-list');
+            if (logList) {
+                const msgDiv = document.createElement('div');
+                msgDiv.className = 'chat-msg';
+                msgDiv.innerHTML = `<span class="chat-msg-name" style="color: ${players[0].color}">${players[0].name}:</span> ${text}`;
+                logList.appendChild(msgDiv);
+                logList.scrollTop = logList.scrollHeight;
+            }
+            showSpeechBubble(text);
+        }
+
+        function updateSpeechBubble() {
+            const p = players[0];
+            const bubble = document.getElementById('speech-bubble');
+            if (!p || !p.mesh || !p.chatText || !bubble) return;
+            const tempV = new THREE.Vector3();
+            p.mesh.getWorldPosition(tempV);
+            tempV.y += 1.45;
+            tempV.project(camera);
+            if (tempV.z > 1.0) {
+                bubble.style.display = 'none';
+                return;
+            }
+            const x = (tempV.x * 0.5 + 0.5) * window.innerWidth;
+            const y = (tempV.y * -0.5 + 0.5) * window.innerHeight;
+            bubble.style.left = `${x}px`;
+            bubble.style.top = `${y}px`;
+        }
+
         window.addEventListener('keydown', e => {
+            if (document.activeElement.tagName === 'INPUT') {
+                if (e.key === 'Enter') {
+                    sendChatMessage();
+                    document.activeElement.blur();
+                }
+                return;
+            }
             const k = e.key.toLowerCase(), p = players[0];
-            if (k === 'w') p.keys.up = true; if (k === 's') p.keys.down = true;
-            if (k === 'a') p.keys.left = true; if (k === 'd') p.keys.right = true;
-            if (k === ' ') p.keys.space = true; if (e.shiftKey) p.keys.shift = true;
+            if (k === 'w') p.keys.up = true;
+            if (k === 's') p.keys.down = true;
+            if (k === 'a') p.keys.left = true;
+            if (k === 'd') p.keys.right = true;
+            if (k === ' ') p.keys.space = true;
+            if (e.shiftKey) p.keys.shift = true;
             if (k === 'v') {
                 isFirstPerson = !isFirstPerson;
                 if (isFirstPerson) renderer.domElement.requestPointerLock(); else document.exitPointerLock();
                 p.mesh.visible = !isFirstPerson;
+                document.getElementById('cam-mode-indicator').innerText = isFirstPerson ? "📽 FIRST PERSON — Press V for Third Person" : "📽 THIRD PERSON — Press V for First Person";
             }
             if (k === 'e') {
-                if (Math.hypot(p.mesh.position.x - (-1.8), p.mesh.position.z - 2.2) < 0.8) fireBonusTime = 120;
-                else toggleSit();
+                if (Math.hypot(p.mesh.position.x - (-1.8), p.mesh.position.z - 2.2) < 0.8) {
+                    fireBonusTime = 120;
+                    spawnEmbersFlurry();
+                    addSystemMessage("Added a log to the fireplace. Cozy!");
+                    showSpeechBubble("Warmth +1!");
+                } else if (Math.hypot(p.mesh.position.x - 1.2, p.mesh.position.z - (-2.1)) < 0.9) {
+                    toggleRadio();
+                } else {
+                    toggleSit();
+                }
             }
-            if (e.key === 'Escape') { isPaused = !isPaused; document.getElementById('pause-overlay').classList.toggle('hidden', !isPaused); }
+            if (e.key === 'Escape') {
+                isPaused = !isPaused;
+                document.getElementById('pause-overlay').classList.toggle('hidden', !isPaused);
+            }
         });
 
         window.addEventListener('keyup', e => {
+            if (document.activeElement.tagName === 'INPUT') return;
             const k = e.key.toLowerCase(), p = players[0];
-            if (k === 'w') p.keys.up = false; if (k === 's') p.keys.down = false;
-            if (k === 'a') p.keys.left = false; if (k === 'd') p.keys.right = false;
-            if (k === ' ') p.keys.space = false; if (!e.shiftKey) p.keys.shift = false;
+            if (k === 'w') p.keys.up = false;
+            if (k === 's') p.keys.down = false;
+            if (k === 'a') p.keys.left = false;
+            if (k === 'd') p.keys.right = false;
+            if (k === ' ') p.keys.space = false;
+            if (!e.shiftKey) p.keys.shift = false;
         });
 
         document.addEventListener('mousemove', e => {
             if (isFirstPerson && document.pointerLockElement === renderer.domElement) {
-                fpYaw -= e.movementX * 0.002; fpPitch -= e.movementY * 0.002;
-                fpPitch = Math.max(-Math.PI/2+0.1, Math.min(Math.PI/2-0.1, fpPitch));
+                fpYaw -= e.movementX * 0.0025;
+                fpPitch -= e.movementY * 0.0025;
+                fpPitch = Math.max(-Math.PI / 2 + 0.15, Math.min(Math.PI / 2 - 0.15, fpPitch));
             }
         });
 
         document.getElementById('start-btn').addEventListener('click', () => {
-            isCustomizing = false; players[0].isCustomizing = false;
-            players[0].color = document.querySelector('.color-btn.active').dataset.color;
-            updatePlayerVisuals(players[0]);
+            const p = players[0];
+            p.color = document.querySelector('.color-btn.active').dataset.color;
+            p.name = document.getElementById('custom-name-input').value.trim() || "Lumberjack";
+            p.isCustomizing = false;
+            isCustomizing = false;
+            updatePlayerVisuals(p);
+            
+            targetCameraPos = new THREE.Vector3(0, 2.5, 4.5);
+            targetControlsTarget = new THREE.Vector3(0, 0.5, 0);
+
             document.getElementById('customization-overlay').classList.add('hidden');
             if (stormSound.buffer) stormSound.play();
+            addSystemMessage(`Welcome to The Cabin, ${p.name}!`);
         });
 
         document.querySelectorAll('.color-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
+                if (players[0] && players[0].mesh) {
+                    players[0].color = btn.dataset.color;
+                    updatePlayerVisuals(players[0]);
+                }
             });
         });
 
-        document.getElementById('resume-btn').addEventListener('click', () => { isPaused = false; document.getElementById('pause-overlay').classList.add('hidden'); });
-        document.getElementById('back-btn').addEventListener('click', () => window.location.href = 'index.html');
-        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+        document.getElementById('resume-btn').addEventListener('click', () => {
+            isPaused = false;
+            document.getElementById('pause-overlay').classList.add('hidden');
+        });
+
+        document.getElementById('back-btn').addEventListener('click', () => {
+            const fade = document.getElementById('fade-overlay');
+            fade.classList.remove('fade-out-active');
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 800);
+        });
+
+        document.getElementById('chat-send-btn').addEventListener('click', sendChatMessage);
+
+        const chatInputEl = document.getElementById('chat-input');
+        const chatLogPanelEl = document.getElementById('chat-log-panel');
+        chatInputEl.addEventListener('focus', () => {
+            chatFocused = true;
+            chatLogPanelEl.classList.add('opaque');
+        });
+        chatInputEl.addEventListener('blur', () => {
+            chatFocused = false;
+            chatLogPanelEl.classList.remove('opaque');
+        });
+
+        const controlsPanel = document.querySelector('.controls-panel');
+        const controlsTabBtn = document.getElementById('controls-tab-btn');
+        document.getElementById('controls-close-btn').addEventListener('click', () => {
+            controlsPanel.classList.add('collapsed');
+            controlsTabBtn.classList.add('visible');
+        });
+        controlsTabBtn.addEventListener('click', () => {
+            controlsPanel.classList.remove('collapsed');
+            controlsTabBtn.classList.remove('visible');
+        });
+
+        let systemVolumeMuted = false;
+        document.getElementById('mute-btn').addEventListener('click', () => {
+            systemVolumeMuted = !systemVolumeMuted;
+            if (systemVolumeMuted) {
+                stormSound.setVolume(0);
+                audioMuted = true;
+                if (audioCtx && audioCtx.state === 'running') audioCtx.suspend();
+                document.getElementById('mute-btn').innerHTML = '<i class="fa-solid fa-volume-xmark"></i>';
+            } else {
+                stormSound.setVolume(0.4);
+                audioMuted = false;
+                if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+                document.getElementById('mute-btn').innerHTML = '<i class="fa-solid fa-volume-high"></i>';
+            }
+        });
+
+        window.addEventListener('load', () => {
+            const fade = document.getElementById('fade-overlay');
+            setTimeout(() => {
+                fade.classList.add('fade-out-active');
+            }, 100);
+        });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
         loadModels();
     </script>
 </body>
