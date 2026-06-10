@@ -1581,7 +1581,7 @@
             // Camera update
             if (localP && localP.mesh) {
                 if (isFirstPerson) {
-                    const headPos = localP.mesh.position.clone().add(new THREE.Vector3(0, 1.4, 0));
+                    const headPos = localP.mesh.position.clone().add(new THREE.Vector3(0, 0.65, 0));
                     camera.position.copy(headPos);
                     const euler = new THREE.Euler(fpPitch, fpYaw, 0, 'YXZ');
                     camera.quaternion.setFromEuler(euler);

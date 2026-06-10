@@ -281,9 +281,6 @@
         const mantel = new THREE.Mesh(new THREE.BoxGeometry(2.5, 3.5, 1.2), brickMat);
         mantel.position.set(-3.7, 1.75, -3.7);
         fireplace.add(mantel);
-        const hole = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.5, 1), new THREE.MeshBasicMaterial({color: 0x000000}));
-        hole.position.set(-3.7, 1.0, -3.2);
-        fireplace.add(hole);
         scene.add(fireplace);
         colliders.push({ x: -3.7, z: -3.7, w: 2.5, d: 1.2 });
 
@@ -560,7 +557,7 @@
 
             // Camera
             if (isFirstPerson) {
-                camera.position.copy(p.mesh.position).add(new THREE.Vector3(0, 1.4, 0));
+                camera.position.copy(p.mesh.position).add(new THREE.Vector3(0, 0.65, 0));
                 camera.quaternion.setFromEuler(new THREE.Euler(fpPitch, fpYaw, 0, 'YXZ'));
                 controls.enabled = false;
             } else {
