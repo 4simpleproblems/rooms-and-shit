@@ -1272,7 +1272,7 @@ function animate() {
             } else {
                 p.vx = 0; p.vz = 0; p.yVelocity = 0;
                 p.isJumping = false;
-                p.mesh.position.y = floorY + 0.85;
+                p.mesh.position.y = floorY + 0.5;
                 if (p.mixer) {
                     p.mixer.update(delta);
                     updateAnimState(p, 0);
@@ -1499,7 +1499,7 @@ window.addEventListener('keydown', e => {
                     localP.vz = 0;
                     localP.yVelocity = 0;
                     localP.isJumping = false;
-                    localP.mesh.position.set(closestBench.x, floorY + 0.85, closestBench.z);
+                    localP.mesh.position.set(closestBench.x, floorY + 0.5, closestBench.z);
                     localP.mesh.rotation.set(0, 0, 0);
                 }
             }
