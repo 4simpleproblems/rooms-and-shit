@@ -1332,9 +1332,16 @@
             isReadingBook = true;
             isCustomizing = true;
             const savedPage = localStorage.getItem('gatsby_bookmark_page');
-            bookCurrentPage = savedPage ? parseInt(savedPage) : 1;
-            document.getElementById('book-page-input').value = bookCurrentPage;
-            document.getElementById('book-iframe').src = `book/thegreatgatsby.pdf#toolbar=0&navpanes=0&page=${bookCurrentPage}`;
+            const targetPage = savedPage ? parseInt(savedPage) : 1;
+            const iframe = document.getElementById('book-iframe');
+            const targetUrl = `book/thegreatgatsby.pdf#toolbar=0&navpanes=0&page=${targetPage}`;
+            if (!iframe.src || iframe.src.indexOf('thegreatgatsby.pdf') === -1) {
+                bookCurrentPage = targetPage;
+                document.getElementById('book-page-input').value = bookCurrentPage;
+                iframe.src = targetUrl;
+            } else if (bookCurrentPage !== targetPage) {
+                changeBookPage(targetPage);
+            }
             document.getElementById('book-overlay').classList.remove('hidden');
         }
 
@@ -1343,7 +1350,6 @@
             isCustomizing = false;
             localStorage.setItem('gatsby_bookmark_page', bookCurrentPage);
             document.getElementById('book-overlay').classList.add('hidden');
-            document.getElementById('book-iframe').src = 'about:blank';
         }
 
         function changeBookPage(page) {
@@ -1352,7 +1358,17 @@
             if (p > 1000) p = 1000;
             bookCurrentPage = p;
             document.getElementById('book-page-input').value = bookCurrentPage;
-            document.getElementById('book-iframe').src = `book/thegreatgatsby.pdf#toolbar=0&navpanes=0&page=${bookCurrentPage}`;
+            const iframe = document.getElementById('book-iframe');
+            const targetUrl = `book/thegreatgatsby.pdf#toolbar=0&navpanes=0&page=${bookCurrentPage}`;
+            if (iframe && iframe.contentWindow) {
+                try {
+                    iframe.contentWindow.location.replace(targetUrl);
+                } catch (e) {
+                    iframe.src = targetUrl;
+                }
+            } else if (iframe) {
+                iframe.src = targetUrl;
+            }
             localStorage.setItem('gatsby_bookmark_page', bookCurrentPage);
         }
 
