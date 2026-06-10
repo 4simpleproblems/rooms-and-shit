@@ -62,6 +62,13 @@
             font-family: 'Inter', sans-serif; font-weight: 900; font-size: 0.8rem; color: #FFFFFF; pointer-events: none; z-index: 40; text-transform: uppercase;
         }
 
+        #interaction-prompt {
+            position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
+            background: var(--white-ui); border: 4px solid var(--black-outline); box-shadow: 4px 4px 0px var(--black-outline);
+            padding: 8px 16px; font-family: 'Inter', sans-serif; font-weight: 900; font-size: 1rem;
+            z-index: 50; display: none;
+        }
+
         #customization-overlay, #pause-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.7);
             backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); z-index: 200;
@@ -111,6 +118,8 @@
         </div>
     </div>
 
+    <div id="interaction-prompt">Press E to Interact</div>
+
     <div class="ui-layer">
         <div class="ui-panel header-panel">
             <button id="back-btn" class="ui-btn"><i class="fa-solid fa-arrow-left"></i> Map</button>
@@ -123,6 +132,7 @@
             <h3>CABIN CONTROLS</h3>
             <div class="control-row"><span>Move</span><span class="control-key">WASD</span></div>
             <div class="control-row"><span>Jump</span><span class="control-key">Space</span></div>
+            <div class="control-row"><span>Interact</span><span class="control-key">E</span></div>
             <div class="control-row"><span>Cam Mode</span><span class="control-key">V</span></div>
             <div class="control-row"><span>Pause</span><span class="control-key">Esc</span></div>
         </div>
@@ -158,7 +168,7 @@
 
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
-        controls.maxDistance = 6; // Constrain camera inside small cabin
+        controls.maxDistance = 6; 
         controls.minDistance = 1;
         controls.maxPolarAngle = Math.PI / 2 - 0.1;
 
@@ -169,18 +179,19 @@
         const ambientLight = new THREE.AmbientLight(0x101020, 0.5);
         scene.add(ambientLight);
 
-        // Fireplace Light (Warm)
+        let fireIntensity = 1.0;
+        let fireBonusTime = 0;
+
         const fireLight = new THREE.PointLight(0xff6600, 2.5, 10);
-        fireLight.position.set(-3.5, 1.5, -3.5);
+        fireLight.position.set(-3.7, 1.5, -3.7);
         fireLight.castShadow = true;
         scene.add(fireLight);
 
-        // Outside Storm Light (Cold)
         const stormLight = new THREE.PointLight(0x4466ff, 0.6, 12);
         stormLight.position.set(0, 4, 6);
         scene.add(stormLight);
 
-        // --- Snow Storm Sound ---
+        // --- Sound ---
         const listener = new THREE.AudioListener();
         camera.add(listener);
         const stormSound = new THREE.Audio(listener);
@@ -191,7 +202,7 @@
             stormSound.setVolume(0.5);
         });
 
-        // --- Cabin Environment ---
+        // --- Materials ---
         const logMat = new THREE.MeshStandardMaterial({ color: 0x3d2b1f, roughness: 0.9 });
         const floorMat = new THREE.MeshStandardMaterial({ color: 0x2b1d12, roughness: 0.8 });
         const brickMat = new THREE.MeshStandardMaterial({ color: 0x6e261d, roughness: 1.0 });
@@ -199,7 +210,12 @@
         const couchMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.9 });
         const tableMat = new THREE.MeshStandardMaterial({ color: 0x4d3319, roughness: 0.7 });
 
-        // Floor (Smaller 10x10)
+        // --- Cabin Layout ---
+        const colliders = [];
+        const seatSpots = [];
+        const interactions = [];
+
+        // Floor
         const floor = new THREE.Mesh(new THREE.BoxGeometry(10, 0.5, 10), floorMat);
         floor.receiveShadow = true;
         scene.add(floor);
@@ -211,16 +227,22 @@
         scene.add(rug);
 
         // Walls
-        function createLogWall(x, z, rotY, hasWindow = false) {
+        function createLogWall(x, z, rotY, hasWindow = false, isGable = false) {
             const group = new THREE.Group();
-            for (let i = 0; i < 10; i++) {
+            const logCount = isGable ? 14 : 10;
+            for (let i = 0; i < logCount; i++) {
+                let logW = 10;
+                if (isGable && i >= 10) {
+                    logW = 10 - (i - 9) * 2; // Triangle peak
+                }
+
                 if (hasWindow && i > 2 && i < 8) {
                     const l1 = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 3), logMat);
                     l1.rotation.z = Math.PI / 2; l1.position.set(-3.5, i * 0.6, 0); group.add(l1);
                     const l2 = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 3), logMat);
                     l2.rotation.z = Math.PI / 2; l2.position.set(3.5, i * 0.6, 0); group.add(l2);
                 } else {
-                    const log = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 10), logMat);
+                    const log = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, logW), logMat);
                     log.rotation.z = Math.PI / 2;
                     log.position.y = i * 0.6;
                     group.add(log);
@@ -231,37 +253,30 @@
             scene.add(group);
         }
 
-        createLogWall(0, -5, 0); // Back
+        createLogWall(0, -5, 0, false, true); // Back Gable
         createLogWall(-5, 0, Math.PI / 2); // Left
         createLogWall(5, 0, Math.PI / 2); // Right
-        createLogWall(0, 5, 0, true); // Front window
+        createLogWall(0, 5, 0, true, true); // Front Gable Window
 
-        // --- Glass Window ---
-        const glassMat = new THREE.MeshStandardMaterial({ 
-            color: 0xffffff, 
-            transparent: true, 
-            opacity: 0.2, 
-            metalness: 1.0, 
-            roughness: 0.05,
-            side: THREE.DoubleSide
-        });
+        // Glass
+        const glassMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.2, metalness: 1.0, roughness: 0.05, side: THREE.DoubleSide });
         const glass = new THREE.Mesh(new THREE.PlaneGeometry(4, 3), glassMat);
         glass.position.set(0, 3, 5);
         scene.add(glass);
 
-        // --- Peaked Roof (Full Coverage) ---
+        // Roof
         const roofGroup = new THREE.Group();
         const roofMat = new THREE.MeshStandardMaterial({ color: 0x2b1d12, roughness: 0.9 });
-        const roofSideA = new THREE.Mesh(new THREE.BoxGeometry(8, 0.4, 11), roofMat);
-        roofSideA.rotation.z = 0.5;
-        roofSideA.position.set(-3, 7.5, 0);
-        const roofSideB = new THREE.Mesh(new THREE.BoxGeometry(8, 0.4, 11), roofMat);
-        roofSideB.rotation.z = -0.5;
-        roofSideB.position.set(3, 7.5, 0);
+        const roofSideA = new THREE.Mesh(new THREE.BoxGeometry(7, 0.4, 11), roofMat);
+        roofSideA.rotation.z = 0.65;
+        roofSideA.position.set(-2.8, 7.3, 0);
+        const roofSideB = new THREE.Mesh(new THREE.BoxGeometry(7, 0.4, 11), roofMat);
+        roofSideB.rotation.z = -0.65;
+        roofSideB.position.set(2.8, 7.3, 0);
         roofGroup.add(roofSideA, roofSideB);
         scene.add(roofGroup);
 
-        // Remade Fireplace
+        // Fireplace
         const fireplace = new THREE.Group();
         const mantel = new THREE.Mesh(new THREE.BoxGeometry(2.5, 3.5, 1.2), brickMat);
         mantel.position.set(-3.7, 1.75, -3.7);
@@ -269,18 +284,22 @@
         const hole = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.5, 1), new THREE.MeshBasicMaterial({color: 0x000000}));
         hole.position.set(-3.7, 1.0, -3.2);
         fireplace.add(hole);
-        
-        // Flames
-        const flameGeo = new THREE.ConeGeometry(0.3, 0.6, 8);
-        const flameMat = new THREE.MeshBasicMaterial({color: 0xffaa00});
+        scene.add(fireplace);
+        colliders.push({ x: -3.7, z: -3.7, w: 2.5, d: 1.2 });
+
+        // Flames (Particle-like system)
+        const flameCount = 15;
         const flames = new THREE.Group();
-        for(let i=0; i<3; i++) {
-            const f = new THREE.Mesh(flameGeo, flameMat);
-            f.position.set(-3.7 + (i-1)*0.2, 0.7, -3.3);
+        for(let i=0; i<flameCount; i++) {
+            const f = new THREE.Mesh(
+                new THREE.ConeGeometry(0.1 + Math.random()*0.2, 0.4 + Math.random()*0.4, 6),
+                new THREE.MeshBasicMaterial({color: 0xffaa00, transparent: true, opacity: 0.8})
+            );
+            f.position.set(-3.7 + (Math.random()-0.5)*0.8, 0.6, -3.3 + (Math.random()-0.5)*0.4);
+            f.userData = { baseOpacity: 0.8, phase: Math.random()*Math.PI*2, speed: 2 + Math.random()*3 };
             flames.add(f);
         }
-        fireplace.add(flames);
-        scene.add(fireplace);
+        scene.add(flames);
 
         // Furniture
         function createCouch(x, z, rotY) {
@@ -296,6 +315,8 @@
             group.position.set(x, 0.25, z);
             group.rotation.y = rotY;
             scene.add(group);
+            colliders.push({ x, z, w: 3, d: 1.5, rotY });
+            seatSpots.push({ x, z, y: 0.6, type: 'Couch', rotY });
         }
         createCouch(0, -3, 0); 
 
@@ -304,6 +325,8 @@
             bb.scale.y = 0.6;
             bb.position.set(x, 0.5, z);
             scene.add(bb);
+            colliders.push({ x, z, w: 1.2, d: 1.2 });
+            seatSpots.push({ x, z, y: 0.5, type: 'BeanBag' });
         }
         createBeanBag(3, -2, 0x224488);
         createBeanBag(-3, 2, 0x884422);
@@ -316,20 +339,37 @@
             group.add(top, leg);
             group.position.set(x, 0.6, z);
             scene.add(group);
+            colliders.push({ x, z, w: 1, d: 1 });
         }
         createSideTable(2, -3.5);
 
-        // --- Snow Particle System (Blowing Parallel) ---
-        const snowCount = 3000;
+        // Logs Stack
+        const logStack = new THREE.Group();
+        for(let i=0; i<3; i++) {
+            const log = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 1), logMat);
+            log.rotation.z = Math.PI/2;
+            log.position.set(0, 0.15, i*0.4 - 0.4);
+            logStack.add(log);
+        }
+        const topLog = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 1), logMat);
+        topLog.rotation.z = Math.PI/2;
+        topLog.position.set(0, 0.4, 0);
+        logStack.add(topLog);
+        logStack.position.set(-3, 0.25, 4);
+        scene.add(logStack);
+        interactions.push({ x: -3, z: 4, type: 'Logs', range: 1.5 });
+        colliders.push({ x: -3, z: 4, w: 1, d: 1 });
+
+        // --- Snow Particles ---
+        const snowCount = 2000;
         const snowGeo = new THREE.BufferGeometry();
         const snowPos = new Float32Array(snowCount * 3);
         const snowVel = [];
-
         for(let i = 0; i < snowCount; i++) {
-            snowPos[i*3] = (Math.random() - 0.5) * 50; // X (Across window)
-            snowPos[i*3+1] = Math.random() * 20;      // Y
-            snowPos[i*3+2] = 8 + Math.random() * 10;   // Z (Outside window)
-            snowVel.push({ x: -1.5 - Math.random() * 2.0, y: -0.1 - Math.random() * 0.1, z: 0 });
+            snowPos[i*3] = (Math.random() - 0.5) * 50;
+            snowPos[i*3+1] = Math.random() * 20;
+            snowPos[i*3+2] = 8 + Math.random() * 10;
+            snowVel.push({ x: -1.5 - Math.random() * 2.0, y: -0.1 - Math.random() * 0.1 });
         }
         snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPos, 3));
         const snowMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.1, transparent: true, opacity: 0.6 });
@@ -338,13 +378,12 @@
 
         // --- Player Data ---
         let isFirstPerson = false, fpYaw = Math.PI, fpPitch = 0;
-        let isCustomizing = true, isPaused = false;
+        let isCustomizing = true, isPaused = false, isSitting = false;
         const players = [
             { id: 1, name: 'Lumberjack', color: '#FF8C00', mesh: null, position: new THREE.Vector3(0,0,0), isJumping: false, yVelocity: 0, keys:{up:false,down:false,left:false,right:false,space:false,shift:false}, isCustomizing: true }
         ];
 
-        let charGltfMaster = null;
-        let animationsMaster = [];
+        let charGltfMaster = null, animationsMaster = [];
 
         async function loadModels() {
             try {
@@ -361,12 +400,9 @@
                     });
                     return new THREE.AnimationClip(a.name, a.duration, tracks);
                 });
-                
                 setupLocalPlayer();
                 animate();
-            } catch (err) {
-                console.error("Error loading Cabin assets:", err);
-            }
+            } catch (err) { console.error(err); }
         }
 
         function setupLocalPlayer() {
@@ -377,40 +413,64 @@
             p.mesh = mesh;
             p.mixer = new THREE.AnimationMixer(mesh);
             p.actions = {};
-            animationsMaster.forEach(clip => {
-                p.actions[clip.name.toLowerCase()] = p.mixer.clipAction(clip);
-            });
+            animationsMaster.forEach(clip => { p.actions[clip.name.toLowerCase()] = p.mixer.clipAction(clip); });
             mesh.traverse(o => {
                 if (o.isMesh) {
                     o.castShadow = true; o.receiveShadow = true;
-                    if (o.name.includes('Body') || o.name.includes('Leg')) {
-                        o.material = createToonMaterial(o.material.map, p.color);
-                    }
+                    if (o.name.includes('Body') || o.name.includes('Leg')) o.material = createToonMaterial(o.material.map, p.color);
                 }
             });
             updatePlayerVisuals(p);
         }
 
         function playAnim(p, name) {
-            if (!p.actions || !p.actions[name]) return;
-            if (p.currentAnim === name) return;
+            if (!p.actions || !p.actions[name] || p.currentAnim === name) return;
             if (p.currentAnim && p.actions[p.currentAnim]) p.actions[p.currentAnim].fadeOut(0.2);
             p.actions[name].reset().fadeIn(0.2).play();
             p.currentAnim = name;
         }
 
+        function checkCollision(pos) {
+            // Cabin walls
+            if (Math.abs(pos.x) > 4.5 || Math.abs(pos.z) > 4.5) return true;
+            
+            // Furniture colliders
+            for (const c of colliders) {
+                let dx = pos.x - c.x;
+                let dz = pos.z - c.z;
+                if (c.rotY) {
+                    const s = Math.sin(-c.rotY), cc = Math.cos(-c.rotY);
+                    const nx = dx * cc - dz * s;
+                    const nz = dx * s + dz * cc;
+                    dx = nx; dz = nz;
+                }
+                if (Math.abs(dx) < c.w/2 + 0.3 && Math.abs(dz) < c.d/2 + 0.3) return true;
+            }
+            return false;
+        }
+
         function animate() {
             requestAnimationFrame(animate);
             const delta = clock.getDelta();
-            
-            // Fireplace Flicker
-            fireLight.intensity = 2.0 + Math.random() * 1.0;
+            const time = clock.elapsedTime;
+
+            // Fire Logic
+            if (fireBonusTime > 0) {
+                fireBonusTime -= delta;
+                fireIntensity = 1.8;
+            } else {
+                fireIntensity = 1.0;
+            }
+
+            fireLight.intensity = (2.0 + Math.random()) * fireIntensity;
             flames.children.forEach(f => {
-                f.scale.y = 0.8 + Math.random() * 0.4;
-                f.position.y = 0.8 + (f.scale.y - 1) * 0.4;
+                const s = 1.0 + Math.sin(time * f.userData.speed + f.userData.phase) * 0.2;
+                f.scale.set(s * fireIntensity, s * fireIntensity * 1.5, s * fireIntensity);
+                f.material.opacity = (0.6 + Math.random()*0.4) * fireIntensity;
+                f.position.y = 0.6 + (f.scale.y - 1)*0.2;
             });
 
-            // Snow Update
+            // Snow
             const positions = snowParticles.geometry.attributes.position.array;
             for(let i = 0; i < snowCount; i++) {
                 positions[i*3] += snowVel[i].x;
@@ -427,58 +487,80 @@
                 return;
             }
 
-            // Movement Logic
-            let dx = 0, dz = 0;
-            if (p.keys.up) dz -= 1;
-            if (p.keys.down) dz += 1;
-            if (p.keys.left) dx -= 1;
-            if (p.keys.right) dx += 1;
+            // Interaction Check
+            let nearInteraction = null;
+            interactions.forEach(inter => {
+                const d = Math.hypot(p.mesh.position.x - inter.x, p.mesh.position.z - inter.z);
+                if (d < inter.range) nearInteraction = inter;
+            });
 
-            if (dx !== 0 || dz !== 0) {
-                const camF = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion); camF.y = 0; camF.normalize();
-                const camR = new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion); camR.y = 0; camR.normalize();
-                const moveDir = new THREE.Vector3().addScaledVector(camF, -dz).addScaledVector(camR, dx).normalize();
-                
-                const speed = p.keys.shift ? 6 : 3;
-                const nextPos = p.mesh.position.clone().addScaledVector(moveDir, speed * delta);
-                
-                // Simple Cabin Bounds (Constraint for 10x10)
-                if (Math.abs(nextPos.x) < 4.2 && Math.abs(nextPos.z) < 4.2) {
-                    p.mesh.position.copy(nextPos);
+            let nearSeat = null;
+            seatSpots.forEach(seat => {
+                const d = Math.hypot(p.mesh.position.x - seat.x, p.mesh.position.z - seat.z);
+                if (d < 1.0) nearSeat = seat;
+            });
+
+            const prompt = document.getElementById('interaction-prompt');
+            if (nearInteraction || nearSeat) {
+                prompt.style.display = 'block';
+                prompt.innerText = isSitting ? "Press E to Stand" : (nearInteraction ? `Press E to Use ${nearInteraction.type}` : "Press E to Sit");
+            } else {
+                prompt.style.display = 'none';
+            }
+
+            // Movement
+            if (!isSitting) {
+                let dx = 0, dz = 0;
+                if (p.keys.up) dz -= 1; if (p.keys.down) dz += 1;
+                if (p.keys.left) dx -= 1; if (p.keys.right) dx += 1;
+
+                if (dx !== 0 || dz !== 0) {
+                    const camF = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion); camF.y = 0; camF.normalize();
+                    const camR = new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion); camR.y = 0; camR.normalize();
+                    const moveDir = new THREE.Vector3().addScaledVector(camF, -dz).addScaledVector(camR, dx).normalize();
+                    const speed = p.keys.shift ? 6 : 3;
+                    const nextPos = p.mesh.position.clone().addScaledVector(moveDir, speed * delta);
+                    
+                    if (!checkCollision(nextPos)) {
+                        p.mesh.position.copy(nextPos);
+                    } else {
+                        // Sliding collision
+                        const nextX = p.mesh.position.clone().add(new THREE.Vector3(moveDir.x * speed * delta, 0, 0));
+                        if (!checkCollision(nextX)) p.mesh.position.copy(nextX);
+                        const nextZ = p.mesh.position.clone().add(new THREE.Vector3(0, 0, moveDir.z * speed * delta));
+                        if (!checkCollision(nextZ)) p.mesh.position.copy(nextZ);
+                    }
+
+                    const targetRot = Math.atan2(moveDir.x, moveDir.z) + Math.PI;
+                    let diff = targetRot - p.mesh.rotation.y;
+                    while (diff < -Math.PI) diff += Math.PI * 2;
+                    while (diff > Math.PI) diff -= Math.PI * 2;
+                    p.mesh.rotation.y += diff * 0.15;
                 }
 
-                const targetRot = Math.atan2(moveDir.x, moveDir.z) + Math.PI;
-                let diff = targetRot - p.mesh.rotation.y;
-                while (diff < -Math.PI) diff += Math.PI * 2;
-                while (diff > Math.PI) diff -= Math.PI * 2;
-                p.mesh.rotation.y += diff * 0.15;
-            }
-
-            // Jump Physics
-            if (p.keys.space && !p.isJumping) {
-                p.isJumping = true; p.yVelocity = 6.0;
-            }
-            if (p.isJumping) {
-                p.yVelocity -= 18.0 * delta;
-                p.mesh.position.y += p.yVelocity * delta;
-                if (p.mesh.position.y <= 0) {
-                    p.mesh.position.y = 0; p.isJumping = false; p.yVelocity = 0;
+                // Jump
+                if (p.keys.space && !p.isJumping) { p.isJumping = true; p.yVelocity = 5.0; }
+                if (p.isJumping) {
+                    p.yVelocity -= 15.0 * delta;
+                    p.mesh.position.y += p.yVelocity * delta;
+                    if (p.mesh.position.y <= 0) { p.mesh.position.y = 0; p.isJumping = false; p.yVelocity = 0; }
                 }
+
+                if (p.mixer) {
+                    p.mixer.update(delta);
+                    if (p.isJumping) playAnim(p, 'jump');
+                    else if (dx !== 0 || dz !== 0) playAnim(p, p.keys.shift ? 'sprint' : 'stomp');
+                    else playAnim(p, 'idle');
+                }
+            } else {
+                if (p.mixer) p.mixer.update(delta);
+                // Assume 'idle' or similar for sitting for now since character.js doesn't have 'sit'
+                playAnim(p, 'idle'); 
             }
 
-            // Animation Handling
-            if (p.mixer) {
-                p.mixer.update(delta);
-                const isMoving = dx !== 0 || dz !== 0;
-                if (p.isJumping) playAnim(p, 'jump');
-                else if (isMoving) playAnim(p, p.keys.shift ? 'sprint' : 'stomp');
-                else playAnim(p, 'idle');
-            }
-
-            // Camera Logic
+            // Camera
             if (isFirstPerson) {
-                const headPos = p.mesh.position.clone().add(new THREE.Vector3(0, 1.4, 0));
-                camera.position.copy(headPos);
+                camera.position.copy(p.mesh.position).add(new THREE.Vector3(0, 1.4, 0));
                 camera.quaternion.setFromEuler(new THREE.Euler(fpPitch, fpYaw, 0, 'YXZ'));
                 controls.enabled = false;
             } else {
@@ -491,21 +573,44 @@
             renderer.render(scene, camera);
         }
 
-        // --- Event Listeners ---
+        function toggleSit() {
+            const p = players[0];
+            if (isSitting) {
+                isSitting = false;
+                p.mesh.position.y = 0;
+            } else {
+                let closestSeat = null;
+                seatSpots.forEach(seat => {
+                    const d = Math.hypot(p.mesh.position.x - seat.x, p.mesh.position.z - seat.z);
+                    if (d < 1.0) closestSeat = seat;
+                });
+                if (closestSeat) {
+                    isSitting = true;
+                    p.mesh.position.set(closestSeat.x, closestSeat.y, closestSeat.z);
+                    if (closestSeat.rotY !== undefined) p.mesh.rotation.y = closestSeat.rotY + Math.PI;
+                }
+            }
+        }
+
         window.addEventListener('keydown', e => {
             const k = e.key.toLowerCase();
             const p = players[0];
-            if (k === 'w') p.keys.up = true;
-            if (k === 's') p.keys.down = true;
-            if (k === 'a') p.keys.left = true;
-            if (k === 'd') p.keys.right = true;
-            if (k === ' ') p.keys.space = true;
-            if (e.shiftKey) p.keys.shift = true;
+            if (k === 'w') p.keys.up = true; if (k === 's') p.keys.down = true;
+            if (k === 'a') p.keys.left = true; if (k === 'd') p.keys.right = true;
+            if (k === ' ') p.keys.space = true; if (e.shiftKey) p.keys.shift = true;
             if (k === 'v') {
                 isFirstPerson = !isFirstPerson;
-                if (isFirstPerson) renderer.domElement.requestPointerLock();
-                else document.exitPointerLock();
+                if (isFirstPerson) renderer.domElement.requestPointerLock(); else document.exitPointerLock();
                 p.mesh.visible = !isFirstPerson;
+            }
+            if (k === 'e') {
+                // Interact
+                const dLogs = Math.hypot(p.mesh.position.x - (-3), p.mesh.position.z - 4);
+                if (dLogs < 1.5) {
+                    fireBonusTime = 120; // 2 mins
+                } else {
+                    toggleSit();
+                }
             }
             if (e.key === 'Escape') {
                 isPaused = !isPaused;
@@ -516,12 +621,9 @@
         window.addEventListener('keyup', e => {
             const k = e.key.toLowerCase();
             const p = players[0];
-            if (k === 'w') p.keys.up = false;
-            if (k === 's') p.keys.down = false;
-            if (k === 'a') p.keys.left = false;
-            if (k === 'd') p.keys.right = false;
-            if (k === ' ') p.keys.space = false;
-            if (!e.shiftKey) p.keys.shift = false;
+            if (k === 'w') p.keys.up = false; if (k === 's') p.keys.down = false;
+            if (k === 'a') p.keys.left = false; if (k === 'd') p.keys.right = false;
+            if (k === ' ') p.keys.space = false; if (!e.shiftKey) p.keys.shift = false;
         });
 
         document.addEventListener('mousemove', e => {
@@ -538,11 +640,7 @@
             players[0].color = document.querySelector('.color-btn.active').dataset.color;
             updatePlayerVisuals(players[0]);
             document.getElementById('customization-overlay').classList.add('hidden');
-            
-            // Start audio on first interaction
-            if (stormSound.buffer) {
-                stormSound.play();
-            }
+            if (stormSound.buffer) stormSound.play();
         });
 
         document.querySelectorAll('.color-btn').forEach(btn => {
