@@ -32,7 +32,7 @@ self.__uv$config = {
 
 importScripts(config.sw);
 
-const uv = new UVServiceWorker();
+const uv = new UVServiceWorker(self.__uv$config);
 
 let transportReady = false;
 let transportResolve;
@@ -86,6 +86,12 @@ async function handleFetch(event) {
     const url = event.request.url;
     if (url.includes(config.prefix)) {
         if (!transportReady) await transportPromise;
+        // Log the decoded URL for debugging
+        try {
+            const encodedPart = url.split(config.prefix)[1];
+            const decoded = xor.decode(encodedPart);
+            console.log("SW Fetching proxied URL:", decoded);
+        } catch (e) {}
         return await uv.fetch(event);
     }
     

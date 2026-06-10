@@ -68,9 +68,11 @@
                     });
                     console.log("ServiceWorker registered");
 
-                    // Wait for ServiceWorker to be active
+                    // Wait for ServiceWorker to be active and controlled
                     if (!navigator.serviceWorker.controller) {
+                        console.log("Waiting for ServiceWorker controller...");
                         await new Promise(resolve => {
+                            if (navigator.serviceWorker.controller) return resolve();
                             const handler = () => {
                                 if (navigator.serviceWorker.controller) {
                                     navigator.serviceWorker.removeEventListener('controllerchange', handler);
@@ -78,8 +80,7 @@
                                 }
                             };
                             navigator.serviceWorker.addEventListener('controllerchange', handler);
-                            // Fallback timeout
-                            setTimeout(resolve, 2000);
+                            setTimeout(resolve, 3000); // Max wait 3s
                         });
                     }
                     
@@ -1054,7 +1055,11 @@
 
         function animate() {
             requestAnimationFrame(animate);
-            if (screenTexture && videoElement.readyState >= 2) {
+            if (videoElement.paused || videoElement.readyState < 2) {
+                renderer.render(scene, camera);
+                return;
+            }
+            if (screenTexture) {
                 screenTexture.needsUpdate = true;
             }
             const delta = Math.min(clock.getDelta(), 0.05);
