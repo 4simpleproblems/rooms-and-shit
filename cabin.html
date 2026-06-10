@@ -1334,7 +1334,7 @@
             const savedPage = localStorage.getItem('gatsby_bookmark_page');
             bookCurrentPage = savedPage ? parseInt(savedPage) : 1;
             document.getElementById('book-page-input').value = bookCurrentPage;
-            document.getElementById('book-iframe').src = `book/thegreatgatsby.pdf#page=${bookCurrentPage}`;
+            document.getElementById('book-iframe').src = `book/thegreatgatsby.pdf#toolbar=0&navpanes=0&page=${bookCurrentPage}`;
             document.getElementById('book-overlay').classList.remove('hidden');
         }
 
@@ -1352,7 +1352,7 @@
             if (p > 1000) p = 1000;
             bookCurrentPage = p;
             document.getElementById('book-page-input').value = bookCurrentPage;
-            document.getElementById('book-iframe').src = `book/thegreatgatsby.pdf#page=${bookCurrentPage}`;
+            document.getElementById('book-iframe').src = `book/thegreatgatsby.pdf#toolbar=0&navpanes=0&page=${bookCurrentPage}`;
             localStorage.setItem('gatsby_bookmark_page', bookCurrentPage);
         }
 
