@@ -236,6 +236,31 @@
         createLogWall(7.5, 0, Math.PI / 2); // Right
         createLogWall(0, 7.5, 0, true); // Front window
 
+        // --- Glass Window ---
+        const glassMat = new THREE.MeshStandardMaterial({ 
+            color: 0xffffff, 
+            transparent: true, 
+            opacity: 0.2, 
+            metalness: 1.0, 
+            roughness: 0.05,
+            side: THREE.DoubleSide
+        });
+        const glass = new THREE.Mesh(new THREE.PlaneGeometry(10, 3), glassMat);
+        glass.position.set(0, 3, 7.5);
+        scene.add(glass);
+
+        // --- Peaked Roof ---
+        const roofGroup = new THREE.Group();
+        const roofMat = new THREE.MeshStandardMaterial({ color: 0x2b1d12, roughness: 0.9 });
+        const roofSideA = new THREE.Mesh(new THREE.BoxGeometry(16, 0.4, 9), roofMat);
+        roofSideA.rotation.z = 0.4;
+        roofSideA.position.set(-4, 7.5, 0);
+        const roofSideB = new THREE.Mesh(new THREE.BoxGeometry(16, 0.4, 9), roofMat);
+        roofSideB.rotation.z = -0.4;
+        roofSideB.position.set(4, 7.5, 0);
+        roofGroup.add(roofSideA, roofSideB);
+        scene.add(roofGroup);
+
         // Remade Fireplace
         const fireplace = new THREE.Group();
         const mantel = new THREE.Mesh(new THREE.BoxGeometry(3, 4, 1.5), brickMat);
