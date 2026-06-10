@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rooms & Shit | Theater</title>
-    <script src="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Inter:wght@500;700;900&display=swap" rel="stylesheet"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Inter:wght@500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -620,7 +620,7 @@
             <button id="mobile-menu-btn" class="ui-btn primary"><i class="fa-solid fa-comments"></i> Menu</button>
         </div>
 
-        <div id="cam-mode-indicator">📽 STATIONARY CAM — Press V for First Person</div>
+        <div id="cam-mode-indicator">📽 THIRD PERSON — Press V for First Person</div>
 
         <div id="chat-log-panel">
             <ul id="chat-log-list"></ul>
@@ -708,7 +708,7 @@
         const connections = [];
         let peer = null;
 
-        // 0 = Stationary (cinematic), 1 = First Person
+        // 0 = Third Person, 1 = First Person
         let camMode = 0;
         let isFirstPerson = false;
         let fpYaw = Math.PI; // face toward screen (negative Z)
@@ -759,6 +759,31 @@
             scene.add(pl);
         });
 
+        // Wall Light Bars (Red)
+        const lightBarGeo = new THREE.BoxGeometry(0.1, 4, 0.2);
+        const lightBarMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 2 });
+        [-ROOM_W / 2 + 0.35, ROOM_W / 2 - 0.35].forEach(lx => {
+            for (let z = -ROOM_D / 2 + 5; z < ROOM_D / 2; z += 6) {
+                const bar = new THREE.Mesh(lightBarGeo, lightBarMat);
+                bar.position.set(lx, floorY + 3, z);
+                scene.add(bar);
+                
+                const barLight = new THREE.PointLight(0xff0000, 0.8, 8);
+                barLight.position.set(lx, floorY + 3, z);
+                scene.add(barLight);
+            }
+        });
+
+        // Floor Glow Stripes
+        const glowGeo = new THREE.PlaneGeometry(ROOM_W - 2, 0.1);
+        const glowMat = new THREE.MeshBasicMaterial({ color: 0xaa0000, transparent: true, opacity: 0.4, side: THREE.DoubleSide });
+        for (let z = -ROOM_D / 2 + 8; z < ROOM_D / 2; z += 4) {
+            const glow = new THREE.Mesh(glowGeo, glowMat);
+            glow.rotation.x = -Math.PI / 2;
+            glow.position.set(0, floorY + 0.02, z);
+            scene.add(glow);
+        }
+
         // --- THEATER GEOMETRY ---
         const floorGeo = new THREE.BoxGeometry(ROOM_W, 0.3, ROOM_D);
         const floorMat = new THREE.MeshStandardMaterial({ color: 0x0d0d0d, roughness: 0.95 });
@@ -804,16 +829,6 @@
             });
         });
 
-        // --- CAMERA MODES ---
-        const STATIONARY_POS = new THREE.Vector3(0, floorY + 2.5, ROOM_D / 2 - 3.0); // Move forward to be clearly in front of lens
-        const STATIONARY_TARGET = new THREE.Vector3(0, floorY + ROOM_H * 0.5 + 0.5, -ROOM_D / 2 + 0.2);
-
-        function applyStationaryCamera() {
-            camera.position.copy(STATIONARY_POS);
-            camera.lookAt(STATIONARY_TARGET);
-        }
-        applyStationaryCamera();
-
         const camIndicator = document.getElementById('cam-mode-indicator');
 
         function toggleCameraMode() {
@@ -825,12 +840,11 @@
                 fpYaw = Math.PI;
                 fpPitch = 0;
                 renderer.domElement.requestPointerLock();
-                camIndicator.textContent = '👤 FIRST PERSON — Press V for Stationary';
+                camIndicator.textContent = '👤 FIRST PERSON — Press V for Third Person';
             } else {
                 if (localP && localP.mesh) localP.mesh.visible = true;
                 if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
-                applyStationaryCamera();
-                camIndicator.textContent = '📽 STATIONARY CAM — Press V for First Person';
+                camIndicator.textContent = '📽 THIRD PERSON — Press V for First Person';
             }
         }
 
@@ -897,10 +911,10 @@
         const chairMat = new THREE.MeshStandardMaterial({ color: chairColor, roughness: 0.8 });
         const seatSpots = [];
 
-        const rows = 6;
-        const cols = 10;
-        const spacingX = 2.2;
-        const spacingZ = 3.2;
+        const rows = 8;
+        const cols = 14;
+        const spacingX = 1.4;
+        const spacingZ = 1.8;
 
         function createChair(x, z, idx) {
             const group = new THREE.Group();
@@ -1071,8 +1085,7 @@
             }
             return new THREE.MeshToonMaterial({
                 map: texture,
-                color: colorHex || 0xffffff,
-                outlineColor: new THREE.Color(0x000000),
+                color: colorHex || 0xffffff
             });
         }
 
@@ -1486,10 +1499,17 @@
             }
 
             // Camera update
-            if (isFirstPerson && localP && localP.mesh) {
-                const headPos = new THREE.Vector3().copy(localP.mesh.position).add(new THREE.Vector3(0, 0.65, 0));
-                camera.position.copy(headPos);
-                camera.quaternion.setFromEuler(new THREE.Euler(fpPitch, fpYaw, 0, 'YXZ'));
+            if (localP && localP.mesh) {
+                if (isFirstPerson) {
+                    const headPos = new THREE.Vector3().copy(localP.mesh.position).add(new THREE.Vector3(0, 1.4, 0));
+                    camera.position.copy(headPos);
+                    camera.quaternion.setFromEuler(new THREE.Euler(fpPitch, fpYaw, 0, 'YXZ'));
+                } else {
+                    const offset = new THREE.Vector3(-10, 8, -10);
+                    const targetPos = localP.mesh.position.clone().add(offset);
+                    camera.position.lerp(targetPos, 0.1);
+                    camera.lookAt(localP.mesh.position.x, localP.mesh.position.y + 1, localP.mesh.position.z);
+                }
             }
 
             if (videoElement && videoElement.readyState >= 2 && !videoElement.paused) {
@@ -1867,5 +1887,6 @@
     </script>
 </body>
 </html>
+
 
 <!-- Made with ❤️ from 4SP -->
