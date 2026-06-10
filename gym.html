@@ -59,15 +59,19 @@
 
         #chat-log-panel {
             position: absolute;
-            bottom: 180px;
+            bottom: 120px;
             left: 24px;
             width: 380px;
-            max-height: 200px;
-            overflow-y: auto;
-            pointer-events: none;
+            height: 200px;
             display: flex;
-            flex-direction: column-reverse;
-            z-index: 100;
+            flex-direction: column;
+            box-sizing: border-box;
+            background: var(--white-ui);
+            border: 6px solid var(--black-outline);
+            box-shadow: 8px 8px 0px var(--black-outline);
+            border-radius: 0px;
+            padding: 12px;
+            z-index: 10;
         }
         #chat-log-list {
             flex-grow: 1;
@@ -81,6 +85,16 @@
             font-size: 0.85rem;
             font-weight: 700;
         }
+        #chat-log-list::-webkit-scrollbar {
+            width: 8px;
+        }
+        #chat-log-list::-webkit-scrollbar-track {
+            background: #f0f0f0;
+            border-left: 2px solid var(--black-outline);
+        }
+        #chat-log-list::-webkit-scrollbar-thumb {
+            background: var(--black-outline);
+        }
         .chat-msg {
             line-height: 1.4;
             word-break: break-word;
@@ -88,6 +102,9 @@
         .chat-msg-system {
             color: var(--color-gym);
             font-style: italic;
+        }
+        .chat-msg-player {
+            color: var(--black-outline);
         }
         .chat-panel {
             bottom: 24px;
@@ -227,7 +244,9 @@
         <div id="cam-mode-indicator">📽 THIRD PERSON — Press V for First Person</div>
         <div id="workout-prompt">Press E to Workout</div>
 
-        <div id="chat-log-panel"><ul id="chat-log-list"></ul></div>
+        <div id="chat-log-panel">
+            <ul id="chat-log-list"></ul>
+        </div>
 
         <div class="ui-panel controls-panel" style="width: 320px;">
             <h3>GYM CONTROLS</h3>
@@ -243,10 +262,10 @@
         </div>
 
         <div class="ui-panel emotions-panel">
-            <button class="ui-btn emotion-btn" onclick="spawnEmotion('happy'); this.blur();" tabindex="-1"><i class="fa-solid fa-dumbbell"></i></button>
-            <button class="ui-btn emotion-btn" onclick="spawnEmotion('love'); this.blur();" tabindex="-1"><i class="fa-solid fa-heart"></i></button>
-            <button class="ui-btn emotion-btn" onclick="spawnEmotion('sad'); this.blur();" tabindex="-1"><i class="fa-solid fa-droplet"></i></button>
             <button class="ui-btn emotion-btn" onclick="spawnEmotion('angry'); this.blur();" tabindex="-1"><i class="fa-solid fa-fire"></i></button>
+            <button class="ui-btn emotion-btn" onclick="spawnEmotion('love'); this.blur();" tabindex="-1"><i class="fa-solid fa-heart"></i></button>
+            <button class="ui-btn emotion-btn" onclick="spawnEmotion('happy'); this.blur();" tabindex="-1"><i class="fa-solid fa-dumbbell"></i></button>
+            <button class="ui-btn emotion-btn" onclick="spawnEmotion('sad'); this.blur();" tabindex="-1"><i class="fa-solid fa-droplet"></i></button>
             <button class="ui-btn emotion-btn" onclick="spawnEmotion('shocked'); this.blur();" tabindex="-1"><i class="fa-solid fa-weight-hanging"></i></button>
         </div>
     </div>
@@ -761,7 +780,11 @@
             if (isSystem) {
                 li.innerText = `[System] ${text}`;
             } else {
-                li.innerText = `${name}: ${text}`;
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'chat-msg-player';
+                nameSpan.innerText = `${name}: `;
+                li.appendChild(nameSpan);
+                li.appendChild(document.createTextNode(text));
             }
             logList.appendChild(li);
             logList.scrollTop = logList.scrollHeight;
@@ -862,13 +885,14 @@
             ctx.textBaseline = 'middle';
             ctx.strokeStyle = '#000000';
             ctx.lineWidth = 8;
-            ctx.strokeText(iconChar, 64, 64);
-            ctx.fillStyle = color;
-            ctx.fillText(iconChar, 64, 64);
+            ctx.strokeText(iconChar, canvas.width / 2, canvas.height / 2);
+            ctx.fillStyle = color || '#ffffff';
+            ctx.fillText(iconChar, canvas.width / 2, canvas.height / 2);
             const texture = new THREE.CanvasTexture(canvas);
+            texture.minFilter = THREE.LinearFilter;
             const mat = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false });
             const sprite = new THREE.Sprite(mat);
-            sprite.scale.set(1.5, 1.5, 1.0);
+            sprite.scale.set(0.6, 0.6, 1.0);
             return sprite;
         }
 
@@ -1104,8 +1128,16 @@
             const p = players[0];
             p.name = document.getElementById('custom-name-input').value.trim() || 'Lifter';
             p.color = chosenColor;
+            p.isCustomizing = false;
             updatePlayerVisuals(p);
             document.getElementById('customization-overlay').classList.add('hidden');
+            addChatMessageToLog(null, `${p.name} joined the gym.`, true);
+        });
+
+        document.getElementById('custom-name-input').addEventListener('keydown', e => {
+            if (e.key === 'Enter') {
+                document.getElementById('start-gym-btn').click();
+            }
         });
         
         document.querySelectorAll('.color-btn').forEach(btn => {
