@@ -630,8 +630,9 @@ const CHARACTER_SCALE = 2.0;
 let camMode = 0, isFirstPerson = false;
 let fpYaw = Math.PI, fpPitch = 0;
 let localPlayerId = 1, isHost = true;
-let isCustomizing = true, isPaused = false;
-let chosenColor = '#E2FF3D';
+const hasSavedName = !!localStorage.getItem('4sp_player_name');
+let isCustomizing = !hasSavedName, isPaused = false;
+let chosenColor = localStorage.getItem('4sp_player_color') || '#E2FF3D';
 const connections = [];
 let peer = null;
 let isPlaying = false;
@@ -641,7 +642,7 @@ let bbSearchQueue = [];
 let isModalOpen = false;
 
 const players = [
-    { id:1, name:'Player 1', color:'#E2FF3D', mesh:null, position:new THREE.Vector3(0,floorY,ROOM_D/2-2), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false,shift:false}, isCustomizing:true, isSitting:false },
+    { id:1, name: localStorage.getItem('4sp_player_name') || 'Player 1', color: localStorage.getItem('4sp_player_color') || '#E2FF3D', mesh:null, position:new THREE.Vector3(0,floorY,ROOM_D/2-2), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false,shift:false}, isCustomizing: !hasSavedName, isSitting:false },
     { id:2, name:'Player 2', color:'#7C3AED', mesh:null, position:new THREE.Vector3(-1,floorY,ROOM_D/2-2), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false,shift:false}, isCustomizing:false, isSitting:false },
     { id:3, name:'Player 3', color:'#EC4899', mesh:null, position:new THREE.Vector3(1,floorY,ROOM_D/2-2), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false,shift:false}, isCustomizing:false, isSitting:false }
 ];
@@ -755,21 +756,21 @@ speakerCanvas.width = 128;
 speakerCanvas.height = 128;
 const speakerCtx = speakerCanvas.getContext('2d');
 const radGrad = speakerCtx.createRadialGradient(64, 64, 0, 64, 64, 64);
-radGrad.addColorStop(0, '#2d2d2d');
-radGrad.addColorStop(0.6, '#181818');
-radGrad.addColorStop(1.0, '#0a0a0a');
+radGrad.addColorStop(0, '#666666');
+radGrad.addColorStop(0.6, '#3e3e3e');
+radGrad.addColorStop(1.0, '#242424');
 speakerCtx.fillStyle = radGrad;
 speakerCtx.fillRect(0, 0, 128, 128);
-speakerCtx.strokeStyle = 'rgba(5, 5, 5, 0.65)';
-speakerCtx.lineWidth = 2.5;
+speakerCtx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+speakerCtx.lineWidth = 2.0;
 const circles = [0.15, 0.35, 0.55, 0.75, 0.95];
 for (const rPercent of circles) {
     speakerCtx.beginPath();
     speakerCtx.arc(64, 64, 64 * rPercent, 0, Math.PI * 2);
     speakerCtx.stroke();
 }
-speakerCtx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
-speakerCtx.lineWidth = 1.0;
+speakerCtx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
+speakerCtx.lineWidth = 1.2;
 for (let offset = -128; offset < 256; offset += 3) {
     speakerCtx.beginPath();
     speakerCtx.moveTo(offset, 0);
@@ -781,9 +782,9 @@ for (let offset = -128; offset < 256; offset += 3) {
     speakerCtx.stroke();
 }
 const innerRadGrad = speakerCtx.createRadialGradient(64, 64, 0, 64, 64, 25);
-innerRadGrad.addColorStop(0, '#555555');
-innerRadGrad.addColorStop(0.5, '#222222');
-innerRadGrad.addColorStop(1.0, '#0a0a0a');
+innerRadGrad.addColorStop(0, '#888888');
+innerRadGrad.addColorStop(0.5, '#4e4e4e');
+innerRadGrad.addColorStop(1.0, '#2c2c2c');
 speakerCtx.fillStyle = innerRadGrad;
 speakerCtx.beginPath();
 speakerCtx.arc(64, 64, 25, 0, Math.PI * 2);
@@ -792,6 +793,7 @@ speakerCtx.strokeStyle = '#111111';
 speakerCtx.lineWidth = 2.0;
 speakerCtx.stroke();
 const speakerTexture = new THREE.CanvasTexture(speakerCanvas);
+speakerTexture.anisotropy = renderer.capabilities.getMaxAnisotropy() || 4;
 const speakerMat = new THREE.MeshStandardMaterial({ map: speakerTexture, roughness: 0.6, metalness: 0.3 });
 
 const floorMesh = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.3, ROOM_D), new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.5 }));
@@ -1869,6 +1871,8 @@ function togglePause() {
     if (isPaused) {
         const nameVal = document.getElementById('pause-name-input').value.trim() || 'Player';
         lp.name = nameVal; lp.color = chosenColor;
+        localStorage.setItem('4sp_player_name', nameVal);
+        localStorage.setItem('4sp_player_color', chosenColor);
         po.classList.add('hidden');
         isPaused = false; isCustomizing = false; lp.isCustomizing = false;
         updatePlayerVisuals(lp);
@@ -1904,12 +1908,27 @@ document.getElementById('enter-btn').addEventListener('click', () => {
     if (lp) { lp.name = nameVal; lp.color = chosenColor; lp.isCustomizing = false; applyColorToPlayer(localPlayerId, chosenColor); }
     document.getElementById('custom-overlay').classList.add('hidden');
     isCustomizing = false;
+    localStorage.setItem('4sp_player_name', nameVal);
+    localStorage.setItem('4sp_player_color', chosenColor);
     addChat(null, `${nameVal} entered the station.`, true);
     const fo = document.getElementById('fade-overlay');
     fo.classList.add('visible');
     setTimeout(() => fo.classList.remove('visible'), 800);
 });
 document.getElementById('name-input').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('enter-btn').click(); });
+
+const savedName = localStorage.getItem('4sp_player_name') || '';
+if (savedName) {
+    document.getElementById('name-input').value = savedName;
+}
+const savedColor = localStorage.getItem('4sp_player_color') || '#E2FF3D';
+document.querySelectorAll('#custom-overlay .col-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.c === savedColor);
+});
+
+if (savedName) {
+    document.getElementById('enter-btn').click();
+}
 
 // ── PEER.JS ──
 const myPeerId = '4sp-' + Math.floor(1000 + Math.random() * 9000);
@@ -2203,17 +2222,16 @@ function updateBoomboxCanvas(bb) {
 function updateBoomboxVolumes() {
     const localP = players[localPlayerId - 1];
     if (!localP || !localP.mesh) return;
-    const maxDist = 15.0;
+    const maxDist = 55.0;
     boomboxes.forEach(bb => {
         if (!bb.audio) return;
         const dist = localP.mesh.position.distanceTo(bb.position);
         if (dist >= maxDist) {
             bb.audio.volume = 0.0;
         } else {
-            let rolloff = 1.0 - (dist / maxDist);
+            let rolloff = 1.0 - Math.pow(dist / maxDist, 2.0);
             rolloff = Math.max(0, Math.min(1, rolloff));
-            const factor = rolloff * rolloff;
-            bb.audio.volume = factor * bb.localVolume;
+            bb.audio.volume = rolloff * bb.localVolume;
         }
     });
 }
