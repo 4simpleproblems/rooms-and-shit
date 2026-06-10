@@ -734,6 +734,14 @@
         const camera = new THREE.PerspectiveCamera(90, aspect, 0.2, 300);
         camera.position.set(-15, 8, -15);
 
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(1.0); 
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.setClearColor(0x000000);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
@@ -743,14 +751,6 @@
         controls.maxDistance = 50.0;
         
         const cameraFocusTarget = new THREE.Vector3();
-
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(1.0); 
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        renderer.setClearColor(0x000000);
-        document.getElementById('canvas-container').appendChild(renderer.domElement);
 
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;

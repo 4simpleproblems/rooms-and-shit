@@ -351,8 +351,8 @@
         scene.add(roofFloor);
 
         const buildingMat = new THREE.MeshStandardMaterial({ color: 0x22222a, roughness: 0.8, metalness: 0.2 });
-        const building = new THREE.Mesh(new THREE.BoxGeometry(ROOFTOP_W - 0.2, 40, ROOFTOP_D - 0.2), buildingMat);
-        building.position.y = -20.25;
+        const building = new THREE.Mesh(new THREE.BoxGeometry(ROOFTOP_W - 0.2, 120, ROOFTOP_D - 0.2), buildingMat);
+        building.position.y = -60.25;
         building.receiveShadow = true;
         scene.add(building);
 
@@ -364,8 +364,8 @@
             { x: ROOFTOP_W/2 - 0.3, z: ROOFTOP_D/2 - 0.3 }
         ];
         corners.forEach(c => {
-            const col = new THREE.Mesh(new THREE.BoxGeometry(0.8, 40, 0.8), colMat);
-            col.position.set(c.x, -20.25, c.z);
+            const col = new THREE.Mesh(new THREE.BoxGeometry(0.8, 120, 0.8), colMat);
+            col.position.set(c.x, -60.25, c.z);
             scene.add(col);
         });
 
@@ -380,7 +380,7 @@
             winGroup.rotation.y = rotY;
             scene.add(winGroup);
         }
-        const floorsY = [-5, -11, -17, -23, -29, -35];
+        const floorsY = [-5, -11, -17, -23, -29, -35, -41, -47, -53, -59, -65, -71, -77, -83, -89, -95, -101, -107, -113];
         floorsY.forEach(wy => {
             for (let wx = -13.5; wx <= 13.5; wx += 4.5) {
                 createBuildingWindow(wx, wy, -ROOFTOP_D/2 + 0.1, 0);
