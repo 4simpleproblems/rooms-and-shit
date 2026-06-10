@@ -1169,6 +1169,8 @@ for (let sx = -42; sx <= 42; sx += 12) {
     scene.add(light);
 }
 
+let trainFrontLight = null;
+let trainBackLight = null;
 const trainGroup = new THREE.Group();
 const trainBodyMat = new THREE.MeshStandardMaterial({ color: 0xbcbcbc, roughness: 0.2, metalness: 0.8 });
 const trainStripeMat = new THREE.MeshStandardMaterial({ color: 0x757575, roughness: 0.25, metalness: 0.8 });
@@ -1243,8 +1245,6 @@ const TRAIN_SPEED = 10;
 let currentTrainInterval = 20 + Math.random() * 20;
 let trainX = TRAIN_START_X;
 let trainTimer = currentTrainInterval * 0.7;
-let trainFrontLight = null;
-let trainBackLight = null;
 trainGroup.position.set(trainX, TRACK_Y, TRACK_Z);
 scene.add(trainGroup);
 
