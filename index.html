@@ -19,6 +19,7 @@
             --color-lobby: #E2FF3D;
             --color-station: #8A2BE2;
             --color-gym: #FF6B00;
+            --color-cabin: #FF8C00;
             
             /* Structural Colors */
             --black-outline: #09090B;
@@ -109,6 +110,9 @@
 
         #gym { top: 15%; left: 50%; }
         #gym .node-square { background-color: var(--color-gym); }
+
+        #cabin { top: 85%; left: 50%; }
+        #cabin .node-square { background-color: var(--color-cabin); }
 
         .node-label {
             font-family: 'Alfa Slab One', cursive;
@@ -305,6 +309,7 @@
         <line x1="50%" y1="60%" x2="25%" y2="35%" class="map-line" />
         <line x1="50%" y1="60%" x2="75%" y2="35%" class="map-line" />
         <line x1="50%" y1="60%" x2="50%" y2="15%" class="map-line" />
+        <line x1="50%" y1="60%" x2="50%" y2="85%" class="map-line" />
     </svg>
 
     <div class="node-container" id="theater">
@@ -327,6 +332,11 @@
         <div class="node-label">ROOFTOP GYM</div>
     </div>
 
+    <div class="node-container" id="cabin">
+        <div class="node-square"><i class="fa-solid fa-house-chimney"></i></div>
+        <div class="node-label">THE CABIN</div>
+    </div>
+
     <script>
         // ROUTING & ANIMATION LOGIC
         const nodes = document.querySelectorAll('.node-container');
@@ -347,6 +357,8 @@
                         window.location.href = 'station.html';
                     } else if (node.id === 'gym') {
                         window.location.href = 'gym.html';
+                    } else if (node.id === 'cabin') {
+                        window.location.href = 'cabin.html';
                     }
                 }, 1500); 
             });

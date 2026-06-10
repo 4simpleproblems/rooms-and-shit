@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rooms & Shit | The Cabin</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Inter:wght@500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    
+    <style>
+        :root {
+            --bg-midnight: #050510;
+            --color-cabin: #FF8C00; 
+            --black-outline: #09090B;
+            --white-ui: #FFFFFF;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-midnight);
+            font-family: 'Inter', sans-serif;
+            overflow: hidden; 
+            color: var(--black-outline);
+            user-select: none;
+        }
+
+        #canvas-container { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; }
+        .ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
+        .ui-panel {
+            pointer-events: auto; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px);
+            border: 6px solid var(--black-outline); box-shadow: 8px 8px 0px var(--black-outline);
+            padding: 16px; position: absolute; box-sizing: border-box;
+        }
+
+        .header-panel { top: 24px; left: 24px; display: flex; align-items: center; gap: 16px; }
+        .header-title { font-family: 'Alfa Slab One', cursive; font-size: 1.4rem; letter-spacing: 1px; margin: 0; }
+
+        .ui-btn {
+            font-family: 'Inter', sans-serif; font-weight: 900; font-size: 1rem; text-transform: uppercase;
+            background: var(--white-ui); border: 4px solid var(--black-outline); box-shadow: 4px 4px 0px var(--black-outline);
+            cursor: pointer; padding: 10px 16px; transition: transform 0.05s linear, box-shadow 0.05s linear;
+            display: inline-flex; align-items: center; gap: 8px;
+        }
+        .ui-btn:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0px var(--black-outline); }
+        .ui-btn:active { transform: translate(4px, 4px); box-shadow: 0px 0px 0px var(--black-outline); }
+        .ui-btn.primary { background: var(--color-cabin); color: #FFFFFF; }
+
+        .controls-panel { top: 24px; right: 24px; width: 260px; }
+        .controls-panel h3 { font-family: 'Alfa Slab One', cursive; font-size: 1rem; margin: 0 0 10px 0; color: var(--color-cabin); }
+        .control-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem; font-weight: 700; }
+        .control-key { background: #E4E4E7; border: 2px solid var(--black-outline); border-radius: 4px; padding: 2px 6px; box-shadow: 1px 1px 0px var(--black-outline); font-family: monospace; font-weight: 900; }
+
+        .chat-panel { bottom: 24px; left: 24px; width: 380px; display: flex; gap: 12px; }
+        .chat-input { flex-grow: 1; border: 4px solid var(--black-outline); padding: 10px 12px; font-family: 'Inter', sans-serif; font-weight: 700; font-size: 0.9rem; outline: none; background: #FFFFFF; }
+
+        #cam-mode-indicator {
+            position: absolute; top: 24px; left: 50%; transform: translateX(-50%); background: var(--color-cabin);
+            border: 3px solid var(--black-outline); box-shadow: 3px 3px 0px var(--black-outline); padding: 6px 12px;
+            font-family: 'Inter', sans-serif; font-weight: 900; font-size: 0.8rem; color: #FFFFFF; pointer-events: none; z-index: 40; text-transform: uppercase;
+        }
+
+        #customization-overlay, #pause-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); z-index: 200;
+            display: flex; justify-content: center; align-items: center; transition: opacity 0.5s ease, visibility 0.5s;
+        }
+        .hidden { opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; }
+
+        .custom-card { background: var(--white-ui); border: 6px solid var(--black-outline); box-shadow: 12px 12px 0px var(--black-outline); padding: 32px; width: 380px; max-width: 90%; display: flex; flex-direction: column; gap: 20px; pointer-events: auto; }
+        .custom-title { font-family: 'Alfa Slab One', cursive; font-size: 1.8rem; margin: 0; text-align: center; color: var(--color-cabin); }
+        .custom-field { display: flex; flex-direction: column; gap: 8px; }
+        .custom-field label { font-family: 'Inter', sans-serif; font-weight: 900; font-size: 0.9rem; text-transform: uppercase; }
+        input[type="text"] { border: 4px solid var(--black-outline); padding: 12px; font-family: 'Inter', sans-serif; font-weight: 700; font-size: 1.1rem; outline: none; background: #FFFFFF; }
+
+        .color-options { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+        .color-btn { aspect-ratio: 1; border: 4px solid var(--black-outline); cursor: pointer; box-shadow: 2px 2px 0px var(--black-outline); transition: transform 0.05s, box-shadow 0.05s; }
+        .color-btn.active { transform: translate(-2px, -2px); box-shadow: 4px 4px 0px var(--black-outline); outline: none; }
+    </style>
+</head>
+<body>
+
+    <div id="customization-overlay">
+        <div class="custom-card">
+            <h2 class="custom-title">THE CABIN</h2>
+            <div class="custom-field">
+                <label>YOUR NAME</label>
+                <input type="text" id="custom-name-input" value="Lumberjack" maxlength="15" />
+            </div>
+            <div class="custom-field">
+                <label>CHOOSE COLOR</label>
+                <div class="color-options">
+                    <button class="color-btn active" data-color="#FF8C00" style="background-color: #FF8C00;"></button>
+                    <button class="color-btn" data-color="#33ccff" style="background-color: #33ccff;"></button>
+                    <button class="color-btn" data-color="#33ff33" style="background-color: #33ff33;"></button>
+                    <button class="color-btn" data-color="#ff3366" style="background-color: #ff3366;"></button>
+                    <button class="color-btn" data-color="#8A2BE2" style="background-color: #8A2BE2;"></button>
+                    <button class="color-btn" data-color="#ffffff" style="background-color: #ffffff;"></button>
+                </div>
+            </div>
+            <button id="start-btn" class="ui-btn primary" style="width: 100%; justify-content: center; font-size: 1.2rem; margin-top: 12px;">ENTER CABIN</button>
+        </div>
+    </div>
+
+    <div id="pause-overlay" class="hidden">
+        <div class="custom-card">
+            <h2 class="custom-title">PAUSED</h2>
+            <button id="resume-btn" class="ui-btn primary" style="width: 100%; justify-content: center; font-size: 1.2rem;">RESUME</button>
+        </div>
+    </div>
+
+    <div class="ui-layer">
+        <div class="ui-panel header-panel">
+            <button id="back-btn" class="ui-btn"><i class="fa-solid fa-arrow-left"></i> Map</button>
+            <h1 class="header-title">THE CABIN</h1>
+        </div>
+
+        <div id="cam-mode-indicator">📽 THIRD PERSON — Press V for First Person</div>
+
+        <div class="ui-panel controls-panel" style="width: 320px;">
+            <h3>CABIN CONTROLS</h3>
+            <div class="control-row"><span>Move</span><span class="control-key">WASD</span></div>
+            <div class="control-row"><span>Jump</span><span class="control-key">Space</span></div>
+            <div class="control-row"><span>Cam Mode</span><span class="control-key">V</span></div>
+            <div class="control-row"><span>Pause</span><span class="control-key">Esc</span></div>
+        </div>
+
+        <div class="ui-panel chat-panel">
+            <input type="text" id="chat-input" class="chat-input" placeholder="Say something..." maxlength="80" autocomplete="off" />
+            <button class="ui-btn primary"><i class="fa-solid fa-paper-plane"></i></button>
+        </div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="character.js"></script>
+
+    <script>
+        // --- Core Setup ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050510);
+        scene.fog = new THREE.FogExp2(0x050510, 0.08);
+
+        const aspect = window.innerWidth / window.innerHeight;
+        const camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
+        camera.position.set(0, 5, 10);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+        renderer.shadowMap.enabled = true;
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.maxDistance = 15;
+        controls.minDistance = 2;
+        controls.maxPolarAngle = Math.PI / 2;
+
+        const clock = new THREE.Clock();
+        const loader = new THREE.GLTFLoader();
+
+        // --- Lighting ---
+        const ambientLight = new THREE.AmbientLight(0x101020, 0.4);
+        scene.add(ambientLight);
+
+        // Fireplace Light (Warm)
+        const fireLight = new THREE.PointLight(0xff4400, 2.0, 15);
+        fireLight.position.set(-7, 2, -7);
+        fireLight.castShadow = true;
+        scene.add(fireLight);
+
+        // Outside Storm Light (Cold)
+        const stormLight = new THREE.PointLight(0x4466ff, 1.5, 20);
+        stormLight.position.set(0, 5, 12);
+        scene.add(stormLight);
+
+        // --- Cabin Environment ---
+        const logMat = new THREE.MeshStandardMaterial({ color: 0x3d2b1f, roughness: 0.9 });
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0x2b1d12, roughness: 0.8 });
+        const brickMat = new THREE.MeshStandardMaterial({ color: 0x6e261d, roughness: 1.0 });
+
+        // Floor
+        const floor = new THREE.Mesh(new THREE.BoxGeometry(20, 0.5, 20), floorMat);
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        // Walls (Simple Logs)
+        function createLogWall(x, z, rotY, hasWindow = false) {
+            const group = new THREE.Group();
+            for (let i = 0; i < 10; i++) {
+                if (hasWindow && i > 2 && i < 8) {
+                    // Left segment
+                    const l1 = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 6), logMat);
+                    l1.rotation.z = Math.PI / 2; l1.position.set(-7, i * 0.8, 0); group.add(l1);
+                    // Right segment
+                    const l2 = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 6), logMat);
+                    l2.rotation.z = Math.PI / 2; l2.position.set(7, i * 0.8, 0); group.add(l2);
+                } else {
+                    const log = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 20), logMat);
+                    log.rotation.z = Math.PI / 2;
+                    log.position.y = i * 0.8;
+                    group.add(log);
+                }
+            }
+            group.position.set(x, 0, z);
+            group.rotation.y = rotY;
+            scene.add(group);
+        }
+
+        createLogWall(0, -10, 0); // Back
+        createLogWall(-10, 0, Math.PI / 2); // Left
+        createLogWall(10, 0, Math.PI / 2); // Right
+        createLogWall(0, 10, 0, true); // Front with huge window
+
+        // Fireplace
+        const fireplace = new THREE.Group();
+        const mantel = new THREE.Mesh(new THREE.BoxGeometry(4, 5, 2), brickMat);
+        mantel.position.set(-8, 2.5, -8);
+        fireplace.add(mantel);
+        const hearth = new THREE.Mesh(new THREE.BoxGeometry(3, 1.5, 1.5), new THREE.MeshStandardMaterial({color: 0x111111}));
+        hearth.position.set(-8, 0.75, -7.5);
+        fireplace.add(hearth);
+        scene.add(fireplace);
+
+        // --- Snow Particle System ---
+        const snowCount = 2000;
+        const snowGeo = new THREE.BufferGeometry();
+        const snowPos = new Float32Array(snowCount * 3);
+        const snowVel = [];
+
+        for(let i = 0; i < snowCount; i++) {
+            snowPos[i*3] = (Math.random() - 0.5) * 40;
+            snowPos[i*3+1] = Math.random() * 20;
+            snowPos[i*3+2] = 10 + Math.random() * 20;
+            snowVel.push({ x: (Math.random()-0.5)*0.2, y: -0.05 - Math.random()*0.1, z: -0.1 - Math.random()*0.2 });
+        }
+        snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPos, 3));
+        const snowMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.1, transparent: true, opacity: 0.8 });
+        const snowParticles = new THREE.Points(snowGeo, snowMat);
+        scene.add(snowParticles);
+
+        // --- Player Data ---
+        let isFirstPerson = false, fpYaw = Math.PI, fpPitch = 0;
+        let isCustomizing = true, isPaused = false;
+        const players = [
+            { id: 1, name: 'Lumberjack', color: '#FF8C00', mesh: null, position: new THREE.Vector3(0,0,0), isJumping: false, yVelocity: 0, keys:{up:false,down:false,left:false,right:false,space:false,shift:false}, isCustomizing: true }
+        ];
+
+        let charGltfMaster = null;
+        let animationsMaster = [];
+
+        async function loadModels() {
+            try {
+                const [gltf, animJson] = await Promise.all([
+                    loader.loadAsync("model/character.gltf"),
+                    fetch("animations.json").then(r => r.json())
+                ]);
+                charGltfMaster = gltf;
+                animationsMaster = animJson.map(a => {
+                    const tracks = a.tracks.map(t => {
+                        const nodeName = t.nodeName || (t.name ? t.name.split('.')[0] : 'unknown');
+                        const property = t.property || (t.name ? t.name.split('.')[1] : 'position');
+                        return new THREE.KeyframeTrack(nodeName + '.' + property, t.times, t.values);
+                    });
+                    return new THREE.AnimationClip(a.name, a.duration, tracks);
+                });
+                
+                setupLocalPlayer();
+                animate();
+            } catch (err) {
+                console.error("Error loading Cabin assets:", err);
+            }
+        }
+
+        function setupLocalPlayer() {
+            const p = players[0];
+            const mesh = charGltfMaster.scene.clone();
+            mesh.scale.set(2, 2, 2);
+            scene.add(mesh);
+            p.mesh = mesh;
+            p.mixer = new THREE.AnimationMixer(mesh);
+            p.actions = {};
+            animationsMaster.forEach(clip => {
+                p.actions[clip.name.toLowerCase()] = p.mixer.clipAction(clip);
+            });
+            mesh.traverse(o => {
+                if (o.isMesh) {
+                    o.castShadow = true; o.receiveShadow = true;
+                    if (o.name.includes('Body') || o.name.includes('Leg')) {
+                        o.material = createToonMaterial(o.material.map, p.color);
+                    }
+                }
+            });
+            updatePlayerVisuals(p);
+        }
+
+        function playAnim(p, name) {
+            if (!p.actions || !p.actions[name]) return;
+            if (p.currentAnim === name) return;
+            if (p.currentAnim && p.actions[p.currentAnim]) p.actions[p.currentAnim].fadeOut(0.2);
+            p.actions[name].reset().fadeIn(0.2).play();
+            p.currentAnim = name;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            
+            // Fireplace Flicker
+            fireLight.intensity = 1.5 + Math.random() * 1.0;
+
+            // Snow Update
+            const positions = snowParticles.geometry.attributes.position.array;
+            for(let i = 0; i < snowCount; i++) {
+                positions[i*3] += snowVel[i].x;
+                positions[i*3+1] += snowVel[i].y;
+                positions[i*3+2] += snowVel[i].z;
+                if (positions[i*3+1] < 0) positions[i*3+1] = 20;
+                if (positions[i*3+2] < 5) positions[i*3+2] = 30;
+            }
+            snowParticles.geometry.attributes.position.needsUpdate = true;
+
+            const p = players[0];
+            if (!p.mesh || isCustomizing || isPaused) {
+                if (p.mixer) p.mixer.update(delta);
+                renderer.render(scene, camera);
+                return;
+            }
+
+            // Movement Logic
+            let dx = 0, dz = 0;
+            if (p.keys.up) dz -= 1;
+            if (p.keys.down) dz += 1;
+            if (p.keys.left) dx -= 1;
+            if (p.keys.right) dx += 1;
+
+            if (dx !== 0 || dz !== 0) {
+                const camF = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion); camF.y = 0; camF.normalize();
+                const camR = new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion); camR.y = 0; camR.normalize();
+                const moveDir = new THREE.Vector3().addScaledVector(camF, -dz).addScaledVector(camR, dx).normalize();
+                
+                const speed = p.keys.shift ? 7 : 4;
+                const nextPos = p.mesh.position.clone().addScaledVector(moveDir, speed * delta);
+                
+                // Simple Cabin Bounds
+                if (Math.abs(nextPos.x) < 9.2 && Math.abs(nextPos.z) < 9.2) {
+                    p.mesh.position.copy(nextPos);
+                }
+
+                const targetRot = Math.atan2(moveDir.x, moveDir.z) + Math.PI;
+                let diff = targetRot - p.mesh.rotation.y;
+                while (diff < -Math.PI) diff += Math.PI * 2;
+                while (diff > Math.PI) diff -= Math.PI * 2;
+                p.mesh.rotation.y += diff * 0.15;
+            }
+
+            // Jump Physics
+            if (p.keys.space && !p.isJumping) {
+                p.isJumping = true; p.yVelocity = 6.0;
+            }
+            if (p.isJumping) {
+                p.yVelocity -= 18.0 * delta;
+                p.mesh.position.y += p.yVelocity * delta;
+                if (p.mesh.position.y <= 0) {
+                    p.mesh.position.y = 0; p.isJumping = false; p.yVelocity = 0;
+                }
+            }
+
+            // Animation Handling
+            if (p.mixer) {
+                p.mixer.update(delta);
+                const isMoving = dx !== 0 || dz !== 0;
+                if (p.isJumping) playAnim(p, 'jump');
+                else if (isMoving) playAnim(p, p.keys.shift ? 'sprint' : 'stomp');
+                else playAnim(p, 'idle');
+            }
+
+            // Camera Logic
+            if (isFirstPerson) {
+                const headPos = p.mesh.position.clone().add(new THREE.Vector3(0, 1.4, 0));
+                camera.position.copy(headPos);
+                camera.quaternion.setFromEuler(new THREE.Euler(fpPitch, fpYaw, 0, 'YXZ'));
+                controls.enabled = false;
+            } else {
+                controls.enabled = true;
+                const target = p.mesh.position.clone().add(new THREE.Vector3(0, 1, 0));
+                controls.target.lerp(target, 0.1);
+                controls.update();
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // --- Event Listeners ---
+        window.addEventListener('keydown', e => {
+            const k = e.key.toLowerCase();
+            const p = players[0];
+            if (k === 'w') p.keys.up = true;
+            if (k === 's') p.keys.down = true;
+            if (k === 'a') p.keys.left = true;
+            if (k === 'd') p.keys.right = true;
+            if (k === ' ') p.keys.space = true;
+            if (e.shiftKey) p.keys.shift = true;
+            if (k === 'v') {
+                isFirstPerson = !isFirstPerson;
+                if (isFirstPerson) renderer.domElement.requestPointerLock();
+                else document.exitPointerLock();
+                p.mesh.visible = !isFirstPerson;
+            }
+            if (e.key === 'Escape') {
+                isPaused = !isPaused;
+                document.getElementById('pause-overlay').classList.toggle('hidden', !isPaused);
+            }
+        });
+
+        window.addEventListener('keyup', e => {
+            const k = e.key.toLowerCase();
+            const p = players[0];
+            if (k === 'w') p.keys.up = false;
+            if (k === 's') p.keys.down = false;
+            if (k === 'a') p.keys.left = false;
+            if (k === 'd') p.keys.right = false;
+            if (k === ' ') p.keys.space = false;
+            if (!e.shiftKey) p.keys.shift = false;
+        });
+
+        document.addEventListener('mousemove', e => {
+            if (isFirstPerson && document.pointerLockElement === renderer.domElement) {
+                fpYaw -= e.movementX * 0.002;
+                fpPitch -= e.movementY * 0.002;
+                fpPitch = Math.max(-Math.PI/2+0.1, Math.min(Math.PI/2-0.1, fpPitch));
+            }
+        });
+
+        document.getElementById('start-btn').addEventListener('click', () => {
+            isCustomizing = false;
+            players[0].isCustomizing = false;
+            players[0].color = document.querySelector('.color-btn.active').dataset.color;
+            updatePlayerVisuals(players[0]);
+            document.getElementById('customization-overlay').classList.add('hidden');
+        });
+
+        document.querySelectorAll('.color-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            });
+        });
+
+        document.getElementById('resume-btn').addEventListener('click', () => {
+            isPaused = false;
+            document.getElementById('pause-overlay').classList.add('hidden');
+        });
+
+        document.getElementById('back-btn').addEventListener('click', () => window.location.href = 'index.html');
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        loadModels();
+    </script>
+</body>
+</html>
+<!-- Made with ❤️ from 4SP -->

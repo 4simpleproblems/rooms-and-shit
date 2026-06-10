@@ -214,6 +214,12 @@
         const camera = new THREE.PerspectiveCamera(90, aspect, 0.2, 300);
         camera.position.set(-15, 8, -15);
 
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+        renderer.shadowMap.enabled = true;
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
@@ -222,12 +228,6 @@
         controls.minDistance = 2.0;
         controls.maxDistance = 50.0;
         const cameraFocusTarget = new THREE.Vector3();
-
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-        renderer.shadowMap.enabled = true;
-        document.getElementById('canvas-container').appendChild(renderer.domElement);
 
         const ambientLight = new THREE.AmbientLight(0x443333, 1.0);
         scene.add(ambientLight);
@@ -686,3 +686,4 @@
     </script>
 </body>
 </html>
+<!-- Made with ❤️ from 4SP -->
