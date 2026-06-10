@@ -9,6 +9,7 @@
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <style>
         :root {
             --accent: #7C3AED;
@@ -249,7 +250,7 @@
         <button class="hdr-btn" onclick="togglePause()"><i class="fa-solid fa-gear"></i></button>
     </div>
 
-    <div id="cam-indicator">🚇 THIRD PERSON — Press V for First Person</div>
+    <div id="cam-indicator">🚇 THIRD PERSON — Press V/C for First Person</div>
 
     <div id="chat-log">
         <ul id="chat-list"></ul>
@@ -273,7 +274,8 @@
         <div class="ctrl-row"><span>Move</span><span class="ctrl-key">WASD</span></div>
         <div class="ctrl-row"><span>Jump</span><span class="ctrl-key">SPACE</span></div>
         <div class="ctrl-row"><span>Sprint</span><span class="ctrl-key">SHIFT</span></div>
-        <div class="ctrl-row"><span>Cam Mode</span><span class="ctrl-key">V</span></div>
+        <div class="ctrl-row"><span>Cam Mode</span><span class="ctrl-key">V / C</span></div>
+        <div class="ctrl-row"><span>Boombox</span><span class="ctrl-key">P</span></div>
         <div class="ctrl-row"><span>Music</span><span class="ctrl-key">M</span></div>
         <div class="ctrl-row"><span>Menu</span><span class="ctrl-key">ESC</span></div>
         <div id="conn-status">
@@ -408,6 +410,13 @@ let chosenColor = '#E2FF3D';
 const connections = [];
 let peer = null;
 let isPlaying = false;
+const cameraFocusTarget = new THREE.Vector3();
+const boomboxState = {
+    carriedBy: null,
+    position: new THREE.Vector3(9.0, 0.0, 5.5),
+    rotationY: 0,
+    mesh: null
+};
 
 const players = [
     { id:1, name:'Player 1', color:'#E2FF3D', mesh:null, position:new THREE.Vector3(0,floorY,ROOM_D/2-2), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false,shift:false}, isCustomizing:true, isSitting:false },
@@ -415,9 +424,10 @@ const players = [
     { id:3, name:'Player 3', color:'#EC4899', mesh:null, position:new THREE.Vector3(1,floorY,ROOM_D/2-2), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false,shift:false}, isCustomizing:false, isSitting:false }
 ];
 
-scene.background = new THREE.Color(0x05050f);
+scene.background = new THREE.Color(0x3a3a3d);
 const aspect = window.innerWidth / window.innerHeight;
 const camera = new THREE.PerspectiveCamera(90, aspect, 0.1, 200);
+camera.position.set(0, 5, 12);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
@@ -425,91 +435,90 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.getElementById('canvas-container').appendChild(renderer.domElement);
 
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.enableKeys = false;
+controls.maxPolarAngle = Math.PI / 2 - 0.05;
+controls.minDistance = 2.0;
+controls.maxDistance = 25.0;
+controls.target.set(0, 0.8, 0);
+controls.update();
+
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// ── LIGHTING ──
-scene.add(new THREE.AmbientLight(0x1a1a2e, 0.8));
-
-const purpleLight = new THREE.PointLight(0x7C3AED, 1.8, 18);
-purpleLight.position.set(0, ROOM_H - 0.3, 0);
-scene.add(purpleLight);
+// ── LIGHTING (Sad Office White) ──
+scene.add(new THREE.AmbientLight(0xffffff, 0.4));
 
 [-10, 0, 10].forEach((x, i) => {
-    const colors = [0x3b1d8a, 0x2d1a7a, 0x3b1d8a];
-    const pl = new THREE.PointLight(colors[i], 0.9, 12);
+    const pl = new THREE.PointLight(0xffffff, 0.8, 16);
     pl.position.set(x, ROOM_H - 0.4, 0);
     scene.add(pl);
 });
 
-// Overhead strip lights
 [-7, 0, 7].forEach(x => {
-    const sp = new THREE.PointLight(0x8866ee, 0.7, 8);
+    const sp = new THREE.PointLight(0xffffff, 0.5, 12);
     sp.position.set(x, ROOM_H - 0.2, -2);
     scene.add(sp);
 });
 
-// Warm accent near boomboxes
-const jukeLight = new THREE.PointLight(0xFF6B00, 1.2, 5);
-jukeLight.position.set(10, 1, -3);
-scene.add(jukeLight);
-
-// ── SUBWAY STATION GEOMETRY ──
-const concreteGray = new THREE.MeshStandardMaterial({ color: 0x1a1a2a, roughness: 0.9 });
-const tileYellow = new THREE.MeshStandardMaterial({ color: 0xFFD600, roughness: 0.6 });
-const tileOrange = new THREE.MeshStandardMaterial({ color: 0xE85D00, roughness: 0.6 });
-const metalMat = new THREE.MeshStandardMaterial({ color: 0x3a3a5a, roughness: 0.5, metalness: 0.7 });
-const darkMat = new THREE.MeshStandardMaterial({ color: 0x0a0a14, roughness: 1.0 });
-const creamTile = new THREE.MeshStandardMaterial({ color: 0xc8b89a, roughness: 0.7 });
+// ── SUBWAY STATION GEOMETRY (Sad Office White) ──
+const concreteGray = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.8 });
+const tileYellow = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.8 });
+const tileOrange = new THREE.MeshStandardMaterial({ color: 0x666666, roughness: 0.8 });
+const metalMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.4, metalness: 0.8 });
+const darkMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.9 });
+const creamTile = new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.9 });
 
 // Floor — dark tile
-const floorMesh = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.3, ROOM_D), new THREE.MeshStandardMaterial({ color: 0x111122, roughness: 0.8 }));
+const floorMesh = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.3, ROOM_D), new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.5 }));
 floorMesh.position.set(0, floorY - 0.15, 0);
 floorMesh.receiveShadow = true;
 scene.add(floorMesh);
 
 // Floor tile grout lines
 for (let i = -12; i <= 12; i += 2) {
-    const grout = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.02, ROOM_D), new THREE.MeshStandardMaterial({ color: 0x0a0a1a }));
+    const grout = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.02, ROOM_D), new THREE.MeshStandardMaterial({ color: 0xbbbbbb }));
     grout.position.set(i, 0.01, 0);
     scene.add(grout);
 }
 for (let z = -8; z <= 8; z += 2) {
-    const grout = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.02, 0.04), new THREE.MeshStandardMaterial({ color: 0x0a0a1a }));
+    const grout = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.02, 0.04), new THREE.MeshStandardMaterial({ color: 0xbbbbbb }));
     grout.position.set(0, 0.01, z);
     scene.add(grout);
 }
 
 // Ceiling
-const ceilMesh = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.3, ROOM_D), new THREE.MeshStandardMaterial({ color: 0x0a0a18, roughness: 1.0 }));
+const ceilMesh = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.3, ROOM_D), new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.9 }));
 ceilMesh.position.set(0, ROOM_H + 0.15, 0);
 scene.add(ceilMesh);
 
 // Ceiling panels
 for (let x = -12; x <= 12; x += 8) {
-    const panel = new THREE.Mesh(new THREE.BoxGeometry(7, 0.07, ROOM_D - 2), new THREE.MeshStandardMaterial({ color: 0x12122a, roughness: 0.9 }));
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(7, 0.07, ROOM_D - 2), new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.9 }));
     panel.position.set(x, ROOM_H, 0);
     scene.add(panel);
 }
 
 // Side walls
-const wallLeft = new THREE.Mesh(new THREE.BoxGeometry(0.3, ROOM_H, ROOM_D), new THREE.MeshStandardMaterial({ color: 0x111128, roughness: 0.9 }));
+const wallLeft = new THREE.Mesh(new THREE.BoxGeometry(0.3, ROOM_H, ROOM_D), new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.9 }));
 wallLeft.position.set(-ROOM_W/2 - 0.15, ROOM_H/2, 0);
 scene.add(wallLeft);
-const wallRight = new THREE.Mesh(new THREE.BoxGeometry(0.3, ROOM_H, ROOM_D), new THREE.MeshStandardMaterial({ color: 0x111128, roughness: 0.9 }));
+const wallRight = new THREE.Mesh(new THREE.BoxGeometry(0.3, ROOM_H, ROOM_D), new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.9 }));
 wallRight.position.set(ROOM_W/2 + 0.15, ROOM_H/2, 0);
 scene.add(wallRight);
 
 // Back wall
-const backWall = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, ROOM_H, 0.3), new THREE.MeshStandardMaterial({ color: 0x0d0d22, roughness: 0.9 }));
+const backWall = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, ROOM_H, 0.3), new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.9 }));
 backWall.position.set(0, ROOM_H/2, ROOM_D/2 + 0.15);
 scene.add(backWall);
 
 // Front wall with tunnel opening (16 units wide, full height minus top beam)
-const fWallMat = new THREE.MeshStandardMaterial({ color: 0x0a0a18, roughness: 0.9 });
+const fWallMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.9 });
 const openW = 16;
 const fWallL = new THREE.Mesh(new THREE.BoxGeometry((ROOM_W - openW) / 2, ROOM_H, 0.3), fWallMat);
 fWallL.position.set(-ROOM_W/2 + (ROOM_W - openW)/4, ROOM_H/2, -ROOM_D/2 - 0.15);
@@ -523,12 +532,12 @@ scene.add(fWallTop);
 
 // Tunnel void (dark boxes behind opening)
 for (let depth = 1; depth <= 6; depth++) {
-    const tf = new THREE.Mesh(new THREE.BoxGeometry(openW + 2, ROOM_H, 0.3), new THREE.MeshStandardMaterial({ color: 0x030308, roughness: 1.0 }));
+    const tf = new THREE.Mesh(new THREE.BoxGeometry(openW + 2, ROOM_H, 0.3), new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 1.0 }));
     tf.position.set(0, ROOM_H/2 - 0.5, -ROOM_D/2 - 0.15 - depth * 4);
     scene.add(tf);
 }
 
-// ── TILE STRIPE DECOR ──
+// ── TILE STRIPE DECOR (Gray) ──
 const yellowStripe = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W - 1, 1.2, 0.08), tileYellow);
 yellowStripe.position.set(0, 0.8, ROOM_D/2 + 0.04);
 scene.add(yellowStripe);
@@ -542,16 +551,16 @@ for (let x = -12; x <= 12; x += 4) {
 }
 
 // ── PLATFORM EDGE ──
-const platEdge = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.2, 0.6), new THREE.MeshStandardMaterial({ color: 0x221122, roughness: 0.8 }));
+const platEdge = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.2, 0.6), new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.8 }));
 platEdge.position.set(0, floorY - 0.1, -ROOM_D/2 + 0.3);
 scene.add(platEdge);
-const edgeStripe = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.03, 0.12), new THREE.MeshStandardMaterial({ color: 0xFFD600, roughness: 0.5, emissive: 0x443300, emissiveIntensity: 0.4 }));
+const edgeStripe = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.03, 0.12), new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.5, emissive: 0x666666, emissiveIntensity: 0.4 }));
 edgeStripe.position.set(0, 0.015, -ROOM_D/2 + 0.6);
 scene.add(edgeStripe);
 
 // ── COLUMNS ──
-const colMat = new THREE.MeshStandardMaterial({ color: 0x1a1a32, roughness: 0.8, metalness: 0.2 });
-const colAccMat = new THREE.MeshStandardMaterial({ color: 0x7C3AED, roughness: 0.4, emissive: 0x3d1d7a, emissiveIntensity: 0.5 });
+const colMat = new THREE.MeshStandardMaterial({ color: 0x4a4a4f, roughness: 0.8, metalness: 0.2 });
+const colAccMat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.4 });
 for (let x = -10; x <= 10; x += 10) {
     const col = new THREE.Mesh(new THREE.BoxGeometry(0.5, ROOM_H, 0.5), colMat);
     col.position.set(x, ROOM_H/2, -2);
@@ -562,8 +571,8 @@ for (let x = -10; x <= 10; x += 10) {
 }
 
 // ── BENCHES ──
-const benchMat = new THREE.MeshStandardMaterial({ color: 0x2a2a44, roughness: 0.7, metalness: 0.3 });
-const benchLegMat = new THREE.MeshStandardMaterial({ color: 0x1a1a30, roughness: 0.5, metalness: 0.6 });
+const benchMat = new THREE.MeshStandardMaterial({ color: 0x3e3e44, roughness: 0.7, metalness: 0.3 });
+const benchLegMat = new THREE.MeshStandardMaterial({ color: 0x2c2c30, roughness: 0.5, metalness: 0.6 });
 function createBench(x, z) {
     const g = new THREE.Group();
     const seat = new THREE.Mesh(new THREE.BoxGeometry(2, 0.12, 0.5), benchMat);
@@ -583,45 +592,126 @@ function createBench(x, z) {
 [-10, -4, 4, 10].forEach(x => createBench(x, ROOM_D/2 - 2.5));
 [-6, 0, 6].forEach(x => createBench(x, -1.5));
 
-// ── BOOMBOXES (replace jukebox) ──
+// ── ALL GENDERS BATHROOM ──
+const bathroomWallMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.6 });
+const stallDividerMat = new THREE.MeshStandardMaterial({ color: 0x888899, roughness: 0.3, metalness: 0.6 });
+const toiletMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.1 });
+
+const bathWallLeft = new THREE.Mesh(new THREE.BoxGeometry(0.2, ROOM_H, 6.0), bathroomWallMat);
+bathWallLeft.position.set(7.0, ROOM_H / 2, 6.0);
+scene.add(bathWallLeft);
+
+const bathWallFrontL = new THREE.Mesh(new THREE.BoxGeometry(1.2, ROOM_H, 0.2), bathroomWallMat);
+bathWallFrontL.position.set(7.6, ROOM_H / 2, 3.0);
+scene.add(bathWallFrontL);
+
+const bathWallFrontR = new THREE.Mesh(new THREE.BoxGeometry(4.8, ROOM_H, 0.2), bathroomWallMat);
+bathWallFrontR.position.set(12.6, ROOM_H / 2, 3.0);
+scene.add(bathWallFrontR);
+
+const bathDoorTop = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.2, 0.2), bathroomWallMat);
+bathDoorTop.position.set(9.2, ROOM_H - 0.6, 3.0);
+scene.add(bathDoorTop);
+
+const stallDivider = new THREE.Mesh(new THREE.BoxGeometry(4.5, 2.2, 0.08), stallDividerMat);
+stallDivider.position.set(12.75, 1.1, 6.0);
+scene.add(stallDivider);
+
+const stallFront1 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.2, 1.2), stallDividerMat);
+stallFront1.position.set(10.5, 1.1, 3.6);
+scene.add(stallFront1);
+
+const stallFront2 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.2, 2.0), stallDividerMat);
+stallFront2.position.set(10.5, 1.1, 6.2);
+scene.add(stallFront2);
+
+const stallFront3 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.2, 0.8), stallDividerMat);
+stallFront3.position.set(10.5, 1.1, 8.6);
+scene.add(stallFront3);
+
+const stallPanel1 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.4, 1.0), stallDividerMat);
+stallPanel1.position.set(10.5, 2.0, 4.7);
+scene.add(stallPanel1);
+
+const stallPanel2 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.4, 1.0), stallDividerMat);
+stallPanel2.position.set(10.5, 2.0, 7.7);
+scene.add(stallPanel2);
+
+const stallDoor1 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.8, 0.9), stallDividerMat);
+stallDoor1.position.set(10.8, 0.9, 4.7);
+stallDoor1.rotation.y = 0.5;
+scene.add(stallDoor1);
+
+const stallDoor2 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.8, 0.9), stallDividerMat);
+stallDoor2.position.set(10.8, 0.9, 7.7);
+stallDoor2.rotation.y = -0.3;
+scene.add(stallDoor2);
+
+function createToilet(x, z) {
+    const tg = new THREE.Group();
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.4, 12), toiletMat);
+    base.position.y = 0.2;
+    tg.add(base);
+    const bowl = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.1, 0.5), toiletMat);
+    bowl.position.set(0, 0.45, 0);
+    tg.add(bowl);
+    const tank = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.5, 0.4), toiletMat);
+    tank.position.set(0.1, 0.65, 0);
+    tg.add(tank);
+    tg.position.set(x, floorY, z);
+    scene.add(tg);
+}
+createToilet(13.5, 4.5);
+createToilet(13.5, 7.5);
+
+const sinkBase = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.2, 0.8), new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.5, metalness: 0.7 }));
+sinkBase.position.set(7.35, 0.7, 5.5);
+scene.add(sinkBase);
+
+const mirror = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 1.0), new THREE.MeshStandardMaterial({ color: 0x88aacc, roughness: 0.1, metalness: 0.9 }));
+mirror.position.set(7.11, 1.5, 5.5);
+mirror.rotation.y = Math.PI / 2;
+scene.add(mirror);
+
+const partyLight = new THREE.PointLight(0x8A2BE2, 2.0, 10);
+partyLight.position.set(11.0, ROOM_H - 1.0, 6.0);
+scene.add(partyLight);
+
+const partyLight2 = new THREE.PointLight(0xEC4899, 1.5, 8);
+partyLight2.position.set(13.5, ROOM_H - 1.0, 5.0);
+scene.add(partyLight2);
+
+// ── BOOMBOX (replace jukebox, only one inside bathroom) ──
 function createBoombox(x, z, rotY = 0) {
     const g = new THREE.Group();
     const bodyMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5, metalness: 0.5 });
     const speakerMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.9 });
     const accentMat = new THREE.MeshStandardMaterial({ color: 0xFF6B00, emissive: 0xFF3300, emissiveIntensity: 1.5 });
     const screenMatB = new THREE.MeshStandardMaterial({ color: 0x110033, emissive: 0x7C3AED, emissiveIntensity: 2.0, roughness: 0.1 });
-    // Main body
     const body = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.55, 0.45), bodyMat);
     body.position.y = 0.5;
     g.add(body);
-    // Left speaker cone
     const spkL = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.08, 12), speakerMat);
     spkL.rotation.x = Math.PI/2;
     spkL.position.set(-0.45, 0.5, 0.27);
     g.add(spkL);
-    // Right speaker cone
     const spkR = spkL.clone();
     spkR.position.x = 0.45;
     g.add(spkR);
-    // Center display
     const disp = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.18, 0.06), screenMatB);
     disp.position.set(0, 0.5, 0.26);
     g.add(disp);
-    // Antenna left
     const ant = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.5, 0.04), bodyMat);
     ant.position.set(-0.6, 1.0, 0);
     ant.rotation.z = -0.2;
     g.add(ant);
-    // Antenna right
     const ant2 = ant.clone();
     ant2.position.x = 0.6;
     ant2.rotation.z = 0.2;
     g.add(ant2);
-    // Orange accent strip
     const strip = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.06, 0.06), accentMat);
     strip.position.set(0, 0.35, 0.26);
     g.add(strip);
-    // Handle on top
     const handle = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.08, 0.08), bodyMat);
     handle.position.set(0, 0.82, 0);
     g.add(handle);
@@ -630,16 +720,14 @@ function createBoombox(x, z, rotY = 0) {
     scene.add(g);
     return g;
 }
-const boombox1 = createBoombox(10, -4, -Math.PI / 6);
-const boombox2 = createBoombox(-10, -4, Math.PI / 6);
-const boombox3 = createBoombox(0, ROOM_D/2 - 3.5, Math.PI);
+boomboxState.mesh = createBoombox(boomboxState.position.x, boomboxState.position.z, boomboxState.rotationY);
 
 // ── OVERHEAD LIGHT FIXTURES ──
 for (let x = -10; x <= 10; x += 10) {
-    const fixture = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.08, 0.3), new THREE.MeshStandardMaterial({ color: 0x8866ee, emissive: 0x5533bb, emissiveIntensity: 0.8 }));
+    const fixture = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.08, 0.3), new THREE.MeshStandardMaterial({ color: 0xcccccc, emissive: 0xaaaaaa, emissiveIntensity: 0.5 }));
     fixture.position.set(x, ROOM_H - 0.06, -1);
     scene.add(fixture);
-    const diff = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.04, 0.25), new THREE.MeshStandardMaterial({ color: 0xccbbff, emissive: 0x9977ff, emissiveIntensity: 1.0 }));
+    const diff = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.04, 0.25), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.8 }));
     diff.position.set(x, ROOM_H - 0.11, -1);
     scene.add(diff);
 }
@@ -905,6 +993,30 @@ function spawnEmotion(type) {
 }
 
 // ── PHYSICS & MOVEMENT ──
+function checkSubwayCollisions(pos, r = 0.38) {
+    if (pos.x >= 7.0 - r && pos.x <= 7.0 + r && pos.z >= 3.0 - r) {
+        return true;
+    }
+    if (pos.z >= 3.0 - r && pos.z <= 3.0 + r && pos.x >= 7.0 && pos.x <= 8.2 + r) {
+        return true;
+    }
+    if (pos.z >= 3.0 - r && pos.z <= 3.0 + r && pos.x >= 10.2 - r && pos.x <= 15.0) {
+        return true;
+    }
+    if (pos.z >= 6.0 - r && pos.z <= 6.0 + r && pos.x >= 10.5 - r && pos.x <= 15.0) {
+        return true;
+    }
+    if (pos.x >= 10.5 - r && pos.x <= 10.5 + r) {
+        const z = pos.z;
+        if ((z >= 3.0 - r && z <= 4.2 + r) || 
+            (z >= 5.2 - r && z <= 6.0 + r) || 
+            (z >= 6.0 - r && z <= 7.2 + r) || 
+            (z >= 8.2 - r && z <= 9.0 + r)) {
+            return true;
+        }
+    }
+    return false;
+}
 function clampToRoom(p) {
     const hw = ROOM_W / 2 - 0.5, hd = ROOM_D / 2 - 0.5;
     p.mesh.position.x = Math.max(-hw, Math.min(hw, p.mesh.position.x));
@@ -914,6 +1026,7 @@ const clock = new THREE.Clock();
 function animate() {
     requestAnimationFrame(animate);
     const delta = Math.min(clock.getDelta(), 0.05);
+    const hw = ROOM_W / 2 - 0.5, hd = ROOM_D / 2 - 0.5;
     for (const p of players) {
         if (!p.mesh) continue;
         const prevX = p.mesh.position.x, prevZ = p.mesh.position.z;
@@ -926,23 +1039,27 @@ function animate() {
         if (p.keys.down) mz += 1;
         if (p.keys.left) mx -= 1;
         if (p.keys.right) mx += 1;
-        p.vx *= 0.88; p.vz *= 0.88;
+        p.vx *= 0.92; p.vz *= 0.92;
         const isSprint = p.keys.shift && (mx !== 0 || mz !== 0);
-        const spd = isSprint ? 6.5 : 2.8;
+        const spd = isSprint ? 4.8 : 2.8;
+        let dx = 0, dz = 0;
         if (mx !== 0 || mz !== 0) {
-            let dx = mx, dz = mz;
-            if (isFirstPerson) {
-                const camF = new THREE.Vector3(0, 0, -1).applyEuler(new THREE.Euler(0, fpYaw, 0));
-                camF.y = 0; camF.normalize();
-                const camR = new THREE.Vector3(1, 0, 0).applyEuler(new THREE.Euler(0, fpYaw, 0));
-                camR.y = 0; camR.normalize();
-                const dir = new THREE.Vector3().addScaledVector(camF, -mz).addScaledVector(camR, mx);
-                if (dir.length() > 0) { dir.normalize(); dx = dir.x; dz = dir.z; }
-            }
-            const len = Math.sqrt(dx*dx + dz*dz);
-            if (len > 0) { dx /= len; dz /= len; }
-            p.mesh.position.x += (dx * spd + p.vx) * delta;
-            p.mesh.position.z += (dz * spd + p.vz) * delta;
+            const camF = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            camF.y = 0; camF.normalize();
+            const camR = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+            camR.y = 0; camR.normalize();
+            const targetDir = new THREE.Vector3().addScaledVector(camF, -mz).addScaledVector(camR, mx).normalize();
+            dx = targetDir.x; dz = targetDir.z;
+        }
+        if (mx !== 0 || mz !== 0) {
+            const nX = p.mesh.position.clone(); nX.x += (dx * spd + p.vx) * delta;
+            nX.x = Math.max(-hw, Math.min(hw, nX.x));
+            if (!checkSubwayCollisions(nX)) p.mesh.position.x = nX.x;
+
+            const nZ = p.mesh.position.clone(); nZ.z += (dz * spd + p.vz) * delta;
+            nZ.z = Math.max(-hd, Math.min(hd, nZ.z));
+            if (!checkSubwayCollisions(nZ)) p.mesh.position.z = nZ.z;
+
             if (!isFirstPerson) {
                 const ta = Math.atan2(dx, dz) + Math.PI;
                 let diff = ta - p.mesh.rotation.y;
@@ -951,7 +1068,7 @@ function animate() {
                 p.mesh.rotation.y += diff * 0.15;
             }
         }
-        clampToRoom(p);
+        if (isFirstPerson && p.id === localPlayerId) { p.mesh.rotation.y = fpYaw; }
         if (!p.isJumping && p.mesh.position.y > floorY + 0.1) { p.isJumping = true; p.yVelocity = 0; }
         if (p.keys.space && !p.isJumping) { p.isJumping = true; p.yVelocity = 5.2; p.jumpHoldTimer = 0; }
         if (p.isJumping) {
@@ -976,11 +1093,33 @@ function animate() {
         rp.sprite.material.opacity = rp.life;
         if (rp.life <= 0) { scene.remove(rp.sprite); rp.sprite.material.dispose(); reactionParticles.splice(i, 1); }
     }
-    // Boombox pulse
-    const t = Date.now() / 1000;
-    if (isPlaying) {
-        jukeLight.intensity = 1.0 + Math.sin(t * 4) * 0.5;
+    
+    // Bathroom Party Lights flashing
+    const pTime = Date.now() / 1000;
+    if (partyLight) {
+        partyLight.intensity = isPlaying ? (2.0 + Math.sin(pTime * 12) * 1.0) * 1.5 : 2.0 + Math.sin(pTime * 8) * 1.0;
+        partyLight.color.setHSL((pTime * 0.15) % 1.0, 1.0, 0.5);
     }
+    if (partyLight2) {
+        partyLight2.intensity = isPlaying ? (1.5 + Math.cos(pTime * 10) * 0.8) * 1.5 : 1.5 + Math.cos(pTime * 6) * 0.8;
+        partyLight2.color.setHSL((pTime * 0.15 + 0.5) % 1.0, 1.0, 0.5);
+    }
+
+    // Boombox position tracking (on head or on floor)
+    if (boomboxState.mesh) {
+        if (boomboxState.carriedBy !== null) {
+            const carrier = players.find(p => p.id === boomboxState.carriedBy);
+            if (carrier && carrier.mesh) {
+                boomboxState.mesh.position.copy(carrier.mesh.position);
+                boomboxState.mesh.position.y += 1.45;
+                boomboxState.mesh.rotation.y = carrier.mesh.rotation.y;
+            }
+        } else {
+            boomboxState.mesh.position.copy(boomboxState.position);
+            boomboxState.mesh.rotation.y = boomboxState.rotationY;
+        }
+    }
+
     // ── TRAIN ANIMATION (left → right, never stops) ──
     trainTimer += delta;
     if (trainTimer >= TRAIN_INTERVAL && trainX <= TRAIN_START_X + 0.1) {
@@ -996,21 +1135,17 @@ function animate() {
     const localP = players[localPlayerId - 1];
     if (localP && localP.mesh) {
         if (isFirstPerson) {
-            const hp = localP.mesh.position.clone().add(new THREE.Vector3(0, 0.65, 0));
-            camera.position.copy(hp);
+            const headPos = new THREE.Vector3().copy(localP.mesh.position).add(new THREE.Vector3(0, 0.65, 0));
+            camera.position.copy(headPos);
             camera.quaternion.setFromEuler(new THREE.Euler(fpPitch, fpYaw, 0, 'YXZ'));
+            controls.target.copy(headPos);
         } else {
-            // Third-person: follow behind player
-            const angle = localP.mesh.rotation.y;
-            const offset = new THREE.Vector3(
-                Math.sin(angle) * tpCamOffset.z,
-                tpCamOffset.y,
-                Math.cos(angle) * tpCamOffset.z
-            );
-            const targetPos = localP.mesh.position.clone().add(offset);
-            camera.position.lerp(targetPos, 0.1);
-            const lookAt = localP.mesh.position.clone().add(new THREE.Vector3(0, 0.8, 0));
-            camera.lookAt(lookAt);
+            const oldTarget = controls.target.clone();
+            cameraFocusTarget.copy(localP.mesh.position).add(new THREE.Vector3(0, 0.8, 0));
+            controls.target.lerp(cameraFocusTarget, 0.25);
+            const deltaTarget = new THREE.Vector3().subVectors(controls.target, oldTarget);
+            camera.position.add(deltaTarget);
+            controls.update();
         }
     }
     if (localP && localP.mesh && connections.length > 0) {
@@ -1021,6 +1156,39 @@ function animate() {
 animate();
 
 // ── INPUT ──
+function toggleBoomboxCarried() {
+    const lp = players[localPlayerId - 1];
+    if (!lp || lp.isCustomizing) return;
+    if (boomboxState.carriedBy === localPlayerId) {
+        boomboxState.carriedBy = null;
+        boomboxState.position.copy(lp.mesh.position);
+        boomboxState.position.y = floorY;
+        boomboxState.rotationY = lp.mesh.rotation.y;
+        const msg = {
+            type: 'boomboxAction',
+            playerId: localPlayerId,
+            action: 'drop',
+            x: boomboxState.position.x,
+            y: boomboxState.position.y,
+            z: boomboxState.position.z,
+            ry: boomboxState.rotationY
+        };
+        connections.forEach(c => { if (c.open) c.send(msg); });
+        addChat(null, `${lp.name} set down the boombox.`, true);
+    } else if (boomboxState.carriedBy === null) {
+        const dist = lp.mesh.position.distanceTo(boomboxState.position);
+        if (dist < 1.8) {
+            boomboxState.carriedBy = localPlayerId;
+            const msg = {
+                type: 'boomboxAction',
+                playerId: localPlayerId,
+                action: 'pickup'
+            };
+            connections.forEach(c => { if (c.open) c.send(msg); });
+            addChat(null, `${lp.name} picked up the boombox.`, true);
+        }
+    }
+}
 window.addEventListener('keydown', e => {
     if (e.key === 'Escape') { togglePause(); return; }
     if (isCustomizing) return;
@@ -1035,7 +1203,9 @@ window.addEventListener('keydown', e => {
     else if (k === ' ' || e.code === 'Space') { p.keys.space = true; e.preventDefault(); }
     else if (k === 'shift') p.keys.shift = true;
     else if (k === 'v' && !e.repeat) toggleCamMode();
+    else if (k === 'c' && !e.repeat) toggleCamMode();
     else if (k === 'm' && !e.repeat) toggleMusicPanel();
+    else if (k === 'p' && !e.repeat) toggleBoomboxCarried();
 });
 window.addEventListener('keyup', e => {
     if (isCustomizing) return;
@@ -1057,14 +1227,23 @@ function toggleCamMode() {
     const lp = players[localPlayerId - 1];
     const ind = document.getElementById('cam-indicator');
     if (isFirstPerson) {
+        controls.enabled = false;
         if (lp && lp.mesh) lp.mesh.visible = false;
-        if (lp) { fpYaw = lp.mesh ? lp.mesh.rotation.y + Math.PI : Math.PI; fpPitch = 0; }
+        const euler = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ');
+        fpYaw = euler.y;
+        fpPitch = euler.x;
         renderer.domElement.requestPointerLock();
-        ind.textContent = '👤 FIRST PERSON — Press V for Third Person';
+        ind.textContent = '👤 FIRST PERSON — Press V/C for Third Person';
     } else {
+        controls.enabled = true;
         if (lp && lp.mesh) lp.mesh.visible = !lp.isCustomizing;
         if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
-        ind.textContent = '🚇 THIRD PERSON — Press V for First Person';
+        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+        forward.y = 0.5;
+        forward.normalize();
+        camera.position.copy(controls.target).addScaledVector(forward, -6);
+        controls.update();
+        ind.textContent = '🚇 THIRD PERSON — Press V/C for First Person';
     }
 }
 document.addEventListener('mousemove', e => {
@@ -1166,6 +1345,14 @@ try {
             conn.on('open', () => {
                 document.getElementById('status-label').textContent = 'Connected!';
                 conn.send({ type: 'init', assignedId });
+                conn.send({
+                    type: 'boomboxSync',
+                    carriedBy: boomboxState.carriedBy,
+                    x: boomboxState.position.x,
+                    y: boomboxState.position.y,
+                    z: boomboxState.position.z,
+                    ry: boomboxState.rotationY
+                });
             });
             setupConn(conn, assignedId);
         });
@@ -1206,6 +1393,19 @@ function setupConn(conn, remoteId = null) {
             if (isHost) connections.forEach(c => { if (c !== conn && c.open) c.send(data); });
         } else if (data.type === 'musicSync') {
             if (!isHost) receiveMusicSync(data);
+        } else if (data.type === 'boomboxSync') {
+            boomboxState.carriedBy = data.carriedBy;
+            boomboxState.position.set(data.x, data.y, data.z);
+            boomboxState.rotationY = data.ry;
+        } else if (data.type === 'boomboxAction') {
+            if (data.action === 'pickup') {
+                boomboxState.carriedBy = data.playerId;
+            } else if (data.action === 'drop') {
+                boomboxState.carriedBy = null;
+                boomboxState.position.set(data.x, data.y, data.z);
+                boomboxState.rotationY = data.ry;
+            }
+            if (isHost) connections.forEach(c => { if (c !== conn && c.open) c.send(data); });
         }
     });
 }
