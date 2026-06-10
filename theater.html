@@ -1055,13 +1055,6 @@
 
         function animate() {
             requestAnimationFrame(animate);
-            if (videoElement.paused || videoElement.readyState < 2) {
-                renderer.render(scene, camera);
-                return;
-            }
-            if (screenTexture) {
-                screenTexture.needsUpdate = true;
-            }
             const delta = Math.min(clock.getDelta(), 0.05);
 
             for (const p of players) {
