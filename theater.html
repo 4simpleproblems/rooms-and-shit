@@ -614,6 +614,9 @@
     </div>
 
     <div class="ui-layer">
+        <div id="projector-tooltip" style="position: absolute; bottom: 180px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); border: 6px solid var(--black-outline); box-shadow: 4px 4px 0px var(--black-outline); padding: 8px 16px; font-family: 'Alfa Slab One', cursive; font-size: 0.9rem; color: #fff; z-index: 100; pointer-events: none; display: none; text-align: center; text-transform: uppercase; white-space: nowrap;">
+            Press 1: Mickey | 2: Popeye | 3: Superman
+        </div>
         <div class="ui-panel header-panel">
             <button id="back-btn" class="ui-btn"><i class="fa-solid fa-arrow-left"></i> Map</button>
             <button id="pause-btn" class="ui-btn"><i class="fa-solid fa-pause"></i> Pause</button>
@@ -915,6 +918,17 @@
             }
         }
 
+        function broadcastMovieSyncForce() {
+            const syncData = { 
+                type: 'movieSync', 
+                index: currentMovieIndex, 
+                time: videoElement.currentTime 
+            };
+            connections.forEach(c => {
+                if (c.open) c.send(syncData);
+            });
+        }
+
         const screenTexture = new THREE.VideoTexture(videoElement);
         screenTexture.minFilter = THREE.LinearFilter;
         screenTexture.magFilter = THREE.LinearFilter;
@@ -1148,6 +1162,7 @@
         }
 
         let isLookingAtProjector = false;
+        let isNearProjector = false;
 
         function handlePlayError() {
             addChatMessageToLog(null, "Click anywhere to start playback.", true);
@@ -1409,6 +1424,22 @@
             const p = players[localPlayerId - 1];
             if (!p) return;
 
+            if (isNearProjector) {
+                if (key === '1') {
+                    playMovie(0);
+                    broadcastMovieSyncForce();
+                    return;
+                } else if (key === '2') {
+                    playMovie(1);
+                    broadcastMovieSyncForce();
+                    return;
+                } else if (key === '3') {
+                    playMovie(2);
+                    broadcastMovieSyncForce();
+                    return;
+                }
+            }
+
             if (key === 'arrowup' || key === 'w') p.keys.up = true;
             else if (key === 'arrowdown' || key === 's') p.keys.down = true;
             else if (key === 'arrowleft' || key === 'a') p.keys.left = true;
@@ -1622,6 +1653,21 @@
                     camera.position.x = THREE.MathUtils.clamp(camera.position.x, -ROOM_W / 2 + camPad, ROOM_W / 2 - camPad);
                     camera.position.z = THREE.MathUtils.clamp(camera.position.z, -ROOM_D / 2 + camPad, ROOM_D / 2 - camPad);
                     camera.position.y = THREE.MathUtils.clamp(camera.position.y, floorY + camPad, floorY + ROOM_H - camPad);
+                }
+            }
+
+            if (localP && localP.mesh && !isCustomizing) {
+                const dist = Math.hypot(localP.mesh.position.x - 0, localP.mesh.position.z - 13.5);
+                isNearProjector = dist < 2.5;
+                const tooltip = document.getElementById('projector-tooltip');
+                if (tooltip) {
+                    tooltip.style.display = isNearProjector ? 'block' : 'none';
+                }
+            } else {
+                isNearProjector = false;
+                const tooltip = document.getElementById('projector-tooltip');
+                if (tooltip) {
+                    tooltip.style.display = 'none';
                 }
             }
 
@@ -1860,6 +1906,7 @@
             }
         }
 
+        document.getElementById('back-btn').addEventListener('click', () => { window.location.href = 'index.html'; });
         document.getElementById('pause-btn').addEventListener('click', () => { if (isCustomizing && !isPaused) return; togglePause(); });
         document.getElementById('resume-btn').addEventListener('click', togglePause);
 
