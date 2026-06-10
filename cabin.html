@@ -956,10 +956,10 @@
         radioIndicatorLight = new THREE.Mesh(new THREE.SphereGeometry(0.012, 4, 4), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
         radioIndicatorLight.position.set(0.07, 0.16, 0.092);
         radioGroup.add(radioIndicatorLight);
-        radioGroup.position.set(1.2, 0.475, -2.1);
-        radioGroup.rotation.y = -0.5;
+        radioGroup.position.set(1.5, 0, 2.1);
+        radioGroup.rotation.y = Math.PI / 4;
         scene.add(radioGroup);
-        interactions.push({ x: 1.2, z: -2.1, type: 'Radio', range: 0.9 });
+        interactions.push({ x: 1.5, z: 2.1, type: 'Radio', range: 0.9 });
 
         const shelfGroup = new THREE.Group();
         const shelfWoodMat = new THREE.MeshStandardMaterial({ color: 0x4a2e1d, roughness: 0.8 });
@@ -1201,7 +1201,7 @@
         function spawnNote() {
             if (notes.length >= 8) return;
             const note = new THREE.Mesh(noteGeo, noteMat.clone());
-            note.position.set(1.2 + (Math.random() - 0.5) * 0.1, 0.6, -2.1 + (Math.random() - 0.5) * 0.1);
+            note.position.set(1.5 + (Math.random() - 0.5) * 0.1, 0.2, 2.1 + (Math.random() - 0.5) * 0.1);
             note.userData = {
                 vy: 0.15 + Math.random() * 0.2,
                 vx: (Math.random() - 0.5) * 0.1,
@@ -1721,7 +1721,7 @@
                     spawnEmbersFlurry();
                     addSystemMessage("Added a log to the fireplace. Cozy!");
                     showSpeechBubble("Warmth +1!");
-                } else if (Math.hypot(p.mesh.position.x - 1.2, p.mesh.position.z - (-2.1)) < 0.9) {
+                } else if (Math.hypot(p.mesh.position.x - 1.5, p.mesh.position.z - 2.1) < 0.9) {
                     toggleRadio();
                 } else {
                     toggleSit();
