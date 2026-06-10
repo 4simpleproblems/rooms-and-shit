@@ -76,7 +76,7 @@
 
     <div id="fade-overlay"></div>
 
-    <video id="movie-video" loop crossorigin="anonymous" playsinline muted style="display:none;"></video>
+    <video id="movie-video" loop crossorigin="anonymous" playsinline style="display:none;"></video>
 
     <div id="customization-overlay">
         <div class="custom-card">
@@ -364,6 +364,7 @@
             const movie = MOVIES[currentMovieIndex];
             videoElement.src = movie.url;
             videoElement.currentTime = time;
+            videoElement.muted = false;
             videoElement.load();
             videoElement.play().catch(e => console.warn("Auto-play failed:", e));
             addChatMessageToLog(null, `Now playing: ${movie.title}`, true);
@@ -398,15 +399,56 @@
         const screenW = 20;
         const screenH = 11;
         const screenGeo = new THREE.PlaneGeometry(screenW, screenH);
-        const screenMat = new THREE.MeshStandardMaterial({ 
-            map: screenTexture,
-            emissive: 0xffffff,
-            emissiveMap: screenTexture,
-            emissiveIntensity: 1.0
-        });
+        const screenMat = new THREE.MeshBasicMaterial({ map: screenTexture }); // Use BasicMaterial for full brightness without shadow influence
         const screenMesh = new THREE.Mesh(screenGeo, screenMat);
         screenMesh.position.set(0, floorY + ROOM_H * 0.5 + 0.5, -ROOM_D / 2 + 0.2);
         scene.add(screenMesh);
+
+        // --- THEATER SEATING ---
+        const chairColor = 0x440000;
+        const chairBaseGeo = new THREE.BoxGeometry(0.8, 0.1, 0.8);
+        const chairBackGeo = new THREE.BoxGeometry(0.8, 0.8, 0.1);
+        const chairMat = new THREE.MeshStandardMaterial({ color: chairColor });
+
+        const rows = 5;
+        const cols = 10;
+        const spacingX = 1.8;
+        const spacingZ = 2.5;
+
+        function createChair(x, z) {
+            const group = new THREE.Group();
+            
+            const base = new THREE.Mesh(chairBaseGeo, chairMat);
+            base.position.y = 0.4;
+            base.castShadow = true;
+            group.add(base);
+
+            const back = new THREE.Mesh(chairBackGeo, chairMat);
+            back.position.set(0, 0.8, 0.4);
+            back.castShadow = true;
+            group.add(back);
+
+            const legGeo = new THREE.BoxGeometry(0.1, 0.4, 0.1);
+            const legMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+            [[-0.3,-0.3], [0.3,-0.3], [-0.3,0.3], [0.3,0.3]].forEach(pos => {
+                const leg = new THREE.Mesh(legGeo, legMat);
+                leg.position.set(pos[0], 0.2, pos[1]);
+                group.add(leg);
+            });
+
+            group.position.set(x, floorY, z);
+            scene.add(group);
+        }
+
+        for (let r = 0; r < rows; r++) {
+            const z = (ROOM_D / 2 - 6) - (r * spacingZ);
+            for (let c = 0; c < cols; c++) {
+                const x = ((c - (cols - 1) / 2) * spacingX);
+                // Leave a center aisle
+                if (Math.abs(x) < 1.0) continue;
+                createChair(x, z);
+            }
+        }
 
         // Screen border frame (black)
         const frameMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
