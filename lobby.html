@@ -1915,7 +1915,16 @@
             leaves.position.set(x, parkTopY + 2.0, z);
             leaves.castShadow = true;
             leaves.receiveShadow = true;
+            leaves.raycast = () => {}; // No raycasting on leaves
             scene.add(leaves);
+
+            const trunkHitbox = new THREE.Mesh(
+                new THREE.BoxGeometry(0.5, 1.5, 0.5),
+                new THREE.MeshBasicMaterial({ visible: false })
+            );
+            trunkHitbox.position.copy(trunk.position);
+            scene.add(trunkHitbox);
+            customPlatforms.push(trunkHitbox);
         }
         createTree(parkX - 5, -5);
         createTree(parkX + 5, -5);
@@ -1960,7 +1969,7 @@
         scene.add(sun);
 
         const bridgePlanks = [];
-        const numPlanks = 11;
+        const numPlanks = 10;
         const bridgeStartX = 12.0;
         const bridgeEndX = 21.0;
         const bridgeYStart = floorY;
@@ -2278,6 +2287,13 @@
                     dir.normalize();
                     const force = (1.0 - dist / explosionRadius) * 14.0 + 4.0;
                     if (!other.isRemote) {
+                        if (other.isSitting) {
+                            other.isSitting = false;
+                            if (other.standingMesh && other.sittingMesh) {
+                                other.standingMesh.visible = true;
+                                other.sittingMesh.visible = false;
+                            }
+                        }
                         other.vx = dir.x * force;
                         other.vz = dir.z * force;
                         other.yVelocity = force * 0.8 + 4.0;

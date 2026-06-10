@@ -399,7 +399,11 @@
 
         // Movie screen — VideoTexture
         const videoElement = document.getElementById('movie-video');
+        videoElement.crossOrigin = "anonymous";
         const screenTexture = new THREE.VideoTexture(videoElement);
+        screenTexture.minFilter = THREE.LinearFilter;
+        screenTexture.magFilter = THREE.LinearFilter;
+        screenTexture.format = THREE.RGBFormat;
         const screenW = 20;
         const screenH = 11;
         const screenGeo = new THREE.PlaneGeometry(screenW, screenH);
@@ -1032,6 +1036,7 @@
 
         function animate() {
             requestAnimationFrame(animate);
+            if (screenTexture) screenTexture.needsUpdate = true;
             const delta = Math.min(clock.getDelta(), 0.05);
 
             for (const p of players) {
