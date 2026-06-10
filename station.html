@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rooms &amp; Shit | The Station</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Inter:wght@500;700;900&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -13,79 +13,403 @@
     <script src="character.js"></script>
     <style>
         :root {
-            --accent: #7C3AED;
-            --accent-glow: rgba(124,58,237,0.4);
-            --station-dark: #0a0a12;
-            --station-mid: #13131f;
-            --tile-yellow: #FFD600;
-            --tile-orange: #FF6B00;
-            --text-main: #fff;
-            --text-sub: rgba(255,255,255,0.55);
-            --panel-bg: rgba(10,10,20,0.92);
-            --divider: rgba(255,255,255,0.08);
-            --green-play: #1DB954;
+            --bg-creme: #F4F1E1;
+            --tree-creme: #E8E4CE;
+            --color-theater: #FF3366;
+            --color-lobby: #8A2BE2;
+            --color-station: #8A2BE2;
+            --black-outline: #09090B;
+            --white-ui: #FFFFFF;
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: #000; font-family: 'Inter', sans-serif; overflow: hidden; color: #fff; user-select: none; }
-        #canvas-container { position: absolute; inset: 0; z-index: 1; }
-        .ui-layer { position: absolute; inset: 0; z-index: 10; pointer-events: none; }
 
-        /* ── Header ── */
-        #hdr { position: absolute; top: 20px; left: 20px; display: flex; align-items: center; gap: 12px; pointer-events: auto; }
-        #hdr-title { font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 1.1rem; background: linear-gradient(135deg, #7C3AED, #EC4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: 1px; }
-        .hdr-btn { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); color: #fff; padding: 7px 14px; border-radius: 20px; font-family: 'Inter', sans-serif; font-weight: 700; font-size: 0.78rem; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: background 0.2s; backdrop-filter: blur(8px); pointer-events: auto; }
-        .hdr-btn:hover { background: rgba(255,255,255,0.15); }
-        .hdr-btn i { font-size: 0.85rem; }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #FFFFFF;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden; 
+            color: var(--black-outline);
+            user-select: none;
+        }
 
-        /* ── Cam Mode indicator ── */
-        #cam-indicator { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(124,58,237,0.7); border: 1px solid rgba(124,58,237,0.9); padding: 4px 16px; border-radius: 20px; font-size: 0.72rem; font-weight: 700; letter-spacing: 1px; pointer-events: none; backdrop-filter: blur(6px); }
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+        }
 
-        /* ── Chat ── */
-        #chat-log { position: absolute; bottom: 110px; left: 20px; width: 320px; height: 160px; display: flex; flex-direction: column; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 10px; backdrop-filter: blur(10px); }
-        #chat-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; font-size: 0.78rem; font-weight: 500; }
-        #chat-list::-webkit-scrollbar { width: 3px; }
-        #chat-list::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 2px; }
-        .chat-msg { color: rgba(255,255,255,0.85); line-height: 1.4; word-break: break-word; }
-        .chat-sys { color: var(--accent); font-style: italic; }
-        #chat-row { position: absolute; bottom: 60px; left: 20px; width: 320px; display: flex; gap: 8px; pointer-events: auto; }
-        #chat-input { flex: 1; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); color: #fff; padding: 9px 14px; border-radius: 10px; font-family: 'Inter',sans-serif; font-size: 0.85rem; outline: none; }
-        #chat-input:focus { border-color: var(--accent); }
-        #chat-send { background: var(--accent); border: none; color: #fff; padding: 9px 14px; border-radius: 10px; cursor: pointer; font-size: 0.85rem; }
+        .ui-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 10;
+            pointer-events: none; 
+        }
 
-        /* ── Emotions ── */
-        #emotions { position: absolute; bottom: 20px; right: 20px; display: flex; gap: 8px; pointer-events: auto; }
-        .emo-btn { width: 44px; height: 44px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); border-radius: 50%; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.2s, transform 0.1s; backdrop-filter: blur(6px); }
-        .emo-btn:hover { background: rgba(255,255,255,0.18); transform: scale(1.1); }
+        .ui-panel {
+            pointer-events: auto; 
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 6px solid var(--black-outline); 
+            box-shadow: 8px 8px 0px var(--black-outline);
+            border-radius: 0px; 
+            padding: 16px;
+            position: absolute;
+            box-sizing: border-box;
+        }
 
-        /* ── Controls panel ── */
-        #ctrl-panel { position: absolute; top: 20px; right: 20px; width: 220px; background: var(--panel-bg); border: 1px solid var(--divider); border-radius: 12px; padding: 14px; backdrop-filter: blur(16px); font-size: 0.78rem; }
-        #ctrl-panel h3 { font-family: 'Manrope',sans-serif; font-size: 0.7rem; font-weight: 800; letter-spacing: 2px; color: var(--accent); margin-bottom: 10px; text-transform: uppercase; }
-        .ctrl-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
-        .ctrl-key { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.18); border-radius: 4px; padding: 1px 6px; font-family: monospace; font-weight: 700; font-size: 0.72rem; color: rgba(255,255,255,0.9); }
-        #conn-status { font-size: 0.7rem; color: var(--text-sub); margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--divider); }
-        .peer-id-row { display: flex; align-items: center; gap: 6px; margin: 5px 0; font-size: 0.68rem; }
-        #my-peer-id { color: var(--accent); font-weight: 700; }
-        #copy-id-btn { background: rgba(124,58,237,0.2); border: 1px solid var(--accent); color: var(--accent); font-size: 0.6rem; padding: 2px 6px; border-radius: 6px; cursor: pointer; }
-        #join-input { width: 100%; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); color: #fff; padding: 5px 8px; border-radius: 6px; font-size: 0.7rem; margin: 4px 0; outline: none; }
-        #connect-btn { width: 100%; background: var(--accent); border: none; color: #fff; padding: 5px; border-radius: 6px; font-size: 0.7rem; cursor: pointer; font-weight: 700; }
+        .header-panel {
+            top: 24px;
+            left: 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
 
-        /* ── Customization overlay ── */
-        #custom-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.88); backdrop-filter: blur(16px); z-index: 200; display: flex; align-items: center; justify-content: center; }
-        #custom-overlay.hidden { display: none; }
-        .custom-card { background: rgba(18,18,30,0.98); border: 1px solid rgba(124,58,237,0.4); border-radius: 20px; padding: 32px; width: 360px; max-width: 90vw; display: flex; flex-direction: column; gap: 18px; }
-        .custom-title { font-family: 'Manrope',sans-serif; font-size: 1.5rem; font-weight: 800; text-align: center; background: linear-gradient(135deg, #7C3AED, #EC4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .custom-field label { display: block; font-size: 0.72rem; font-weight: 700; letter-spacing: 1px; color: var(--text-sub); text-transform: uppercase; margin-bottom: 6px; }
-        .custom-input { width: 100%; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); color: #fff; padding: 10px 14px; border-radius: 10px; font-family: 'Inter',sans-serif; font-size: 0.95rem; outline: none; }
-        .custom-input:focus { border-color: var(--accent); }
-        .color-grid { display: grid; grid-template-columns: repeat(6,1fr); gap: 7px; }
-        .col-btn { aspect-ratio: 1; border-radius: 50%; border: 2px solid transparent; cursor: pointer; transition: transform 0.1s, border-color 0.15s; }
-        .col-btn.active, .col-btn:hover { transform: scale(1.2); border-color: #fff; }
-        .enter-btn { width: 100%; background: linear-gradient(135deg, #7C3AED, #EC4899); border: none; color: #fff; padding: 13px; border-radius: 12px; font-family: 'Manrope',sans-serif; font-weight: 800; font-size: 1rem; cursor: pointer; transition: opacity 0.2s; }
-        .enter-btn:hover { opacity: 0.88; }
+        .header-title {
+            font-family: 'Alfa Slab One', cursive;
+            font-size: 1.4rem;
+            letter-spacing: 1px;
+            margin: 0;
+        }
 
-        /* ── Pause overlay ── */
-        #pause-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.88); backdrop-filter: blur(16px); z-index: 200; display: flex; align-items: center; justify-content: center; }
-        #pause-overlay.hidden { display: none; }
+        .ui-btn {
+            font-family: 'Inter', sans-serif;
+            font-weight: 900;
+            font-size: 1rem;
+            text-align: center;
+            text-transform: uppercase;
+            background: var(--white-ui);
+            border: 4px solid var(--black-outline); 
+            border-radius: 0px; 
+            box-shadow: 4px 4px 0px var(--black-outline);
+            cursor: pointer;
+            padding: 10px 16px;
+            transition: transform 0.05s linear, box-shadow 0.05s linear;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .ui-btn:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0px var(--black-outline);
+        }
+
+        .ui-btn:active {
+            transform: translate(4px, 4px);
+            box-shadow: 0px 0px 0px var(--black-outline);
+        }
+
+        .ui-btn.primary {
+            background: var(--color-station);
+            color: #FFFFFF;
+        }
+
+        .controls-panel {
+            top: 24px;
+            right: 24px;
+            width: 260px;
+        }
+
+        .controls-panel h3 {
+            font-family: 'Alfa Slab One', cursive;
+            font-size: 1rem;
+            margin: 0 0 10px 0;
+            letter-spacing: 0.5px;
+            color: var(--color-station);
+        }
+
+        .control-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+
+        .control-key {
+            background: #E4E4E7;
+            border: 2px solid var(--black-outline);
+            border-radius: 4px;
+            padding: 2px 6px;
+            box-shadow: 1px 1px 0px var(--black-outline);
+            font-family: monospace;
+            font-weight: 900;
+        }
+
+        #chat-log-panel {
+            position: absolute;
+            bottom: 262px;
+            left: 24px;
+            width: 380px;
+            height: 200px;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            background: rgba(255, 255, 255, 0.75);
+            border: 6px solid var(--black-outline);
+            box-shadow: 8px 8px 0px var(--black-outline);
+            border-radius: 0px;
+            padding: 12px;
+            z-index: 10;
+        }
+
+        #chat-list {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+
+        #chat-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #chat-list::-webkit-scrollbar-track {
+            background: #F4F1E1;
+            border-left: 2px solid var(--black-outline);
+        }
+
+        #chat-list::-webkit-scrollbar-thumb {
+            background: var(--color-station);
+        }
+
+        .chat-msg {
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        .chat-sys {
+            color: var(--color-station);
+            font-style: italic;
+        }
+
+        .chat-panel {
+            bottom: 24px;
+            left: 24px;
+            width: 380px;
+            display: flex;
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .chat-input {
+            flex-grow: 1;
+            border: 4px solid var(--black-outline);
+            padding: 10px 12px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 700;
+            font-size: 0.9rem;
+            outline: none;
+            background: #FFFFFF;
+        }
+
+        .emotions-panel {
+            position: absolute;
+            bottom: 24px;
+            right: 24px;
+            display: flex;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .emotion-btn {
+            width: 50px;
+            height: 50px;
+            font-size: 1.4rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0;
+        }
+
+        #cam-indicator {
+            position: absolute;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--color-station);
+            border: 3px solid var(--black-outline);
+            box-shadow: 3px 3px 0px var(--black-outline);
+            padding: 6px 12px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 900;
+            font-size: 0.8rem;
+            color: #FFFFFF;
+            pointer-events: none;
+            z-index: 40;
+            text-transform: uppercase;
+        }
+
+        #fade-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #FFFFFF; 
+            z-index: 100; 
+            opacity: 0; 
+            pointer-events: none; 
+            transition: opacity 1.5s ease-in-out; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #fade-overlay.visible {
+            opacity: 1;
+            pointer-events: auto; 
+        }
+
+        #customization-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            z-index: 200;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.5s ease, visibility 0.5s;
+        }
+
+        #customization-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .custom-card {
+            background: var(--white-ui);
+            border: 6px solid var(--black-outline);
+            box-shadow: 12px 12px 0px var(--black-outline);
+            padding: 32px;
+            width: 380px;
+            max-width: 90%;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            pointer-events: auto;
+        }
+
+        .custom-title {
+            font-family: 'Alfa Slab One', cursive;
+            font-size: 1.8rem;
+            margin: 0;
+            text-align: center;
+            letter-spacing: 1px;
+            color: var(--color-station);
+        }
+
+        .custom-field {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .custom-field label {
+            font-family: 'Inter', sans-serif;
+            font-weight: 900;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+
+        #custom-name-input, #pause-name-input, #name-input {
+            border: 4px solid var(--black-outline);
+            padding: 12px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 700;
+            font-size: 1.1rem;
+            outline: none;
+            background: #FFFFFF;
+        }
+
+        .color-options {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+        }
+
+        .color-btn {
+            aspect-ratio: 1;
+            border: 4px solid var(--black-outline);
+            cursor: pointer;
+            box-shadow: 2px 2px 0px var(--black-outline);
+            transition: transform 0.05s, box-shadow 0.05s;
+        }
+
+        .color-btn.active {
+            transform: translate(-2px, -2px);
+            box-shadow: 4px 4px 0px var(--black-outline);
+            outline: none;
+        }
+
+        .color-btn:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 4px 4px 0px var(--black-outline);
+        }
+
+        #pause-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            z-index: 200;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.5s ease, visibility 0.5s;
+        }
+
+        #pause-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 12px;
+            background: #F4F1E1;
+            border: 4px solid var(--black-outline);
+            border-radius: 0px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: var(--color-station);
+            border: 4px solid var(--black-outline);
+            cursor: pointer;
+            border-radius: 0px;
+        }
 
         #boombox-hud-prompt {
             position: fixed;
@@ -460,105 +784,143 @@
 <body>
 <div id="fade-overlay"></div>
 
-<div id="custom-overlay">
+<div id="customization-overlay">
     <div class="custom-card">
-        <div class="custom-title">THE STATION</div>
-        <p style="text-align:center; font-size:0.82rem; color:var(--text-sub);">An underground hangout. Walk up to a boombox and press E to lookup music.</p>
+        <h2 class="custom-title">THE STATION</h2>
+        <p style="text-align:center; font-size:0.82rem; color:#555; font-family:'Inter',sans-serif; font-weight:700;">An underground hangout. Walk up to a boombox and press E to lookup music.</p>
         <div class="custom-field">
-            <label>Your Name</label>
-            <input type="text" id="name-input" class="custom-input" value="Player" maxlength="15" placeholder="Enter name...">
+            <label for="name-input">YOUR NAME</label>
+            <input type="text" id="name-input" value="Player" maxlength="15" placeholder="Enter name...">
         </div>
         <div class="custom-field">
-            <label>Color</label>
-            <div class="color-grid">
-                <div class="col-btn active" data-c="#E2FF3D" style="background:#E2FF3D"></div>
-                <div class="col-btn" data-c="#7C3AED" style="background:#7C3AED"></div>
-                <div class="col-btn" data-c="#EC4899" style="background:#EC4899"></div>
-                <div class="col-btn" data-c="#22D3EE" style="background:#22D3EE"></div>
-                <div class="col-btn" data-c="#34D399" style="background:#34D399"></div>
-                <div class="col-btn" data-c="#F97316" style="background:#F97316"></div>
-                <div class="col-btn" data-c="#FF3366" style="background:#FF3366"></div>
-                <div class="col-btn" data-c="#FACC15" style="background:#FACC15"></div>
-                <div class="col-btn" data-c="#A78BFA" style="background:#A78BFA"></div>
-                <div class="col-btn" data-c="#F87171" style="background:#F87171"></div>
-                <div class="col-btn" data-c="#ffffff" style="background:#ffffff"></div>
-                <div class="col-btn" data-c="#64748B" style="background:#64748B"></div>
+            <label>CHOOSE COLOR</label>
+            <div class="color-options">
+                <button class="color-btn active" data-color="#E2FF3D" style="background-color: #E2FF3D;"></button>
+                <button class="color-btn" data-color="#FF3366" style="background-color: #FF3366;"></button>
+                <button class="color-btn" data-color="#8A2BE2" style="background-color: #8A2BE2;"></button>
+                <button class="color-btn" data-color="#33ccff" style="background-color: #33ccff;"></button>
+                <button class="color-btn" data-color="#33ff33" style="background-color: #33ff33;"></button>
+                <button class="color-btn" data-color="#ff9933" style="background-color: #ff9933;"></button>
+                <button class="color-btn" data-color="#ff33ff" style="background-color: #ff33ff;"></button>
+                <button class="color-btn" data-color="#ffff33" style="background-color: #ffff33;"></button>
+                <button class="color-btn" data-color="#33ffff" style="background-color: #33ffff;"></button>
+                <button class="color-btn" data-color="#ff3333" style="background-color: #ff3333;"></button>
+                <button class="color-btn" data-color="#996633" style="background-color: #996633;"></button>
+                <button class="color-btn" data-color="#ff9999" style="background-color: #ff9999;"></button>
             </div>
         </div>
-        <button id="enter-btn" class="enter-btn">Enter The Station</button>
+        <button id="enter-btn" class="ui-btn primary" style="width: 100%; justify-content: center; font-size: 1.2rem; margin-top: 12px;">ENTER THE STATION</button>
     </div>
 </div>
 
 <div id="pause-overlay" class="hidden">
     <div class="custom-card">
-        <div class="custom-title">PAUSED</div>
+        <h2 class="custom-title">PAUSED</h2>
+        
         <div class="custom-field">
-            <label>Name</label>
-            <input type="text" id="pause-name-input" class="custom-input" maxlength="15">
+            <label for="pause-name-input">CUSTOMIZE NAME</label>
+            <input type="text" id="pause-name-input" value="Player" maxlength="15" placeholder="Enter name..." />
         </div>
+        
         <div class="custom-field">
-            <label>Color</label>
-            <div id="pause-color-grid" class="color-grid">
-                <div class="col-btn" data-c="#E2FF3D" style="background:#E2FF3D"></div>
-                <div class="col-btn" data-c="#7C3AED" style="background:#7C3AED"></div>
-                <div class="col-btn" data-c="#EC4899" style="background:#EC4899"></div>
-                <div class="col-btn" data-c="#22D3EE" style="background:#22D3EE"></div>
-                <div class="col-btn" data-c="#34D399" style="background:#34D399"></div>
-                <div class="col-btn" data-c="#F97316" style="background:#F97316"></div>
-                <div class="col-btn" data-c="#FF3366" style="background:#FF3366"></div>
-                <div class="col-btn" data-c="#FACC15" style="background:#FACC15"></div>
-                <div class="col-btn" data-c="#A78BFA" style="background:#A78BFA"></div>
-                <div class="col-btn" data-c="#F87171" style="background:#F87171"></div>
-                <div class="col-btn" data-c="#ffffff" style="background:#ffffff"></div>
-                <div class="col-btn" data-c="#64748B" style="background:#64748B"></div>
+            <label>CHOOSE COLOR</label>
+            <div class="color-options" id="pause-color-options">
+                <button class="color-btn active" data-color="#E2FF3D" style="background-color: #E2FF3D;"></button>
+                <button class="color-btn" data-color="#FF3366" style="background-color: #FF3366;"></button>
+                <button class="color-btn" data-color="#8A2BE2" style="background-color: #8A2BE2;"></button>
+                <button class="color-btn" data-color="#33ccff" style="background-color: #33ccff;"></button>
+                <button class="color-btn" data-color="#33ff33" style="background-color: #33ff33;"></button>
+                <button class="color-btn" data-color="#ff9933" style="background-color: #ff9933;"></button>
+                <button class="color-btn" data-color="#ff33ff" style="background-color: #ff33ff;"></button>
+                <button class="color-btn" data-color="#ffff33" style="background-color: #ffff33;"></button>
+                <button class="color-btn" data-color="#33ffff" style="background-color: #33ffff;"></button>
+                <button class="color-btn" data-color="#ff3333" style="background-color: #ff3333;"></button>
+                <button class="color-btn" data-color="#996633" style="background-color: #996633;"></button>
+                <button class="color-btn" data-color="#ff9999" style="background-color: #ff9999;"></button>
             </div>
         </div>
-        <button id="resume-btn" class="enter-btn">Resume</button>
+        
+        <div class="custom-field">
+            <label for="pause-fov-input">FIELD OF VIEW (FOV): <span id="fov-val">90</span></label>
+            <input type="range" id="pause-fov-input" min="60" max="120" value="90" />
+        </div>
+        
+        <button id="resume-btn" class="ui-btn primary" style="width: 100%; justify-content: center; font-size: 1.2rem; margin-top: 12px;">
+            RESUME PLAY
+        </button>
     </div>
 </div>
 
 <div id="canvas-container"></div>
 
-<div class="ui-layer" style="pointer-events:none;">
-    <div id="hdr">
-        <span id="hdr-title">THE STATION</span>
-        <button class="hdr-btn" onclick="togglePause()"><i class="fa-solid fa-gear"></i></button>
+<div class="ui-layer">
+    <div class="ui-panel header-panel">
+        <button id="back-btn" class="ui-btn"><i class="fa-solid fa-arrow-left"></i> Map</button>
+        <button id="pause-btn" class="ui-btn"><i class="fa-solid fa-pause"></i> Pause</button>
+        <h1 class="header-title">The Station</h1>
+        <button id="mobile-menu-btn" class="ui-btn primary"><i class="fa-solid fa-comments"></i> Menu</button>
     </div>
 
     <div id="cam-indicator">🚇 THIRD PERSON — Press V/C for First Person</div>
 
-    <div id="chat-log">
+    <div id="chat-log-panel">
         <ul id="chat-list"></ul>
     </div>
 
-    <div id="chat-row">
-        <input type="text" id="chat-input" placeholder="Say something..." maxlength="80" autocomplete="off">
-        <button id="chat-send"><i class="fa-solid fa-paper-plane"></i></button>
+    <div class="ui-panel chat-panel">
+        <input type="text" id="chat-input" class="chat-input" placeholder="Say something..." maxlength="80" autocomplete="off">
+        <button id="chat-send" class="ui-btn primary"><i class="fa-solid fa-paper-plane"></i></button>
     </div>
 
-    <div id="emotions">
-        <div class="emo-btn" onclick="spawnEmotion('happy')">😊</div>
-        <div class="emo-btn" onclick="spawnEmotion('love')">❤️</div>
-        <div class="emo-btn" onclick="spawnEmotion('vibe')">🎵</div>
-        <div class="emo-btn" onclick="spawnEmotion('shocked')">😲</div>
-        <div class="emo-btn" onclick="spawnEmotion('angry')">😤</div>
+    <div class="ui-panel emotions-panel">
+        <button class="ui-btn emotion-btn" onclick="spawnEmotion('angry'); this.blur();" tabindex="-1"><i class="fa-solid fa-bolt-lightning"></i></button>
+        <button class="ui-btn emotion-btn" onclick="spawnEmotion('love'); this.blur();" tabindex="-1"><i class="fa-solid fa-heart"></i></button>
+        <button class="ui-btn emotion-btn" onclick="spawnEmotion('happy'); this.blur();" tabindex="-1"><i class="fa-solid fa-face-laugh-beam"></i></button>
+        <button class="ui-btn emotion-btn" onclick="spawnEmotion('vibe'); this.blur();" tabindex="-1"><i class="fa-solid fa-music"></i></button>
+        <button class="ui-btn emotion-btn" onclick="spawnEmotion('shocked'); this.blur();" tabindex="-1"><i class="fa-solid fa-exclamation"></i></button>
     </div>
 
-    <div id="ctrl-panel">
-        <h3>Controls</h3>
-        <div class="ctrl-row"><span>Move</span><span class="ctrl-key">WASD</span></div>
-        <div class="ctrl-row"><span>Jump</span><span class="ctrl-key">SPACE</span></div>
-        <div class="ctrl-row"><span>Sprint</span><span class="ctrl-key">SHIFT</span></div>
-        <div class="ctrl-row"><span>Interact/Sit</span><span class="ctrl-key">E</span></div>
-        <div class="ctrl-row"><span>Cam Mode</span><span class="ctrl-key">V / C</span></div>
-        <div class="ctrl-row"><span>Menu</span><span class="ctrl-key">ESC</span></div>
-        <div id="conn-status">
-            <div>Status: <span id="status-label">Offline</span></div>
-            <div class="peer-id-row">ID: <span id="my-peer-id">...</span> <button id="copy-id-btn">Copy</button></div>
-            <input type="text" id="join-input" placeholder="Peer ID..." class="custom-input" style="font-size:0.7rem; padding:5px 8px; border-radius:6px;">
-            <button id="connect-btn">Connect</button>
+    <div class="ui-panel controls-panel" style="width: 320px;">
+        <h3>Station Controls</h3>
+        <div class="control-row"><span>Move</span><span class="control-key">WASD / Arrows</span></div>
+        <div class="control-row"><span>Jump</span><span class="control-key">Space</span></div>
+        <div class="control-row"><span>Sprint</span><span class="control-key">Shift</span></div>
+        <div class="control-row"><span>Interact / Sit</span><span class="control-key">E</span></div>
+        <div class="control-row"><span>Cam Mode</span><span class="control-key">V / C</span></div>
+        <div class="control-row"><span>Menu</span><span class="control-key">ESC</span></div>
+    </div>
+
+    <div class="ui-panel connection-panel" style="bottom: 120px; left: 24px; width: 380px; box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+        <h3 style="font-family: 'Alfa Slab One', cursive; font-size: 0.95rem; margin: 0; letter-spacing: 0.5px; color: var(--black-outline);">PLAY WITH FRIENDS</h3>
+        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.85rem; font-weight: 700; background: #F4F1E1; border: 3px solid var(--black-outline); padding: 6px 10px;">
+            <span style="color: var(--black-outline);">Room ID: <span id="my-peer-id" style="font-family: monospace; font-size: 0.85rem; font-weight: 900;">Loading...</span></span>
+            <button id="copy-id-btn" class="ui-btn" style="padding: 2px 6px; font-size: 0.7rem; box-shadow: 2px 2px 0px var(--black-outline); height: 22px; display: flex; align-items: center;"><i class="fa-solid fa-copy"></i> Copy</button>
+        </div>
+        <div style="display: flex; gap: 6px;">
+            <input type="text" id="join-input" class="chat-input" placeholder="Enter Room ID to join..." style="font-size: 0.8rem; padding: 6px 10px; flex-grow: 1; border: 3px solid var(--black-outline);" />
+            <button id="connect-btn" class="ui-btn primary" style="padding: 6px 12px; font-size: 0.8rem; box-shadow: 2px 2px 0px var(--black-outline);"><i class="fa-solid fa-link"></i> Join</button>
+        </div>
+        <div id="connection-status" style="font-size: 0.75rem; font-weight: 800; color: #555; text-transform: uppercase; letter-spacing: 0.5px;">
+            Status: <span id="status-label">Offline</span>
         </div>
     </div>
+</div>
+
+<div id="drawer-overlay" class="drawer-overlay"></div>
+<div id="mobile-menu-drawer" class="mobile-menu-drawer">
+    <button id="mobile-menu-close-btn" class="ui-btn mobile-menu-close-btn"><i class="fa-solid fa-xmark"></i> Close</button>
+    <h2 class="custom-title" style="font-size: 1.2rem;">STATION MENU</h2>
+    <button class="ui-btn" onclick="toggleCamMode()">Switch Camera (V)</button>
+    <button class="ui-btn" onclick="togglePause()">Settings (ESC)</button>
+    <div style="margin-top: auto; font-size: 0.75rem; color: var(--color-station); text-align: center;">Made with ❤️ from 4SP</div>
+</div>
+
+<div id="mobile-joystick-container">
+    <div id="mobile-joystick-handle"></div>
+</div>
+
+<div id="mobile-actions-container">
+    <div id="mobile-jump-btn">Jmp</div>
 </div>
 
 <!-- ── MUSIC PLAYER PANEL ── -->
@@ -645,8 +1007,9 @@ const players = [
 ];
 
 scene.background = new THREE.Color(0x3a3a3d);
+const savedFov = localStorage.getItem('4sp_player_fov') || '90';
 const aspect = window.innerWidth / window.innerHeight;
-const camera = new THREE.PerspectiveCamera(90, aspect, 0.1, 200);
+const camera = new THREE.PerspectiveCamera(parseInt(savedFov, 10), aspect, 0.1, 200);
 camera.position.set(0, 5, 12);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -1930,34 +2293,40 @@ function togglePause() {
         if (isFirstPerson) renderer.domElement.requestPointerLock();
     } else {
         document.getElementById('pause-name-input').value = lp.name;
-        document.querySelectorAll('#pause-color-grid .col-btn').forEach(b => b.classList.toggle('active', b.dataset.c === lp.color));
+        document.querySelectorAll('#pause-color-options .color-btn').forEach(b => b.classList.toggle('active', b.dataset.color === lp.color));
+        const pauseFovInput = document.getElementById('pause-fov-input');
+        const fovValLabel = document.getElementById('fov-val');
+        if (pauseFovInput && fovValLabel) {
+            pauseFovInput.value = camera.fov;
+            fovValLabel.textContent = camera.fov;
+        }
         po.classList.remove('hidden');
         isPaused = true; isCustomizing = true; lp.isCustomizing = true;
         if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
     }
 }
 document.getElementById('resume-btn').addEventListener('click', togglePause);
-document.querySelectorAll('#pause-color-grid .col-btn').forEach(btn => {
+document.querySelectorAll('#pause-color-options .color-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-        document.querySelectorAll('#pause-color-grid .col-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('#pause-color-options .color-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        chosenColor = btn.dataset.c;
+        chosenColor = btn.dataset.color;
     });
 });
 
 // ── CUSTOMIZATION ──
-document.querySelectorAll('#custom-overlay .col-btn').forEach(btn => {
+document.querySelectorAll('#customization-overlay .color-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-        document.querySelectorAll('#custom-overlay .col-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('#customization-overlay .color-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        chosenColor = btn.dataset.c;
+        chosenColor = btn.dataset.color;
     });
 });
 document.getElementById('enter-btn').addEventListener('click', () => {
     const nameVal = document.getElementById('name-input').value.trim() || 'Player';
     const lp = players[localPlayerId - 1];
     if (lp) { lp.name = nameVal; lp.color = chosenColor; lp.isCustomizing = false; applyColorToPlayer(localPlayerId, chosenColor); }
-    document.getElementById('custom-overlay').classList.add('hidden');
+    document.getElementById('customization-overlay').classList.add('hidden');
     isCustomizing = false;
     localStorage.setItem('4sp_player_name', nameVal);
     localStorage.setItem('4sp_player_color', chosenColor);
@@ -1973,13 +2342,36 @@ if (savedName) {
     document.getElementById('name-input').value = savedName;
 }
 const savedColor = localStorage.getItem('4sp_player_color') || '#E2FF3D';
-document.querySelectorAll('#custom-overlay .col-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.c === savedColor);
+document.querySelectorAll('#customization-overlay .color-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.color === savedColor);
 });
 
 if (savedName) {
     document.getElementById('enter-btn').click();
 }
+
+const pauseFovInput = document.getElementById('pause-fov-input');
+const fovValLabel = document.getElementById('fov-val');
+if (pauseFovInput && fovValLabel) {
+    pauseFovInput.value = camera.fov;
+    fovValLabel.textContent = camera.fov;
+    pauseFovInput.addEventListener('input', e => {
+        const val = e.target.value;
+        fovValLabel.textContent = val;
+        camera.fov = parseInt(val, 10);
+        camera.updateProjectionMatrix();
+        localStorage.setItem('4sp_player_fov', val);
+    });
+}
+
+document.getElementById('back-btn').addEventListener('click', () => {
+    const overlay = document.getElementById('fade-overlay');
+    overlay.classList.add('visible');
+    setTimeout(() => {
+        window.location.href = 'index.html';
+    }, 1500);
+});
+document.getElementById('pause-btn').addEventListener('click', togglePause);
 
 // ── PEER.JS ──
 const myPeerId = '4sp-' + Math.floor(1000 + Math.random() * 9000);
@@ -2469,7 +2861,75 @@ setInterval(() => {
     }
 }, 5000);
 
+// ── MOBILE CONTROLS ──
+const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+const mobileCloseBtn = document.getElementById('mobile-menu-close-btn');
+const mobileDrawer = document.getElementById('mobile-menu-drawer');
+const drawerOverlay = document.getElementById('drawer-overlay');
+mobileMenuBtn.addEventListener('click', () => { mobileDrawer.classList.add('open'); drawerOverlay.style.display = 'block'; });
+mobileCloseBtn.addEventListener('click', () => { mobileDrawer.classList.remove('open'); drawerOverlay.style.display = 'none'; });
+drawerOverlay.addEventListener('click', () => { mobileDrawer.classList.remove('open'); drawerOverlay.style.display = 'none'; });
+
+const joystickContainer = document.getElementById('mobile-joystick-container');
+const joystickHandle = document.getElementById('mobile-joystick-handle');
+let joystickTouchId = null, joystickCX = 0, joystickCY = 0;
+
+joystickContainer.addEventListener('touchstart', (e) => {
+    if (isCustomizing) return;
+    const r = joystickContainer.getBoundingClientRect();
+    joystickCX = r.left + r.width / 2; joystickCY = r.top + r.height / 2;
+    joystickTouchId = e.changedTouches[0].identifier;
+    handleJoystick(e.changedTouches[0]);
+}, { passive: true });
+window.addEventListener('touchmove', (e) => {
+    if (!joystickTouchId) return;
+    for (const t of e.changedTouches) { if (t.identifier === joystickTouchId) { handleJoystick(t); e.preventDefault(); break; } }
+}, { passive: false });
+window.addEventListener('touchend', (e) => {
+    for (const t of e.changedTouches) {
+        if (t.identifier === joystickTouchId) {
+            joystickTouchId = null;
+            joystickHandle.style.left = '50%'; joystickHandle.style.top = '50%';
+            const p = players[localPlayerId - 1];
+            if (p) { p.keys.up = false; p.keys.down = false; p.keys.left = false; p.keys.right = false; }
+        }
+    }
+});
+
+function handleJoystick(touch) {
+    if (isCustomizing) return;
+    const dx = touch.clientX - joystickCX, dy = touch.clientY - joystickCY;
+    const dist = Math.sqrt(dx * dx + dy * dy), max = 42;
+    const mx = dist > max ? (dx / dist) * max : dx;
+    const my = dist > max ? (dy / dist) * max : dy;
+    joystickHandle.style.left = `calc(50% + ${mx}px)`;
+    joystickHandle.style.top = `calc(50% + ${my}px)`;
+    const dead = 10, p = players[localPlayerId - 1];
+    if (!p) return;
+    p.keys.up = my < -dead; p.keys.down = my > dead;
+    p.keys.left = mx < -dead; p.keys.right = mx > dead;
+}
+
+const jumpBtn = document.getElementById('mobile-jump-btn');
+jumpBtn.addEventListener('touchstart', (e) => { if (isCustomizing) return; const p = players[localPlayerId - 1]; if (p) p.keys.space = true; e.preventDefault(); });
+jumpBtn.addEventListener('touchend', (e) => { const p = players[localPlayerId - 1]; if (p) p.keys.space = false; e.preventDefault(); });
+
+function updateLayoutForDevice() {
+    const isMob = window.innerWidth < window.innerHeight;
+    const jc = document.getElementById('mobile-joystick-container');
+    const ac = document.getElementById('mobile-actions-container');
+    const mb = document.getElementById('mobile-menu-btn');
+    const cp = document.querySelector('.controls-panel');
+    jc.style.display = isMob ? 'block' : 'none';
+    ac.style.display = isMob ? 'flex' : 'none';
+    mb.style.display = isMob ? 'inline-flex' : 'none';
+    if (cp) cp.style.display = isMob ? 'none' : 'block';
+}
+updateLayoutForDevice();
+window.addEventListener('resize', updateLayoutForDevice);
+
 </script>
-<!-- Made with ❤️ from 4SP -->
+
 </body>
 </html>
+<!-- Made with ❤️ from 4SP -->

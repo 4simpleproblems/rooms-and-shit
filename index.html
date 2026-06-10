@@ -17,7 +17,7 @@
             /* Node Colors */
             --color-theater: #FF3366;
             --color-lobby: #E2FF3D;
-            --color-music: #8A2BE2;
+            --color-station: #8A2BE2;
             
             /* Structural Colors */
             --black-outline: #09090B;
@@ -103,8 +103,8 @@
         #lobby { top: 60%; left: 50%; }
         #lobby .node-square { background-color: var(--color-lobby); }
 
-        #music { top: 35%; left: 75%; }
-        #music .node-square { background-color: var(--color-music); }
+        #station { top: 35%; left: 75%; }
+        #station .node-square { background-color: var(--color-station); }
 
         .node-label {
             font-family: 'Alfa Slab One', cursive;
@@ -253,7 +253,7 @@
             }
             #theater { top: 28%; left: 25%; }
             #lobby { top: 62%; left: 50%; }
-            #music { top: 28%; left: 75%; }
+            #station { top: 28%; left: 75%; }
             .join-container {
                 left: 20px;
                 right: 20px;
@@ -309,9 +309,9 @@
         <div class="node-label">LOBBY</div>
     </div>
 
-    <div class="node-container" id="music">
-        <div class="node-square"><i class="fa-solid fa-music"></i></div>
-        <div class="node-label">MUSIC</div>
+    <div class="node-container" id="station">
+        <div class="node-square"><i class="fa-solid fa-subway"></i></div>
+        <div class="node-label">THE STATION</div>
     </div>
 
     <script>
@@ -330,8 +330,8 @@
                         window.location.href = 'theater.html';
                     } else if (node.id === 'lobby') {
                         window.location.href = 'lobby.html'; 
-                    } else if (node.id === 'music') {
-                        window.location.href = 'music.html';
+                    } else if (node.id === 'station') {
+                        window.location.href = 'station.html';
                     }
                 }, 1500); 
             });
