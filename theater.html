@@ -319,7 +319,7 @@
         });
 
         // --- CAMERA MODES ---
-        const STATIONARY_POS = new THREE.Vector3(0, floorY + 2.5, ROOM_D / 2 - 1.0);
+        const STATIONARY_POS = new THREE.Vector3(0, floorY + 2.5, ROOM_D / 2 - 3.0); // Move forward to be clearly in front of lens
         const STATIONARY_TARGET = new THREE.Vector3(0, floorY + ROOM_H * 0.5 + 0.5, -ROOM_D / 2 + 0.2);
 
         function applyStationaryCamera() {
@@ -358,13 +358,13 @@
 
         const videoElement = document.getElementById('movie-video');
         videoElement.crossOrigin = "anonymous";
+        videoElement.muted = true; // Start muted for auto-play support
 
         function playMovie(index, time = 0) {
             currentMovieIndex = index % MOVIES.length;
             const movie = MOVIES[currentMovieIndex];
             videoElement.src = movie.url;
             videoElement.currentTime = time;
-            videoElement.muted = false;
             videoElement.load();
             videoElement.play().catch(e => console.warn("Auto-play failed:", e));
             addChatMessageToLog(null, `Now playing: ${movie.title}`, true);
@@ -405,32 +405,48 @@
         scene.add(screenMesh);
 
         // --- THEATER SEATING ---
-        const chairColor = 0x440000;
-        const chairBaseGeo = new THREE.BoxGeometry(0.8, 0.1, 0.8);
-        const chairBackGeo = new THREE.BoxGeometry(0.8, 0.8, 0.1);
-        const chairMat = new THREE.MeshStandardMaterial({ color: chairColor });
+        const chairColor = 0x990000;
+        const chairMat = new THREE.MeshStandardMaterial({ color: chairColor, roughness: 0.8 });
 
-        const rows = 5;
-        const cols = 10;
-        const spacingX = 1.8;
-        const spacingZ = 2.5;
+        const rows = 8;
+        const cols = 12;
+        const spacingX = 2.0;
+        const spacingZ = 2.8;
 
         function createChair(x, z) {
             const group = new THREE.Group();
             
-            const base = new THREE.Mesh(chairBaseGeo, chairMat);
-            base.position.y = 0.4;
-            base.castShadow = true;
-            group.add(base);
+            // Puffy seat
+            const seat = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.45, 1.1), chairMat);
+            seat.position.y = 0.55;
+            seat.castShadow = true;
+            group.add(seat);
 
-            const back = new THREE.Mesh(chairBackGeo, chairMat);
-            back.position.set(0, 0.8, 0.4);
+            // Puffy back
+            const back = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.1, 0.35), chairMat);
+            back.position.set(0, 1.2, 0.4);
             back.castShadow = true;
             group.add(back);
 
-            const legGeo = new THREE.BoxGeometry(0.1, 0.4, 0.1);
+            // Headrest
+            const headrest = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.4, 0.35), chairMat);
+            headrest.position.set(0, 1.8, 0.4);
+            headrest.castShadow = true;
+            group.add(headrest);
+
+            // Arm rests
+            const armGeo = new THREE.BoxGeometry(0.2, 0.2, 0.9);
+            const arm1 = new THREE.Mesh(armGeo, chairMat);
+            arm1.position.set(-0.7, 0.85, 0);
+            group.add(arm1);
+            const arm2 = new THREE.Mesh(armGeo, chairMat);
+            arm2.position.set(0.7, 0.85, 0);
+            group.add(arm2);
+
+            // Legs
+            const legGeo = new THREE.BoxGeometry(0.12, 0.4, 0.12);
             const legMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
-            [[-0.3,-0.3], [0.3,-0.3], [-0.3,0.3], [0.3,0.3]].forEach(pos => {
+            [[-0.5,-0.4], [0.5,-0.4], [-0.5,0.4], [0.5,0.4]].forEach(pos => {
                 const leg = new THREE.Mesh(legGeo, legMat);
                 leg.position.set(pos[0], 0.2, pos[1]);
                 group.add(leg);
@@ -445,7 +461,7 @@
             for (let c = 0; c < cols; c++) {
                 const x = ((c - (cols - 1) / 2) * spacingX);
                 // Leave a center aisle
-                if (Math.abs(x) < 1.0) continue;
+                if (Math.abs(x) < 1.2) continue;
                 createChair(x, z);
             }
         }
@@ -1089,6 +1105,10 @@
             }
             customOverlay.classList.add('hidden');
             isCustomizing = false;
+            if (videoElement) {
+                videoElement.muted = false;
+                videoElement.play().catch(e => console.warn("Unmute/Play failed:", e));
+            }
             addChatMessageToLog(null, `${nameVal} entered the theater.`, true);
             savePreference('name', nameVal);
             savePreference('color', chosenColor);
@@ -1133,6 +1153,10 @@
                 pauseOverlay.classList.add('hidden');
                 isPaused = false; isCustomizing = false;
                 localP.isCustomizing = false; updatePlayerVisuals(localP);
+                if (videoElement) {
+                    videoElement.muted = false;
+                    videoElement.play().catch(() => {});
+                }
                 savePreference('name', nameVal); savePreference('color', chosenColor);
                 if (isFirstPerson) renderer.domElement.requestPointerLock();
                 broadcastConfig(); broadcastCustomizingState(false);
