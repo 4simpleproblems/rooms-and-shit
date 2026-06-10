@@ -796,14 +796,14 @@ const benchLegMat = new THREE.MeshStandardMaterial({ color: 0x2c2c30, roughness:
 function createBench(x, z) {
     const g = new THREE.Group();
     const seat = new THREE.Mesh(new THREE.BoxGeometry(2, 0.12, 0.5), benchMat);
-    seat.position.y = 0.5;
+    seat.position.y = 0.435;
     g.add(seat);
     const back = new THREE.Mesh(new THREE.BoxGeometry(2, 0.35, 0.07), benchMat);
-    back.position.set(0, 0.75, 0.22);
+    back.position.set(0, 0.685, 0.22);
     g.add(back);
     for (let lx = -0.8; lx <= 0.8; lx += 1.6) {
-        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.5, 0.35), benchLegMat);
-        leg.position.set(lx, 0.25, 0);
+        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.375, 0.35), benchLegMat);
+        leg.position.set(lx, 0.1875, 0);
         g.add(leg);
     }
     g.position.set(x, floorY, z);
@@ -1137,6 +1137,25 @@ loadModels();
 // ── ANIMATION STATES ──
 function updateAnimState(p, speed) {
     if (!p.mixer || !p.actions) return;
+    
+    const jumpAction = p.actions['Jump'];
+    if (p.isJumping && jumpAction) {
+        if (p.currentAction !== jumpAction) {
+            if (p.currentAction) p.currentAction.fadeOut(0.1);
+            jumpAction.reset();
+            jumpAction.setLoop(THREE.LoopOnce, 1);
+            jumpAction.clampWhenFinished = true;
+            jumpAction.timeScale = 0;
+            jumpAction.play();
+            p.currentAction = jumpAction;
+        }
+        const peakVelocity = 5.2;
+        const t = p.yVelocity !== undefined ? p.yVelocity : 0;
+        const normalized = 1.0 - Math.max(0, Math.min(1, (t + peakVelocity) / (peakVelocity * 2)));
+        jumpAction.time = normalized * jumpAction.getClip().duration;
+        return;
+    }
+    
     let next = null;
     if (p.isSitting) {
         next = p.actions['Sit'];
@@ -1253,7 +1272,7 @@ function animate() {
             } else {
                 p.vx = 0; p.vz = 0; p.yVelocity = 0;
                 p.isJumping = false;
-                p.mesh.position.y = floorY + 0.5;
+                p.mesh.position.y = floorY + 0.435;
                 if (p.mixer) {
                     p.mixer.update(delta);
                     updateAnimState(p, 0);
@@ -1402,7 +1421,7 @@ function animate() {
         }
     }
     if (localP && localP.mesh && connections.length > 0) {
-        connections.forEach(c => { if (c.open) c.send({ type: 'move', id: localPlayerId, x: localP.mesh.position.x, y: localP.mesh.position.y, z: localP.mesh.position.z, ry: localP.mesh.rotation.y, isJumping: localP.isJumping, isSitting: localP.isSitting }); });
+        connections.forEach(c => { if (c.open) c.send({ type: 'move', id: localPlayerId, x: localP.mesh.position.x, y: localP.mesh.position.y, z: localP.mesh.position.z, ry: localP.mesh.rotation.y, isJumping: localP.isJumping, yVelocity: localP.yVelocity, isSitting: localP.isSitting }); });
     }
     renderer.render(scene, camera);
 }
@@ -1480,8 +1499,8 @@ window.addEventListener('keydown', e => {
                     localP.vz = 0;
                     localP.yVelocity = 0;
                     localP.isJumping = false;
-                    localP.mesh.position.set(closestBench.x, floorY + 0.5, closestBench.z);
-                    localP.mesh.rotation.set(0, Math.PI, 0);
+                    localP.mesh.position.set(closestBench.x, floorY + 0.435, closestBench.z);
+                    localP.mesh.rotation.set(0, 0, 0);
                 }
             }
         }
@@ -1657,7 +1676,7 @@ function setupConn(conn, remoteId = null) {
         const id = remoteId || data.id;
         if (data.type === 'move') {
             const p = players[id - 1];
-            if (p && p.mesh) { p.mesh.position.set(data.x, data.y, data.z); p.mesh.rotation.y = data.ry; p.isSitting = !!data.isSitting; }
+            if (p && p.mesh) { p.mesh.position.set(data.x, data.y, data.z); p.mesh.rotation.y = data.ry; p.isSitting = !!data.isSitting; p.isJumping = !!data.isJumping; p.yVelocity = data.yVelocity !== undefined ? data.yVelocity : 0; }
             if (isHost) connections.forEach(c => { if (c !== conn && c.open) c.send(data); });
         } else if (data.type === 'chat') {
             showSpeechBubble(id, data.text);
