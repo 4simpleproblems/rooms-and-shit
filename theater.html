@@ -317,6 +317,35 @@
         window.createImageBitmap = undefined;
         const loader = new THREE.GLTFLoader();
         const scene = new THREE.Scene();
+
+        // --- GLOBAL STATE ---
+        let localPlayerId = 1;
+        let isHost = true;
+        let isCustomizing = true;
+        let isPaused = false;
+        let chosenColor = '#E2FF3D';
+        const connections = [];
+        let peer = null;
+
+        // 0 = Stationary (cinematic), 1 = First Person
+        let camMode = 0;
+        let isFirstPerson = false;
+        let fpYaw = Math.PI; // face toward screen (negative Z)
+        let fpPitch = 0;
+
+        const ROOM_W = 40;
+        const ROOM_D = 30;
+        const ROOM_H = 8;
+        const floorY = 0;
+        const CHARACTER_SCALE = 2.0;
+        const PLATFORM_SIZE = ROOM_W;
+
+        const players = [
+            { id:1, name:'Player 1', color:'#E2FF3D', mesh:null, position: new THREE.Vector3(0, floorY, ROOM_D/2 - 3), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false}, bubbleText:'', bubbleTimeout:null, isCustomizing:true },
+            { id:2, name:'Player 2', color:'#ff9933', mesh:null, position: new THREE.Vector3(-2, floorY, ROOM_D/2 - 3), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false}, bubbleText:'', bubbleTimeout:null, isCustomizing:false },
+            { id:3, name:'Player 3', color:'#4444ff', mesh:null, position: new THREE.Vector3(2, floorY, ROOM_D/2 - 3), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false}, isRemote:false, bubbleText:'', bubbleTimeout:null, isCustomizing:false }
+        ];
+
         scene.background = new THREE.Color(0x000000);
 
         const aspect = window.innerWidth / window.innerHeight;
@@ -335,12 +364,6 @@
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
-
-        // --- THEATER DIMENSIONS ---
-        const ROOM_W = 40;
-        const ROOM_D = 30;
-        const ROOM_H = 8;
-        const floorY = 0;
 
         // Ambient — very dim, deep red tint
         const ambientLight = new THREE.AmbientLight(0x220000, 0.4);
@@ -404,6 +427,36 @@
                 scene.add(trim);
             });
         });
+
+        // --- CAMERA MODES ---
+        const STATIONARY_POS = new THREE.Vector3(0, floorY + 2.5, ROOM_D / 2 - 1.0);
+        const STATIONARY_TARGET = new THREE.Vector3(0, floorY + ROOM_H * 0.5 + 0.5, -ROOM_D / 2 + 0.2);
+
+        function applyStationaryCamera() {
+            camera.position.copy(STATIONARY_POS);
+            camera.lookAt(STATIONARY_TARGET);
+        }
+        applyStationaryCamera();
+
+        const camIndicator = document.getElementById('cam-mode-indicator');
+
+        function toggleCameraMode() {
+            camMode = camMode === 0 ? 1 : 0;
+            isFirstPerson = camMode === 1;
+            const localP = players[localPlayerId - 1];
+            if (isFirstPerson) {
+                if (localP && localP.mesh) localP.mesh.visible = false;
+                fpYaw = Math.PI;
+                fpPitch = 0;
+                renderer.domElement.requestPointerLock();
+                camIndicator.textContent = '👤 FIRST PERSON — Press V for Stationary';
+            } else {
+                if (localP && localP.mesh) localP.mesh.visible = true;
+                if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
+                applyStationaryCamera();
+                camIndicator.textContent = '📽 STATIONARY CAM — Press V for First Person';
+            }
+        }
 
         // --- MOVIE LOGIC ---
         const videoElement = document.getElementById('movie-video');
@@ -612,11 +665,6 @@
             }
             addChatMessageToLog(null, `${players[0].name} is customizing...`, true);
         }
-
-        let localPlayerId = 1;
-        let isHost = true;
-        const connections = [];
-        let peer = null;
 
         const myPeerId = '4sp-' + Math.floor(1000 + Math.random() * 9000);
         document.getElementById('my-peer-id-label').innerText = myPeerId;
@@ -1040,10 +1088,6 @@
         chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { sendChatMessage(); e.preventDefault(); } });
 
         // --- CUSTOMIZATION OVERLAY ---
-        let isCustomizing = true;
-        let isPaused = false;
-        let chosenColor = '#E2FF3D';
-
         const customOverlay = document.getElementById('customization-overlay');
         const customNameInput = document.getElementById('custom-name-input');
         const colorBtns = document.querySelectorAll('.color-btn');
