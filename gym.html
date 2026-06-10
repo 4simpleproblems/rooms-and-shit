@@ -58,19 +58,76 @@
         .control-key { background: #E4E4E7; border: 2px solid var(--black-outline); border-radius: 4px; padding: 2px 6px; box-shadow: 1px 1px 0px var(--black-outline); font-family: monospace; font-weight: 900; }
 
         #chat-log-panel {
-            position: absolute; bottom: 262px; left: 24px; width: 380px; height: 200px;
-            display: flex; flex-direction: column; box-sizing: border-box; background: rgba(255, 255, 255, 0.85);
-            border: 6px solid var(--black-outline); box-shadow: 8px 8px 0px var(--black-outline); padding: 12px; z-index: 10;
+            position: absolute;
+            bottom: 180px;
+            left: 24px;
+            width: 380px;
+            max-height: 200px;
+            overflow-y: auto;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column-reverse;
+            z-index: 100;
         }
-        #chat-log-list { flex-grow: 1; overflow-y: auto; margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 0.85rem; font-weight: 700; }
-        .chat-msg { line-height: 1.4; word-break: break-word; }
-        .chat-msg-system { color: var(--color-gym); font-style: italic; }
-
-        .chat-panel { bottom: 24px; left: 24px; width: 380px; display: flex; gap: 12px; }
-        .chat-input { flex-grow: 1; border: 4px solid var(--black-outline); padding: 10px 12px; font-family: 'Inter', sans-serif; font-weight: 700; font-size: 0.9rem; outline: none; background: #FFFFFF; }
-
-        .emotions-panel { position: absolute; bottom: 24px; right: 24px; display: flex; gap: 8px; }
-        .emotion-btn { width: 50px; height: 50px; font-size: 1.4rem; display: flex; justify-content: center; align-items: center; padding: 0; }
+        #chat-log-list {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+        .chat-msg {
+            line-height: 1.4;
+            word-break: break-word;
+        }
+        .chat-msg-system {
+            color: var(--color-gym);
+            font-style: italic;
+        }
+        .chat-panel {
+            bottom: 24px;
+            left: 24px;
+            width: 380px;
+            display: flex;
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .chat-input {
+            flex-grow: 1;
+            border: 4px solid var(--black-outline);
+            padding: 10px 12px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 700;
+            font-size: 0.9rem;
+            outline: none;
+            background: #FFFFFF;
+        }
+        .emotions-panel {
+            position: absolute;
+            bottom: 24px;
+            right: 24px;
+            display: flex;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .emotion-btn {
+            width: 50px;
+            height: 50px;
+            font-size: 1.4rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0;
+        }
 
         #cam-mode-indicator {
             position: absolute; top: 24px; left: 50%; transform: translateX(-50%); background: var(--color-gym);
@@ -181,16 +238,16 @@
         </div>
 
         <div class="ui-panel chat-panel">
-            <input type="text" id="chat-input" class="chat-input" placeholder="Say something..." maxlength="80" autocomplete="off" />
+            <input type="text" id="chat-input" class="chat-input" placeholder="Say something in the gym..." maxlength="50" autocomplete="off" />
             <button id="chat-send-btn" class="ui-btn primary"><i class="fa-solid fa-paper-plane"></i></button>
         </div>
 
         <div class="ui-panel emotions-panel">
-            <button class="ui-btn emotion-btn" onclick="spawnEmotion('happy')">💪</button>
-            <button class="ui-btn emotion-btn" onclick="spawnEmotion('love')">❤️</button>
-            <button class="ui-btn emotion-btn" onclick="spawnEmotion('sad')">🥵</button>
-            <button class="ui-btn emotion-btn" onclick="spawnEmotion('angry')">🔥</button>
-            <button class="ui-btn emotion-btn" onclick="spawnEmotion('shocked')">😲</button>
+            <button class="ui-btn emotion-btn" onclick="spawnEmotion('happy'); this.blur();" tabindex="-1"><i class="fa-solid fa-dumbbell"></i></button>
+            <button class="ui-btn emotion-btn" onclick="spawnEmotion('love'); this.blur();" tabindex="-1"><i class="fa-solid fa-heart"></i></button>
+            <button class="ui-btn emotion-btn" onclick="spawnEmotion('sad'); this.blur();" tabindex="-1"><i class="fa-solid fa-droplet"></i></button>
+            <button class="ui-btn emotion-btn" onclick="spawnEmotion('angry'); this.blur();" tabindex="-1"><i class="fa-solid fa-fire"></i></button>
+            <button class="ui-btn emotion-btn" onclick="spawnEmotion('shocked'); this.blur();" tabindex="-1"><i class="fa-solid fa-weight-hanging"></i></button>
         </div>
     </div>
 
@@ -613,6 +670,7 @@
         const players = [
             { id: 1, name: 'Lifter', color: chosenColor, mesh: null, position: new THREE.Vector3(0,0,5), isJumping: false, yVelocity: 0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false,shift:false}, isCustomizing: true, isWorkingOut: false, workoutType: null },
         ];
+        const reactionParticles = [];
 
         // --- MODELS & ANIMATIONS ---
         let charGltfMaster = null;
@@ -693,6 +751,163 @@
             if (p.currentAnim && p.actions[p.currentAnim]) p.actions[p.currentAnim].fadeOut(0.2);
             p.actions[name].reset().fadeIn(0.2).play();
             p.currentAnim = name;
+        }
+
+        function addChatMessageToLog(name, text, isSystem = false) {
+            const logList = document.getElementById('chat-log-list');
+            if (!logList) return;
+            const li = document.createElement('li');
+            li.className = 'chat-msg' + (isSystem ? ' chat-msg-system' : '');
+            if (isSystem) {
+                li.innerText = `[System] ${text}`;
+            } else {
+                li.innerText = `${name}: ${text}`;
+            }
+            logList.appendChild(li);
+            logList.scrollTop = logList.scrollHeight;
+        }
+
+        function createSpeechBubbleSprite(text) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.font = 'bold 24px "Inter", sans-serif';
+            const metrics = ctx.measureText(text);
+            const textWidth = metrics.width;
+            const paddingX = 20;
+            const paddingY = 15;
+            const bubbleW = Math.max(80, textWidth + paddingX * 2);
+            const bubbleH = 60;
+            const x = (canvas.width - bubbleW) / 2;
+            const y = (canvas.height - bubbleH) / 2 - 10;
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#09090B';
+            ctx.lineWidth = 6;
+            ctx.fillRect(x, y, bubbleW, bubbleH);
+            ctx.strokeRect(x, y, bubbleW, bubbleH);
+            const arrowW = 16;
+            const arrowH = 12;
+            const ax = canvas.width / 2;
+            const ay = y + bubbleH;
+            ctx.beginPath();
+            ctx.moveTo(ax - arrowW / 2, ay);
+            ctx.lineTo(ax + arrowW / 2, ay);
+            ctx.lineTo(ax, ay + arrowH);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.moveTo(ax - arrowW / 2 + 3, ay - 3);
+            ctx.lineTo(ax + arrowW / 2 - 3, ay - 3);
+            ctx.lineTo(ax, ay + arrowH - 3);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = '#09090B';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, canvas.width / 2, y + bubbleH / 2);
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.minFilter = THREE.LinearFilter;
+            const mat = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false });
+            const sprite = new THREE.Sprite(mat);
+            sprite.scale.set(2.0, 1.0, 1.0);
+            return sprite;
+        }
+
+        function showSpeechBubble(playerId, text) {
+            const p = players[playerId - 1];
+            if (!p) return;
+            addChatMessageToLog(p.name, text, false);
+            if (!p.mesh) return;
+            if (p.bubbleSprite) {
+                p.mesh.remove(p.bubbleSprite);
+                p.bubbleSprite.material.map.dispose();
+                p.bubbleSprite.material.dispose();
+            }
+            p.bubbleSprite = createSpeechBubbleSprite(text);
+            p.bubbleSprite.position.set(0, 0.75, 0);
+            p.mesh.add(p.bubbleSprite);
+            if (p.bubbleTimeout) clearTimeout(p.bubbleTimeout);
+            p.bubbleTimeout = setTimeout(() => {
+                if (p.bubbleSprite && p.mesh) {
+                    p.mesh.remove(p.bubbleSprite);
+                    p.bubbleSprite.material.map.dispose();
+                    p.bubbleSprite.material.dispose();
+                    p.bubbleSprite = null;
+                }
+            }, 4000);
+        }
+
+        function sendChatMessage() {
+            if (isCustomizing) return;
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if (!text) return;
+            input.value = '';
+            input.blur();
+            showSpeechBubble(localPlayerId, text);
+        }
+
+        function createReactionSprite(iconChar, color) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128;
+            canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.font = '900 64px "Font Awesome 6 Free"';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 8;
+            ctx.strokeText(iconChar, 64, 64);
+            ctx.fillStyle = color;
+            ctx.fillText(iconChar, 64, 64);
+            const texture = new THREE.CanvasTexture(canvas);
+            const mat = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false });
+            const sprite = new THREE.Sprite(mat);
+            sprite.scale.set(1.5, 1.5, 1.0);
+            return sprite;
+        }
+
+        function spawnEmotionLocal(playerId, iconChar, color, type) {
+            const p = players[playerId - 1];
+            if (!p || !p.mesh) return;
+            const count = type === 'shocked' ? 1 : 4;
+            for (let i = 0; i < count; i++) {
+                const sprite = createReactionSprite(iconChar, color);
+                sprite.position.copy(p.mesh.position);
+                sprite.position.y += 0.5;
+                sprite.position.x += (Math.random() - 0.5) * 0.4;
+                sprite.position.z += (Math.random() - 0.5) * 0.4;
+                scene.add(sprite);
+                const vx = (Math.random() - 0.5) * 0.8;
+                const vy = 1.2 + Math.random() * 1.5;
+                const vz = (Math.random() - 0.5) * 0.8;
+                reactionParticles.push({
+                    sprite: sprite,
+                    vx: vx,
+                    vy: vy,
+                    vz: vz,
+                    life: 1.0,
+                    decay: 0.015 + Math.random() * 0.02,
+                    type: type
+                });
+            }
+        }
+
+        function spawnEmotion(type) {
+            if (isCustomizing) return;
+            let iconChar = '';
+            let color = '';
+            if (type === 'happy') { iconChar = '\uf44b'; color = '#FF6B00'; }
+            else if (type === 'love') { iconChar = '\uf004'; color = '#FF3366'; }
+            else if (type === 'sad') { iconChar = '\uf043'; color = '#33ccff'; }
+            else if (type === 'angry') { iconChar = '\uf06d'; color = '#FF3300'; }
+            else if (type === 'shocked') { iconChar = '\uf5cd'; color = '#8A2BE2'; }
+            spawnEmotionLocal(localPlayerId, iconChar, color, type);
         }
 
         function animate() {
@@ -793,7 +1008,21 @@
                 }
             });
 
-            // Camera follow
+            for (let i = reactionParticles.length - 1; i >= 0; i--) {
+                const rp = reactionParticles[i];
+                rp.sprite.position.y += rp.vy * delta;
+                rp.sprite.position.x += rp.vx * delta;
+                rp.sprite.position.z += rp.vz * delta;
+                rp.life -= rp.decay;
+                rp.sprite.material.opacity = rp.life;
+                if (rp.life <= 0) {
+                    scene.remove(rp.sprite);
+                    rp.sprite.material.map.dispose();
+                    rp.sprite.material.dispose();
+                    reactionParticles.splice(i, 1);
+                }
+            }
+
             if (isFirstPerson) {
                 const headPos = localP.mesh.position.clone().add(new THREE.Vector3(0, 0.65, 0));
                 camera.position.copy(headPos);
@@ -811,6 +1040,7 @@
 
         // --- Event Listeners ---
         window.addEventListener('keydown', e => {
+            if (document.activeElement.tagName === 'INPUT') return;
             const p = players[0];
             const k = e.key.toLowerCase();
             if (k === 'w' || k === 'arrowup') p.keys.up = true;
@@ -850,6 +1080,7 @@
         });
 
         window.addEventListener('keyup', e => {
+            if (document.activeElement.tagName === 'INPUT') return;
             const p = players[0];
             const k = e.key.toLowerCase();
             if (k === 'w' || k === 'arrowup') p.keys.up = false;
@@ -871,6 +1102,7 @@
         document.getElementById('start-gym-btn').addEventListener('click', () => {
             isCustomizing = false;
             const p = players[0];
+            p.name = document.getElementById('custom-name-input').value.trim() || 'Lifter';
             p.color = chosenColor;
             updatePlayerVisuals(p);
             document.getElementById('customization-overlay').classList.add('hidden');
@@ -890,6 +1122,12 @@
         });
 
         document.getElementById('back-btn').addEventListener('click', () => window.location.href = 'index.html');
+        document.getElementById('chat-send-btn').addEventListener('click', sendChatMessage);
+        document.getElementById('chat-input').addEventListener('keydown', e => {
+            if (e.key === 'Enter') {
+                sendChatMessage();
+            }
+        });
         
     </script>
 </body>
