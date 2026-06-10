@@ -1215,6 +1215,7 @@ for (let c = 0; c < numCars; c++) {
         const frontLight = new THREE.PointLight(0xffffaa, 4.0, 15);
         frontLight.position.set(carLen / 2 + 0.5, 0.7, 0);
         car.add(frontLight);
+        trainFrontLight = frontLight;
     }
     
     if (c === 0) {
@@ -1230,6 +1231,7 @@ for (let c = 0; c < numCars; c++) {
         const backLight = new THREE.PointLight(0xffffaa, 4.0, 15);
         backLight.position.set(-carLen / 2 - 0.5, 0.7, 0);
         car.add(backLight);
+        trainBackLight = backLight;
     }
     
     car.position.x = carX;
@@ -1241,6 +1243,8 @@ const TRAIN_SPEED = 10;
 let currentTrainInterval = 20 + Math.random() * 20;
 let trainX = TRAIN_START_X;
 let trainTimer = currentTrainInterval * 0.7;
+let trainFrontLight = null;
+let trainBackLight = null;
 trainGroup.position.set(trainX, TRACK_Y, TRACK_Z);
 scene.add(trainGroup);
 
@@ -1657,6 +1661,34 @@ function animate() {
         if (trainX > TRAIN_END_X) trainX = TRAIN_START_X - 1;
     }
     trainGroup.position.x = trainX;
+    if (trainFrontLight) {
+        const worldFrontX = trainX + (numCars - 1) * (carLen + 0.15) + carLen / 2 + 0.5;
+        let frontInt = 0.0;
+        if (worldFrontX >= -10.0 && worldFrontX <= 10.0) {
+            if (worldFrontX < -8.0) {
+                frontInt = ((worldFrontX - (-10.0)) / 2.0) * 4.0;
+            } else if (worldFrontX > 8.0) {
+                frontInt = ((10.0 - worldFrontX) / 2.0) * 4.0;
+            } else {
+                frontInt = 4.0;
+            }
+        }
+        trainFrontLight.intensity = frontInt;
+    }
+    if (trainBackLight) {
+        const worldBackX = trainX - carLen / 2 - 0.5;
+        let backInt = 0.0;
+        if (worldBackX >= -10.0 && worldBackX <= 10.0) {
+            if (worldBackX < -8.0) {
+                backInt = ((worldBackX - (-10.0)) / 2.0) * 4.0;
+            } else if (worldBackX > 8.0) {
+                backInt = ((10.0 - worldBackX) / 2.0) * 4.0;
+            } else {
+                backInt = 4.0;
+            }
+        }
+        trainBackLight.intensity = backInt;
+    }
     if (localP && localP.mesh) {
         if (isFirstPerson) {
             const headPos = new THREE.Vector3().copy(localP.mesh.position).add(new THREE.Vector3(0, 0.65, 0));
