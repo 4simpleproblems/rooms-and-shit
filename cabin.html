@@ -1538,6 +1538,11 @@
                     controls.target.lerp(target, 0.1);
                 }
                 controls.update();
+                const camPad = 0.25;
+                camera.position.x = THREE.MathUtils.clamp(camera.position.x, -2.8 + camPad, 2.8 - camPad);
+                camera.position.z = THREE.MathUtils.clamp(camera.position.z, -2.8 + camPad, 2.8 - camPad);
+                const maxCeilingY = 4.68 - 0.82 * Math.abs(camera.position.x) - camPad;
+                camera.position.y = THREE.MathUtils.clamp(camera.position.y, 0.15 + camPad, maxCeilingY);
             }
 
             updateSpeechBubble();

@@ -282,9 +282,23 @@
         const clock = new THREE.Clock();
         const scene = new THREE.Scene();
         
-        // SUNSET LIGHTING AND CITY FOG
-        scene.background = new THREE.Color(0xff5522); 
-        scene.fog = new THREE.FogExp2(0xff5522, 0.015);
+        // Sunset Gradient Sky Background
+        const bgCanvas = document.createElement('canvas');
+        bgCanvas.width = 2;
+        bgCanvas.height = 512;
+        const bgCtx = bgCanvas.getContext('2d');
+        const grad = bgCtx.createLinearGradient(0, 512, 0, 0);
+        grad.addColorStop(0, '#ff4500');
+        grad.addColorStop(0.25, '#ff8c00');
+        grad.addColorStop(0.5, '#d050a0');
+        grad.addColorStop(0.8, '#4b1d66');
+        grad.addColorStop(1, '#150826');
+        bgCtx.fillStyle = grad;
+        bgCtx.fillRect(0, 0, 2, 512);
+        const sunsetTexture = new THREE.CanvasTexture(bgCanvas);
+        scene.background = sunsetTexture;
+
+        scene.fog = new THREE.FogExp2(0xff5522, 0.012);
 
         const aspect = window.innerWidth / window.innerHeight;
         const camera = new THREE.PerspectiveCamera(90, aspect, 0.2, 300);
@@ -307,11 +321,17 @@
 
         const ambientLight = new THREE.AmbientLight(0x443333, 1.0);
         scene.add(ambientLight);
-        const dirLight = new THREE.DirectionalLight(0xffaa55, 1.0);
-        dirLight.position.set(30, 20, -30);
+        const dirLight = new THREE.DirectionalLight(0xffaa55, 1.2);
+        dirLight.position.set(150, 25, -150);
         dirLight.castShadow = true;
         dirLight.shadow.mapSize.set(2048, 2048);
         scene.add(dirLight);
+
+        const sunGeo = new THREE.SphereGeometry(15, 32, 32);
+        const sunMat = new THREE.MeshBasicMaterial({ color: 0xffaa44, fog: false });
+        const sun = new THREE.Mesh(sunGeo, sunMat);
+        sun.position.set(180, 20, -180);
+        scene.add(sun);
 
         // Constants
         const ROOFTOP_W = 35;
@@ -397,17 +417,77 @@
 
         function createCity() {
             const cityGroup = new THREE.Group();
-            const cityMat = new THREE.MeshStandardMaterial({color: 0x1a110d, roughness: 1.0, fog: true});
-            for(let i=0; i<80; i++) {
-                const bw = 4 + Math.random() * 8;
-                const bh = 10 + Math.random() * 50;
-                const bd = 4 + Math.random() * 8;
-                const b = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), cityMat);
-                let bx = (Math.random()-0.5)*300;
-                let bz = (Math.random()-0.5)*300;
-                if (Math.abs(bx) < 30 && Math.abs(bz) < 30) bx += 40 * Math.sign(bx);
-                b.position.set(bx, -bh/2 - 5, bz);
-                cityGroup.add(b);
+            const cityMat = new THREE.MeshStandardMaterial({ color: 0x140e0c, roughness: 0.9, metalness: 0.1, fog: true });
+            const windowMat = new THREE.MeshBasicMaterial({ color: 0xffbb44, fog: true });
+
+            const groundGeo = new THREE.PlaneGeometry(1000, 1000);
+            const groundMat = new THREE.MeshBasicMaterial({ color: 0x080403, fog: true });
+            const ground = new THREE.Mesh(groundGeo, groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -120;
+            scene.add(ground);
+
+            for (let i = 0; i < 90; i++) {
+                const bw = 6 + Math.random() * 10;
+                const bh = 50 + Math.random() * 85;
+                const bd = 6 + Math.random() * 10;
+                const building = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), cityMat);
+                
+                let bx = (Math.random() - 0.5) * 350;
+                let bz = (Math.random() - 0.5) * 350;
+                if (Math.abs(bx) < 35 && Math.abs(bz) < 35) {
+                    bx += 45 * Math.sign(bx || 1);
+                    bz += 45 * Math.sign(bz || 1);
+                }
+                
+                const by = -120 + bh / 2;
+                building.position.set(bx, by, bz);
+                building.castShadow = true;
+                building.receiveShadow = true;
+                cityGroup.add(building);
+
+                const distToCenter = Math.hypot(bx, bz);
+                if (distToCenter < 180 && Math.random() < 0.7) {
+                    const cols = Math.floor(2 + Math.random() * 3);
+                    const rows = Math.floor(5 + Math.random() * 10);
+                    const winW = 0.4;
+                    const winH = 0.6;
+                    const winD = 0.1;
+
+                    const faces = [];
+                    if (bx > 0) faces.push('left'); else faces.push('right');
+                    if (bz > 0) faces.push('back'); else faces.push('front');
+
+                    faces.forEach(face => {
+                        for (let r = 0; r < rows; r++) {
+                            if (Math.random() < 0.15) continue;
+                            
+                            const wy = -bh / 2 + (bh / rows) * (r + 0.5);
+                            if (wy + by < -70) continue;
+
+                            for (let c = 0; c < cols; c++) {
+                                if (Math.random() < 0.2) continue;
+                                const win = new THREE.Mesh(new THREE.BoxGeometry(winW, winH, winD), windowMat);
+                                const colOffset = (c - (cols - 1) / 2) * (bw / (cols + 1));
+                                
+                                if (face === 'front') {
+                                    win.position.set(colOffset, wy, bd / 2 + 0.02);
+                                } else if (face === 'back') {
+                                    win.position.set(colOffset, wy, -bd / 2 - 0.02);
+                                } else if (face === 'left') {
+                                    win.rotation.y = Math.PI / 2;
+                                    const colOffsetZ = (c - (cols - 1) / 2) * (bd / (cols + 1));
+                                    win.position.set(-bw / 2 - 0.02, wy, colOffsetZ);
+                                } else if (face === 'right') {
+                                    win.rotation.y = Math.PI / 2;
+                                    const colOffsetZ = (c - (cols - 1) / 2) * (bd / (cols + 1));
+                                    win.position.set(bw / 2 + 0.02, wy, colOffsetZ);
+                                }
+                                building.add(win);
+                            }
+                        }
+                    });
+                }
             }
             scene.add(cityGroup);
         }
