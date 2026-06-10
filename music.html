@@ -750,6 +750,50 @@ const stripeMat = new THREE.MeshStandardMaterial({
     polygonOffsetUnits: -3
 });
 
+const speakerCanvas = document.createElement('canvas');
+speakerCanvas.width = 128;
+speakerCanvas.height = 128;
+const speakerCtx = speakerCanvas.getContext('2d');
+const radGrad = speakerCtx.createRadialGradient(64, 64, 0, 64, 64, 64);
+radGrad.addColorStop(0, '#2d2d2d');
+radGrad.addColorStop(0.6, '#181818');
+radGrad.addColorStop(1.0, '#0a0a0a');
+speakerCtx.fillStyle = radGrad;
+speakerCtx.fillRect(0, 0, 128, 128);
+speakerCtx.strokeStyle = 'rgba(5, 5, 5, 0.65)';
+speakerCtx.lineWidth = 2.5;
+const circles = [0.15, 0.35, 0.55, 0.75, 0.95];
+for (const rPercent of circles) {
+    speakerCtx.beginPath();
+    speakerCtx.arc(64, 64, 64 * rPercent, 0, Math.PI * 2);
+    speakerCtx.stroke();
+}
+speakerCtx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+speakerCtx.lineWidth = 1.0;
+for (let offset = -128; offset < 256; offset += 3) {
+    speakerCtx.beginPath();
+    speakerCtx.moveTo(offset, 0);
+    speakerCtx.lineTo(offset - 128, 128);
+    speakerCtx.stroke();
+    speakerCtx.beginPath();
+    speakerCtx.moveTo(offset, 0);
+    speakerCtx.lineTo(offset + 128, 128);
+    speakerCtx.stroke();
+}
+const innerRadGrad = speakerCtx.createRadialGradient(64, 64, 0, 64, 64, 25);
+innerRadGrad.addColorStop(0, '#555555');
+innerRadGrad.addColorStop(0.5, '#222222');
+innerRadGrad.addColorStop(1.0, '#0a0a0a');
+speakerCtx.fillStyle = innerRadGrad;
+speakerCtx.beginPath();
+speakerCtx.arc(64, 64, 25, 0, Math.PI * 2);
+speakerCtx.fill();
+speakerCtx.strokeStyle = '#111111';
+speakerCtx.lineWidth = 2.0;
+speakerCtx.stroke();
+const speakerTexture = new THREE.CanvasTexture(speakerCanvas);
+const speakerMat = new THREE.MeshStandardMaterial({ map: speakerTexture, roughness: 0.6, metalness: 0.3 });
+
 const floorMesh = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.3, ROOM_D), new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.5 }));
 floorMesh.position.set(0, floorY - 0.15, 0);
 floorMesh.receiveShadow = true;
@@ -902,7 +946,7 @@ for (let x = -10; x <= 10; x += 10) {
 // ── BENCHES ──
 const benchMat = new THREE.MeshStandardMaterial({ color: 0x3e3e44, roughness: 0.7, metalness: 0.3 });
 const benchLegMat = new THREE.MeshStandardMaterial({ color: 0x2c2c30, roughness: 0.5, metalness: 0.6 });
-function createBench(x, z) {
+function createBench(x, z, rotY = 0) {
     const g = new THREE.Group();
     const seat = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.12, 0.9), benchMat);
     seat.position.y = 0.435;
@@ -916,15 +960,16 @@ function createBench(x, z) {
         g.add(leg);
     }
     g.position.set(x, floorY, z);
+    g.rotation.y = rotY;
     scene.add(g);
 }
-[-10, -4, 4, 10].forEach(x => createBench(x, 6.5));
-[-13.7, 13.7].forEach(x => createBench(x, 0.0));
+[-10, -4, 4, 10].forEach(x => createBench(x, 6.5, 0.0));
+createBench(-14.2, 0.0, -Math.PI / 2);
+createBench(14.2, 0.0, Math.PI / 2);
 
 function createBoombox(x, z, rotY = 0) {
     const g = new THREE.Group();
     const bodyMat = new THREE.MeshStandardMaterial({ color: 0xd0d0d0, roughness: 0.2, metalness: 0.8 });
-    const speakerMat = new THREE.MeshStandardMaterial({ color: 0x2e2e2e, roughness: 0.6, metalness: 0.3 });
     const accentMat = new THREE.MeshStandardMaterial({ color: 0xfcfcfc, roughness: 0.15, metalness: 0.95 });
     
     const body = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.55, 0.45), bodyMat);
@@ -1082,17 +1127,52 @@ for (let x = -ROOM_W/2 - 25; x <= ROOM_W/2 + 25; x += 1.2) {
     sleeper.position.set(x, TRACK_Y - 0.04, TRACK_Z);
     scene.add(sleeper);
 }
-const pit = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W + 10, 0.8, 5.5), new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 1.0 }));
+const pit = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W + 60, 0.8, 5.8), new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 1.0 }));
 pit.position.set(0, TRACK_Y - 0.35, TRACK_Z);
 scene.add(pit);
 
-// ── TRAIN (travels left→right along X axis, stays in track pit) ──
+const archMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1c, roughness: 0.7, metalness: 0.8 });
+for (let ax = -48; ax <= 48; ax += 6) {
+    const beamL = new THREE.Mesh(new THREE.BoxGeometry(0.15, ROOM_H, 0.15), archMat);
+    beamL.position.set(ax, ROOM_H / 2, TRACK_Z - 2.8);
+    scene.add(beamL);
+    const beamR = new THREE.Mesh(new THREE.BoxGeometry(0.15, ROOM_H, 0.15), archMat);
+    beamR.position.set(ax, ROOM_H / 2, TRACK_Z + 2.8);
+    scene.add(beamR);
+    const beamT = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 5.75), archMat);
+    beamT.position.set(ax, ROOM_H, TRACK_Z);
+    scene.add(beamT);
+}
+
+const cableMat = new THREE.MeshStandardMaterial({ color: 0x0d0d0f, roughness: 0.9 });
+for (let cy = 1.0; cy <= 3.0; cy += 0.65) {
+    const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, ROOM_W + 60, 8), cableMat);
+    cable.rotation.z = Math.PI / 2;
+    cable.position.set(0, cy, TRACK_Z - 2.78);
+    scene.add(cable);
+}
+
+const thirdRail = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W + 60, 0.08, 0.08), railMat);
+thirdRail.position.set(0, TRACK_Y + 0.05, TRACK_Z - 1.45);
+scene.add(thirdRail);
+const coverMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.8 });
+const thirdRailCover = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W + 60, 0.04, 0.22), coverMat);
+thirdRailCover.position.set(0, TRACK_Y + 0.11, TRACK_Z - 1.45);
+scene.add(thirdRailCover);
+
+const signalLightMat = new THREE.MeshStandardMaterial({ color: 0xff3300, emissive: 0xff1100, emissiveIntensity: 2.0 });
+for (let sx = -42; sx <= 42; sx += 12) {
+    const light = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), signalLightMat);
+    light.position.set(sx, 2.5, TRACK_Z - 2.78);
+    scene.add(light);
+}
+
 const trainGroup = new THREE.Group();
 const trainBodyMat = new THREE.MeshStandardMaterial({ color: 0xbcbcbc, roughness: 0.2, metalness: 0.8 });
 const trainStripeMat = new THREE.MeshStandardMaterial({ color: 0x757575, roughness: 0.25, metalness: 0.8 });
 const trainWindowMat = new THREE.MeshStandardMaterial({ color: 0x88aacc, roughness: 0.2, transparent: true, opacity: 0.6, emissive: 0x334466, emissiveIntensity: 0.8 });
 const trainDoorMat = new THREE.MeshStandardMaterial({ color: 0x616161, roughness: 0.3, metalness: 0.8 });
-const numCars = 3;
+const numCars = 5;
 const carLen = 7.5, carZ_dim = 3.2, carH = 2.6;
 const totalTrainLen = numCars * carLen + (numCars - 1) * 0.15;
 for (let c = 0; c < numCars; c++) {
@@ -1104,6 +1184,7 @@ for (let c = 0; c < numCars; c++) {
     const stripe = new THREE.Mesh(new THREE.BoxGeometry(carLen + 0.01, 0.22, carZ_dim + 0.01), trainStripeMat);
     stripe.position.y = carH - 0.5;
     car.add(stripe);
+    
     for (let wx = -carLen/2 + 0.9; wx < carLen/2 - 0.4; wx += 1.4) {
         const win = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.65, carZ_dim + 0.02), trainWindowMat);
         win.position.set(wx, carH - 1.1, 0);
@@ -1118,24 +1199,46 @@ for (let c = 0; c < numCars; c++) {
         wheel.position.set(rx, -0.08, 0);
         car.add(wheel);
     }
+    
+    if (c === numCars - 1) {
+        const windshield = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.8, carZ_dim - 0.4), trainWindowMat);
+        windshield.position.set(carLen / 2 + 0.01, carH - 0.9, 0);
+        car.add(windshield);
+        const headlightL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.25, 0.25), new THREE.MeshStandardMaterial({ color: 0xffffcc, emissive: 0xffffcc, emissiveIntensity: 3.0 }));
+        headlightL.position.set(carLen / 2 + 0.05, 0.7, -0.9);
+        car.add(headlightL);
+        const headlightR = headlightL.clone();
+        headlightR.position.z = 0.9;
+        car.add(headlightR);
+        const frontLight = new THREE.PointLight(0xffffaa, 4.0, 15);
+        frontLight.position.set(carLen / 2 + 0.5, 0.7, 0);
+        car.add(frontLight);
+    }
+    
+    if (c === 0) {
+        const windshield = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.8, carZ_dim - 0.4), trainWindowMat);
+        windshield.position.set(-carLen / 2 - 0.01, carH - 0.9, 0);
+        car.add(windshield);
+        const headlightL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.25, 0.25), new THREE.MeshStandardMaterial({ color: 0xffffcc, emissive: 0xffffcc, emissiveIntensity: 3.0 }));
+        headlightL.position.set(-carLen / 2 - 0.05, 0.7, -0.9);
+        car.add(headlightL);
+        const headlightR = headlightL.clone();
+        headlightR.position.z = 0.9;
+        car.add(headlightR);
+        const backLight = new THREE.PointLight(0xffffaa, 4.0, 15);
+        backLight.position.set(-carLen / 2 - 0.5, 0.7, 0);
+        car.add(backLight);
+    }
+    
     car.position.x = carX;
     trainGroup.add(car);
 }
-const headlightL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.35, 0.35), new THREE.MeshStandardMaterial({ color: 0xffffcc, emissive: 0xffffcc, emissiveIntensity: 3.0 }));
-headlightL.position.set(-0.05, 0.7, -0.9);
-trainGroup.children[0].add(headlightL);
-const headlightR = headlightL.clone();
-headlightR.position.z = 0.9;
-trainGroup.children[0].add(headlightR);
-const trainLight = new THREE.PointLight(0xffffaa, 3.5, 12);
-trainLight.position.set(-carLen/2 - 0.5, 1.3, 0);
-trainGroup.children[0].add(trainLight);
 const TRAIN_START_X = -ROOM_W/2 - totalTrainLen - 5;
 const TRAIN_END_X   =  ROOM_W/2 + totalTrainLen + 5;
 const TRAIN_SPEED = 10;
-const TRAIN_INTERVAL = 20;
+let currentTrainInterval = 20 + Math.random() * 20;
 let trainX = TRAIN_START_X;
-let trainTimer = TRAIN_INTERVAL * 0.7;
+let trainTimer = currentTrainInterval * 0.7;
 trainGroup.position.set(trainX, TRACK_Y, TRACK_Z);
 scene.add(trainGroup);
 
@@ -1331,16 +1434,19 @@ function checkSubwayCollisions(pos, r = 0.38) {
         }
     }
     const benches = [
-        { x: -10, z: 6.5 },
-        { x: -4, z: 6.5 },
-        { x: 4, z: 6.5 },
-        { x: 10, z: 6.5 },
-        { x: -13.7, z: 0.0 },
-        { x: 13.7, z: 0.0 }
+        { x: -10, z: 6.5, rotY: 0 },
+        { x: -4, z: 6.5, rotY: 0 },
+        { x: 4, z: 6.5, rotY: 0 },
+        { x: 10, z: 6.5, rotY: 0 },
+        { x: -14.2, z: 0.0, rotY: -Math.PI / 2 },
+        { x: 14.2, z: 0.0, rotY: Math.PI / 2 }
     ];
     for (const b of benches) {
-        if (pos.x >= b.x - 1.3 - r && pos.x <= b.x + 1.3 + r &&
-            pos.z >= b.z - 0.45 - r && pos.z <= b.z + 0.45 + r) {
+        const isRot = Math.abs(b.rotY || 0) > 0.1;
+        const halfW = isRot ? 0.45 : 1.3;
+        const halfD = isRot ? 1.3 : 0.45;
+        if (pos.x >= b.x - halfW - r && pos.x <= b.x + halfW + r &&
+            pos.z >= b.z - halfD - r && pos.z <= b.z + halfD + r) {
             return true;
         }
     }
@@ -1388,10 +1494,16 @@ function animate() {
             const wantsToStand = p.keys.up || p.keys.down || p.keys.left || p.keys.right || p.keys.space;
             if (wantsToStand) {
                 p.isSitting = false;
-                if (p.mesh.position.z > 3.0) {
-                    p.mesh.position.z = 5.6;
+                if (p.sittingBench) {
+                    const standDir = new THREE.Vector3(0, 0, -1.2).applyAxisAngle(new THREE.Vector3(0, 1, 0), p.sittingBench.rotY || 0);
+                    p.mesh.position.add(standDir);
+                    p.sittingBench = null;
                 } else {
-                    p.mesh.position.z = -2.4;
+                    if (p.mesh.position.z > 3.0) {
+                        p.mesh.position.z = 5.6;
+                    } else {
+                        p.mesh.position.z = -2.4;
+                    }
                 }
                 p.mesh.position.y = floorY;
             } else {
@@ -1483,17 +1595,20 @@ function animate() {
         }
         if (!nearBB && !localP.isSitting) {
             const benches = [
-                { x: -10, z: 6.5 },
-                { x: -4, z: 6.5 },
-                { x: 4, z: 6.5 },
-                { x: 10, z: 6.5 },
-                { x: -13.7, z: 0.0 },
-                { x: 13.7, z: 0.0 }
+                { x: -10, z: 6.5, rotY: 0 },
+                { x: -4, z: 6.5, rotY: 0 },
+                { x: 4, z: 6.5, rotY: 0 },
+                { x: 10, z: 6.5, rotY: 0 },
+                { x: -14.2, z: 0.0, rotY: -Math.PI / 2 },
+                { x: 14.2, z: 0.0, rotY: Math.PI / 2 }
             ];
             benches.forEach(bench => {
                 const dx = localP.mesh.position.x - bench.x;
                 const dz = localP.mesh.position.z - bench.z;
-                if (Math.abs(dx) < 1.2 && Math.abs(dz) < 1.2) {
+                const isRot = Math.abs(bench.rotY || 0) > 0.1;
+                const maxDx = isRot ? 1.5 : 1.9;
+                const maxDz = isRot ? 1.9 : 1.5;
+                if (Math.abs(dx) < maxDx && Math.abs(dz) < maxDz) {
                     nearBench = bench;
                 }
             });
@@ -1521,10 +1636,19 @@ function animate() {
 
     // ── TRAIN ANIMATION (left → right, never stops) ──
     trainTimer += delta;
-    if (trainTimer >= TRAIN_INTERVAL && trainX <= TRAIN_START_X + 0.1) {
+    if (trainTimer >= currentTrainInterval && trainX <= TRAIN_START_X + 0.1) {
         trainTimer = 0;
         trainX = TRAIN_START_X;
-        addChat(null, '🚇 Train approaching...', true);
+        currentTrainInterval = 20 + Math.random() * 20;
+        
+        const rand = Math.random();
+        if (rand < 0.15) {
+            trainBodyMat.color.setHex(0xffcc00);
+        } else if (rand < 0.30) {
+            trainBodyMat.color.setHex(0xfafafa);
+        } else {
+            trainBodyMat.color.setHex(0xbcbcbc);
+        }
     }
     if (trainX > TRAIN_START_X || trainTimer === 0) {
         trainX += TRAIN_SPEED * delta;
@@ -1601,12 +1725,12 @@ window.addEventListener('keydown', e => {
                 }
             } else {
                 const benches = [
-                    { x: -10, z: 6.5 },
-                    { x: -4, z: 6.5 },
-                    { x: 4, z: 6.5 },
-                    { x: 10, z: 6.5 },
-                    { x: -13.7, z: 0.0 },
-                    { x: 13.7, z: 0.0 }
+                    { x: -10, z: 6.5, rotY: 0 },
+                    { x: -4, z: 6.5, rotY: 0 },
+                    { x: 4, z: 6.5, rotY: 0 },
+                    { x: 10, z: 6.5, rotY: 0 },
+                    { x: -14.2, z: 0.0, rotY: -Math.PI / 2 },
+                    { x: 14.2, z: 0.0, rotY: Math.PI / 2 }
                 ];
                 let closestBench = null;
                 let minBenchDist = Infinity;
@@ -1614,7 +1738,10 @@ window.addEventListener('keydown', e => {
                     const dx = localP.mesh.position.x - bench.x;
                     const dz = localP.mesh.position.z - bench.z;
                     const dist = Math.hypot(dx, dz);
-                    if (Math.abs(dx) < 1.2 && Math.abs(dz) < 1.2 && dist < minBenchDist) {
+                    const isRot = Math.abs(bench.rotY || 0) > 0.1;
+                    const maxDx = isRot ? 1.5 : 1.9;
+                    const maxDz = isRot ? 1.9 : 1.5;
+                    if (Math.abs(dx) < maxDx && Math.abs(dz) < maxDz && dist < minBenchDist) {
                         minBenchDist = dist;
                         closestBench = bench;
                     }
@@ -1625,7 +1752,7 @@ window.addEventListener('keydown', e => {
                         if (other.isSitting && other.mesh) {
                             const dx = other.mesh.position.x - closestBench.x;
                             const dz = other.mesh.position.z - closestBench.z;
-                            if (Math.abs(dx) < 1.4 && Math.abs(dz) < 0.1) {
+                            if (Math.abs(dx) < 1.4 && Math.abs(dz) < 1.4) {
                                 sitCount++;
                             }
                         }
@@ -1636,16 +1763,18 @@ window.addEventListener('keydown', e => {
                         localP.vz = 0;
                         localP.yVelocity = 0;
                         localP.isJumping = false;
+                        localP.sittingBench = closestBench;
                         
                         const offsets = [0, -0.8, 0.8];
                         let chosenOffset = 0;
                         for (const offset of offsets) {
                             let occupied = false;
+                            const offsetVec = new THREE.Vector3(offset, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), closestBench.rotY || 0);
                             players.forEach(other => {
                                 if (other.isSitting && other.mesh) {
-                                    const otherDx = other.mesh.position.x - (closestBench.x + offset);
-                                    const otherDz = other.mesh.position.z - closestBench.z;
-                                    if (Math.abs(otherDx) < 0.2 && Math.abs(otherDz) < 0.1) {
+                                    const otherDx = other.mesh.position.x - (closestBench.x + offsetVec.x);
+                                    const otherDz = other.mesh.position.z - (closestBench.z + offsetVec.z);
+                                    if (Math.abs(otherDx) < 0.2 && Math.abs(otherDz) < 0.2) {
                                         occupied = true;
                                     }
                                 }
@@ -1655,8 +1784,9 @@ window.addEventListener('keydown', e => {
                                 break;
                             }
                         }
-                        localP.mesh.position.set(closestBench.x + chosenOffset, floorY + 0.5, closestBench.z);
-                        localP.mesh.rotation.set(0, 0, 0);
+                        const finalOffsetVec = new THREE.Vector3(chosenOffset, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), closestBench.rotY || 0);
+                        localP.mesh.position.set(closestBench.x + finalOffsetVec.x, floorY + 0.5, closestBench.z + finalOffsetVec.z);
+                        localP.mesh.rotation.set(0, closestBench.rotY || 0, 0);
                     }
                 }
             }
@@ -1983,12 +2113,11 @@ function updateBoomboxCanvas(bb) {
     let currentStr = '0:00';
     
     if (bb.currentTrack) {
-        title = bb.currentTrack.name || 'Unknown Track';
-        artist = bb.currentTrack.artist || 'Unknown Artist';
+        title = bb.currentTrack.title || bb.currentTrack.name || 'Unknown Track';
+        artist = bb.currentTrack.artist_name || bb.currentTrack.artist || 'Unknown Artist';
         if (bb.audio) {
             const cur = bb.audio.currentTime || 0;
             const dur = bb.audio.duration || bb.currentTrack.duration || 0;
-            
             const formatTime = (secs) => {
                 if (isNaN(secs) || secs < 0) return '0:00';
                 const m = Math.floor(secs / 60);
