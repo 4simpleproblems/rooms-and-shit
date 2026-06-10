@@ -688,21 +688,67 @@ scene.add(new THREE.AmbientLight(0xffffff, 0.4));
     scene.add(sp);
 });
 
-// ── SUBWAY STATION GEOMETRY (Sad Office White) ──
 const concreteGray = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.8 });
-const tileYellow = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.8 });
-const tileOrange = new THREE.MeshStandardMaterial({ color: 0x666666, roughness: 0.8 });
+const tileYellow = new THREE.MeshStandardMaterial({
+    color: 0xaaaaaa,
+    roughness: 0.8,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2
+});
+const tileOrange = new THREE.MeshStandardMaterial({
+    color: 0x666666,
+    roughness: 0.8,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2
+});
 const metalMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.4, metalness: 0.8 });
 const darkMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.9 });
-const creamTile = new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.9 });
+const creamTile = new THREE.MeshStandardMaterial({
+    color: 0xdddddd,
+    roughness: 0.9,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2
+});
 
-// Floor — dark tile
+const wallMat = new THREE.MeshStandardMaterial({
+    color: 0xdddddd,
+    roughness: 0.9,
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+    polygonOffsetUnits: -1
+});
+
+const stripeCanvas = document.createElement('canvas');
+stripeCanvas.width = 128;
+stripeCanvas.height = 32;
+const stripeCtx = stripeCanvas.getContext('2d');
+stripeCtx.fillStyle = '#FFD600';
+stripeCtx.fillRect(0, 0, 128, 32);
+stripeCtx.fillStyle = '#000000';
+for (let i = -32; i < 128; i += 32) {
+    stripeCtx.beginPath();
+    stripeCtx.moveTo(i, 32);
+    stripeCtx.lineTo(i + 16, 0);
+    stripeCtx.lineTo(i + 32, 0);
+    stripeCtx.lineTo(i + 16, 32);
+    stripeCtx.closePath();
+    stripeCtx.fill();
+}
+const stripeTexture = new THREE.CanvasTexture(stripeCanvas);
+stripeTexture.wrapS = THREE.RepeatWrapping;
+stripeTexture.wrapT = THREE.RepeatWrapping;
+stripeTexture.repeat.set(30, 1);
+stripeTexture.anisotropy = renderer.capabilities.getMaxAnisotropy() || 4;
+const stripeMat = new THREE.MeshStandardMaterial({ map: stripeTexture, roughness: 0.8 });
+
 const floorMesh = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.3, ROOM_D), new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.5 }));
 floorMesh.position.set(0, floorY - 0.15, 0);
 floorMesh.receiveShadow = true;
 scene.add(floorMesh);
 
-// Floor tile grout lines
 for (let i = -12; i <= 12; i += 2) {
     const grout = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.02, ROOM_D), new THREE.MeshStandardMaterial({ color: 0xbbbbbb }));
     grout.position.set(i, 0.01, 0);
@@ -714,33 +760,28 @@ for (let z = -8; z <= 8; z += 2) {
     scene.add(grout);
 }
 
-// Ceiling
 const ceilMesh = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.3, ROOM_D), new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.9 }));
 ceilMesh.position.set(0, ROOM_H + 0.15, 0);
 scene.add(ceilMesh);
 
-// Ceiling panels
 for (let x = -12; x <= 12; x += 8) {
     const panel = new THREE.Mesh(new THREE.BoxGeometry(7, 0.07, ROOM_D - 2), new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.9 }));
     panel.position.set(x, ROOM_H, 0);
     scene.add(panel);
 }
 
-// Side walls
-const wallLeft = new THREE.Mesh(new THREE.BoxGeometry(0.3, ROOM_H, ROOM_D), new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.9 }));
+const wallLeft = new THREE.Mesh(new THREE.BoxGeometry(0.3, ROOM_H, ROOM_D), wallMat);
 wallLeft.position.set(-ROOM_W/2 - 0.15, ROOM_H/2, 0);
 scene.add(wallLeft);
-const wallRight = new THREE.Mesh(new THREE.BoxGeometry(0.3, ROOM_H, ROOM_D), new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.9 }));
+const wallRight = new THREE.Mesh(new THREE.BoxGeometry(0.3, ROOM_H, ROOM_D), wallMat);
 wallRight.position.set(ROOM_W/2 + 0.15, ROOM_H/2, 0);
 scene.add(wallRight);
 
-// Back wall
-const backWall = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, ROOM_H, 0.3), new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.9 }));
+const backWall = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, ROOM_H, 0.3), wallMat);
 backWall.position.set(0, ROOM_H/2, ROOM_D/2 + 0.15);
 scene.add(backWall);
 
-// Front wall with tunnel opening (16 units wide, full height minus top beam)
-const fWallMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.9 });
+const fWallMat = wallMat;
 const openW = 16;
 const fWallL = new THREE.Mesh(new THREE.BoxGeometry((ROOM_W - openW) / 2, ROOM_H, 0.3), fWallMat);
 fWallL.position.set(-ROOM_W/2 + (ROOM_W - openW)/4, ROOM_H/2, -ROOM_D/2 - 0.15);
@@ -752,25 +793,23 @@ const fWallTop = new THREE.Mesh(new THREE.BoxGeometry(openW, 1.0, 0.3), fWallMat
 fWallTop.position.set(0, ROOM_H - 0.5, -ROOM_D/2 - 0.15);
 scene.add(fWallTop);
 
-// Tunnel void (dark boxes behind opening)
 for (let depth = 1; depth <= 6; depth++) {
-    const tf = new THREE.Mesh(new THREE.BoxGeometry(openW + 2, ROOM_H, 0.3), new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 1.0 }));
+    const tf = new THREE.Mesh(new THREE.BoxGeometry(openW + 2, ROOM_H, 0.3), new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 1.0 }));
     tf.position.set(0, ROOM_H/2 - 0.5, -ROOM_D/2 - 0.15 - depth * 4);
     scene.add(tf);
 }
 
-// ── RAILWAY END TUNNELS & BLACK FOG FADE ──
 function createTunnel(xSide) {
     const dir = xSide > 0 ? 1 : -1;
-    const wall1 = new THREE.Mesh(new THREE.BoxGeometry(20, ROOM_H, 0.3), new THREE.MeshStandardMaterial({ color: 0x111115, roughness: 0.9 }));
+    const wall1 = new THREE.Mesh(new THREE.BoxGeometry(20, ROOM_H, 0.3), new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 1.0 }));
     wall1.position.set(xSide + dir * 10, ROOM_H/2, TRACK_Z - 2.8);
     scene.add(wall1);
     
-    const wall2 = new THREE.Mesh(new THREE.BoxGeometry(20, ROOM_H, 0.3), new THREE.MeshStandardMaterial({ color: 0x111115, roughness: 0.9 }));
+    const wall2 = new THREE.Mesh(new THREE.BoxGeometry(20, ROOM_H, 0.3), new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 1.0 }));
     wall2.position.set(xSide + dir * 10, ROOM_H/2, TRACK_Z + 2.8);
     scene.add(wall2);
     
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(20, 0.3, 5.6), new THREE.MeshStandardMaterial({ color: 0x111115, roughness: 0.9 }));
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(20, 0.3, 5.6), new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 1.0 }));
     roof.position.set(xSide + dir * 10, ROOM_H, TRACK_Z);
     scene.add(roof);
 
@@ -835,11 +874,10 @@ for (let x = -12; x <= 12; x += 4) {
     scene.add(tp);
 }
 
-// ── PLATFORM EDGE ──
-const platEdge = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.2, 0.6), new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.8 }));
+const platEdge = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.2, 0.6), stripeMat);
 platEdge.position.set(0, floorY - 0.1, -ROOM_D/2 + 0.3);
 scene.add(platEdge);
-const edgeStripe = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.03, 0.12), new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.5, emissive: 0x666666, emissiveIntensity: 0.4 }));
+const edgeStripe = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.03, 0.12), stripeMat);
 edgeStripe.position.set(0, 0.015, -ROOM_D/2 + 0.6);
 scene.add(edgeStripe);
 
@@ -1040,7 +1078,7 @@ for (let x = -ROOM_W/2 - 25; x <= ROOM_W/2 + 25; x += 1.2) {
     sleeper.position.set(x, TRACK_Y - 0.04, TRACK_Z);
     scene.add(sleeper);
 }
-const pit = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W + 10, 0.8, 5.5), new THREE.MeshStandardMaterial({ color: 0x050508, roughness: 1.0 }));
+const pit = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W + 10, 0.8, 5.5), new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 1.0 }));
 pit.position.set(0, TRACK_Y - 0.35, TRACK_Z);
 scene.add(pit);
 
