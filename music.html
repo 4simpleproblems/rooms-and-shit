@@ -795,14 +795,14 @@ const benchMat = new THREE.MeshStandardMaterial({ color: 0x3e3e44, roughness: 0.
 const benchLegMat = new THREE.MeshStandardMaterial({ color: 0x2c2c30, roughness: 0.5, metalness: 0.6 });
 function createBench(x, z) {
     const g = new THREE.Group();
-    const seat = new THREE.Mesh(new THREE.BoxGeometry(2, 0.12, 0.5), benchMat);
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.12, 0.9), benchMat);
     seat.position.y = 0.435;
     g.add(seat);
-    const back = new THREE.Mesh(new THREE.BoxGeometry(2, 0.35, 0.07), benchMat);
-    back.position.set(0, 0.685, 0.22);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.35, 0.07), benchMat);
+    back.position.set(0, 0.685, 0.42);
     g.add(back);
-    for (let lx = -0.8; lx <= 0.8; lx += 1.6) {
-        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.375, 0.35), benchLegMat);
+    for (let lx = -1.0; lx <= 1.0; lx += 2.0) {
+        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.375, 0.75), benchLegMat);
         leg.position.set(lx, 0.1875, 0);
         g.add(leg);
     }
@@ -816,9 +816,9 @@ function createBench(x, z) {
 
 function createBoombox(x, z, rotY = 0) {
     const g = new THREE.Group();
-    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.2, metalness: 0.8 });
-    const speakerMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.6, metalness: 0.3 });
-    const accentMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.15, metalness: 0.95 });
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0xd0d0d0, roughness: 0.2, metalness: 0.8 });
+    const speakerMat = new THREE.MeshStandardMaterial({ color: 0x2e2e2e, roughness: 0.6, metalness: 0.3 });
+    const accentMat = new THREE.MeshStandardMaterial({ color: 0xfcfcfc, roughness: 0.15, metalness: 0.95 });
     
     const body = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.55, 0.45), bodyMat);
     body.position.y = 0.5;
@@ -1272,7 +1272,7 @@ function animate() {
             } else {
                 p.vx = 0; p.vz = 0; p.yVelocity = 0;
                 p.isJumping = false;
-                p.mesh.position.y = floorY + 0.435;
+                p.mesh.position.y = floorY + 0.85;
                 if (p.mixer) {
                     p.mixer.update(delta);
                     updateAnimState(p, 0);
@@ -1499,7 +1499,7 @@ window.addEventListener('keydown', e => {
                     localP.vz = 0;
                     localP.yVelocity = 0;
                     localP.isJumping = false;
-                    localP.mesh.position.set(closestBench.x, floorY + 0.435, closestBench.z);
+                    localP.mesh.position.set(closestBench.x, floorY + 0.85, closestBench.z);
                     localP.mesh.rotation.set(0, 0, 0);
                 }
             }
