@@ -623,6 +623,8 @@ const scene = new THREE.Scene();
 
 const ROOM_W = 30, ROOM_D = 18, ROOM_H = 4.5;
 const floorY = 0;
+const TRACK_Z = -ROOM_D/2 - 2.0;
+const TRACK_Y = -0.42;
 const CHARACTER_SCALE = 2.0;
 
 let camMode = 0, isFirstPerson = false;
@@ -1064,8 +1066,6 @@ makeSign('EXIT ↑', -13, 2.8, 0, Math.PI/2);
 
 // ── TRACK / RAILS (run along X axis — side to side in front of platform) ──
 const railMat = new THREE.MeshStandardMaterial({ color: 0x444466, roughness: 0.6, metalness: 0.8 });
-const TRACK_Z = -ROOM_D/2 - 2.0;  // center of track zone, in front of platform
-const TRACK_Y = -0.42;
 for (let rz = -1; rz <= 1; rz += 2) {
     const rail = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W + 60, 0.08, 0.08), railMat);
     rail.position.set(0, TRACK_Y, TRACK_Z + rz * 1.0);
