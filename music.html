@@ -1493,22 +1493,35 @@ function animate() {
             if (p.mixer) { p.mixer.update(delta); const spd = Math.hypot(p.mesh.position.x - prevX, p.mesh.position.z - prevZ) / Math.max(0.001, delta); updateAnimState(p, spd); }
             continue;
         }
+        if (p.standTimer > 0) {
+            p.standTimer -= delta;
+            const t = Math.max(0, p.standTimer) / 0.25;
+            p.mesh.position.lerpVectors(p.standTarget, p.standStart, t);
+            if (p.mixer) {
+                p.mixer.update(delta);
+                updateAnimState(p, 0);
+            }
+            continue;
+        }
         if (p.isSitting) {
             const wantsToStand = p.keys.up || p.keys.down || p.keys.left || p.keys.right || p.keys.space;
             if (wantsToStand) {
                 p.isSitting = false;
+                p.standStart = p.mesh.position.clone();
+                p.standTarget = p.mesh.position.clone();
                 if (p.sittingBench) {
                     const standDir = new THREE.Vector3(0, 0, -1.2).applyAxisAngle(new THREE.Vector3(0, 1, 0), p.sittingBench.rotY || 0);
-                    p.mesh.position.add(standDir);
+                    p.standTarget.add(standDir);
                     p.sittingBench = null;
                 } else {
                     if (p.mesh.position.z > 3.0) {
-                        p.mesh.position.z = 5.6;
+                        p.standTarget.z = 5.6;
                     } else {
-                        p.mesh.position.z = -2.4;
+                        p.standTarget.z = -2.4;
                     }
                 }
-                p.mesh.position.y = floorY;
+                p.standTarget.y = floorY;
+                p.standTimer = 0.25;
             } else {
                 p.vx = 0; p.vz = 0; p.yVelocity = 0;
                 p.isJumping = false;
@@ -1730,12 +1743,21 @@ window.addEventListener('keydown', e => {
         if (localP && !localP.isCustomizing) {
             if (localP.isSitting) {
                 localP.isSitting = false;
-                if (localP.mesh.position.z > 3.0) {
-                    localP.mesh.position.z = 5.6;
+                localP.standStart = localP.mesh.position.clone();
+                localP.standTarget = localP.mesh.position.clone();
+                if (localP.sittingBench) {
+                    const standDir = new THREE.Vector3(0, 0, -1.2).applyAxisAngle(new THREE.Vector3(0, 1, 0), localP.sittingBench.rotY || 0);
+                    localP.standTarget.add(standDir);
+                    localP.sittingBench = null;
                 } else {
-                    localP.mesh.position.z = -2.4;
+                    if (localP.mesh.position.z > 3.0) {
+                        localP.standTarget.z = 5.6;
+                    } else {
+                        localP.standTarget.z = -2.4;
+                    }
                 }
-                localP.mesh.position.y = floorY;
+                localP.standTarget.y = floorY;
+                localP.standTimer = 0.25;
                 return;
             }
             let closest = null;
