@@ -400,7 +400,7 @@
         const screenGeo = new THREE.PlaneGeometry(screenW, screenH);
         const screenMat = new THREE.MeshBasicMaterial({ map: screenTexture, transparent: false }); 
         const screenMesh = new THREE.Mesh(screenGeo, screenMat);
-        screenMesh.position.set(0, floorY + ROOM_H * 0.5 + 0.5, -ROOM_D / 2 + 0.2);
+        screenMesh.position.set(0, floorY + ROOM_H * 0.5 + 0.5, -ROOM_D / 2 + 0.6);
         scene.add(screenMesh);
 
         // --- THEATER SEATING ---
@@ -416,39 +416,49 @@
         function createChair(x, z, idx) {
             const group = new THREE.Group();
             
-            // Puffy seat
-            const seat = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.5, 1.3), chairMat);
-            seat.position.y = 0.55;
+            // Puffy seat — scaled 2x for character scale
+            const seat = new THREE.Mesh(new THREE.BoxGeometry(2.8, 1.0, 2.6), chairMat);
+            seat.position.y = 1.1;
             seat.castShadow = true;
             group.add(seat);
 
             // Reclined back
-            const back = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.4, 0.4), chairMat);
-            back.position.set(0, 1.2, 0.6);
+            const back = new THREE.Mesh(new THREE.BoxGeometry(2.8, 2.8, 0.8), chairMat);
+            back.position.set(0, 2.4, 1.2);
             back.rotation.x = -0.15;
             back.castShadow = true;
             group.add(back);
 
             // Headrest
-            const headrest = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.5, 0.4), chairMat);
-            headrest.position.set(0, 2.0, 0.7);
+            const headrest = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.0, 0.8), chairMat);
+            headrest.position.set(0, 4.0, 1.4);
             headrest.rotation.x = -0.15;
             headrest.castShadow = true;
             group.add(headrest);
 
             // Arm rests
-            const armGeo = new THREE.BoxGeometry(0.2, 0.2, 1.1);
+            const armGeo = new THREE.BoxGeometry(0.4, 0.4, 2.2);
             const arm1 = new THREE.Mesh(armGeo, chairMat);
-            arm1.position.set(-0.8, 0.9, 0.1);
+            arm1.position.set(-1.6, 1.8, 0.2);
             group.add(arm1);
             const arm2 = new THREE.Mesh(armGeo, chairMat);
-            arm2.position.set(0.8, 0.9, 0.1);
+            arm2.position.set(1.6, 1.8, 0.2);
             group.add(arm2);
+
+            // Legs
+            const legGeo = new THREE.BoxGeometry(0.3, 1.0, 0.3);
+            [-1.2, 1.2].forEach(lx => {
+                [-0.9, 0.9].forEach(lz => {
+                    const leg = new THREE.Mesh(legGeo, chairMat);
+                    leg.position.set(lx, 0.5, lz);
+                    group.add(leg);
+                });
+            });
 
             group.position.set(x, floorY, z);
             scene.add(group);
 
-            seatSpots.push({ x, z, y: floorY + 0.75 });
+            seatSpots.push({ x, z, y: floorY + 1.6 });
         }
 
         for (let r = 0; r < rows; r++) {
@@ -487,7 +497,7 @@
                 p.isSitting = true;
                 p.vx = 0; p.vz = 0; p.yVelocity = 0; p.isJumping = false;
                 p.mesh.position.set(closestSpot.x, closestSpot.y, closestSpot.z);
-                p.mesh.rotation.set(0, Math.PI, 0); // Face screen
+                p.mesh.rotation.set(0, Math.PI, 0);
                 updatePlayerVisuals(p);
             }
         }
@@ -497,7 +507,7 @@
         const frameBorder = 0.4;
         const frameGeo = new THREE.BoxGeometry(screenW + frameBorder * 2, screenH + frameBorder * 2, 0.1);
         const frameMesh = new THREE.Mesh(frameGeo, frameMat);
-        frameMesh.position.set(0, floorY + ROOM_H * 0.5 + 0.5, -ROOM_D / 2 + 0.15);
+        frameMesh.position.set(0, floorY + ROOM_H * 0.5 + 0.5, -ROOM_D / 2 + 0.45);
         scene.add(frameMesh);
 
         // Projector (Interaction Point at the back)

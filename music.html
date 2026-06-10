@@ -1,0 +1,1550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rooms &amp; Shit | The Station</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <style>
+        :root {
+            --accent: #7C3AED;
+            --accent-glow: rgba(124,58,237,0.4);
+            --station-dark: #0a0a12;
+            --station-mid: #13131f;
+            --tile-yellow: #FFD600;
+            --tile-orange: #FF6B00;
+            --text-main: #fff;
+            --text-sub: rgba(255,255,255,0.55);
+            --panel-bg: rgba(10,10,20,0.92);
+            --divider: rgba(255,255,255,0.08);
+            --green-play: #1DB954;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: #000; font-family: 'Inter', sans-serif; overflow: hidden; color: #fff; user-select: none; }
+        #canvas-container { position: absolute; inset: 0; z-index: 1; }
+        .ui-layer { position: absolute; inset: 0; z-index: 10; pointer-events: none; }
+
+        /* ── Header ── */
+        #hdr { position: absolute; top: 20px; left: 20px; display: flex; align-items: center; gap: 12px; pointer-events: auto; }
+        #hdr-title { font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 1.1rem; background: linear-gradient(135deg, #7C3AED, #EC4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: 1px; }
+        .hdr-btn { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); color: #fff; padding: 7px 14px; border-radius: 20px; font-family: 'Inter', sans-serif; font-weight: 700; font-size: 0.78rem; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: background 0.2s; backdrop-filter: blur(8px); pointer-events: auto; }
+        .hdr-btn:hover { background: rgba(255,255,255,0.15); }
+        .hdr-btn i { font-size: 0.85rem; }
+
+        /* ── Cam Mode indicator ── */
+        #cam-indicator { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(124,58,237,0.7); border: 1px solid rgba(124,58,237,0.9); padding: 4px 16px; border-radius: 20px; font-size: 0.72rem; font-weight: 700; letter-spacing: 1px; pointer-events: none; backdrop-filter: blur(6px); }
+
+        /* ── Chat ── */
+        #chat-log { position: absolute; bottom: 110px; left: 20px; width: 320px; height: 160px; display: flex; flex-direction: column; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 10px; backdrop-filter: blur(10px); }
+        #chat-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; font-size: 0.78rem; font-weight: 500; }
+        #chat-list::-webkit-scrollbar { width: 3px; }
+        #chat-list::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 2px; }
+        .chat-msg { color: rgba(255,255,255,0.85); line-height: 1.4; word-break: break-word; }
+        .chat-sys { color: var(--accent); font-style: italic; }
+        #chat-row { position: absolute; bottom: 60px; left: 20px; width: 320px; display: flex; gap: 8px; pointer-events: auto; }
+        #chat-input { flex: 1; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); color: #fff; padding: 9px 14px; border-radius: 10px; font-family: 'Inter',sans-serif; font-size: 0.85rem; outline: none; }
+        #chat-input:focus { border-color: var(--accent); }
+        #chat-send { background: var(--accent); border: none; color: #fff; padding: 9px 14px; border-radius: 10px; cursor: pointer; font-size: 0.85rem; }
+
+        /* ── Emotions ── */
+        #emotions { position: absolute; bottom: 20px; right: 20px; display: flex; gap: 8px; pointer-events: auto; }
+        .emo-btn { width: 44px; height: 44px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); border-radius: 50%; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.2s, transform 0.1s; backdrop-filter: blur(6px); }
+        .emo-btn:hover { background: rgba(255,255,255,0.18); transform: scale(1.1); }
+
+        /* ── Controls panel ── */
+        #ctrl-panel { position: absolute; top: 20px; right: 20px; width: 220px; background: var(--panel-bg); border: 1px solid var(--divider); border-radius: 12px; padding: 14px; backdrop-filter: blur(16px); font-size: 0.78rem; }
+        #ctrl-panel h3 { font-family: 'Manrope',sans-serif; font-size: 0.7rem; font-weight: 800; letter-spacing: 2px; color: var(--accent); margin-bottom: 10px; text-transform: uppercase; }
+        .ctrl-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+        .ctrl-key { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.18); border-radius: 4px; padding: 1px 6px; font-family: monospace; font-weight: 700; font-size: 0.72rem; color: rgba(255,255,255,0.9); }
+        #conn-status { font-size: 0.7rem; color: var(--text-sub); margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--divider); }
+        .peer-id-row { display: flex; align-items: center; gap: 6px; margin: 5px 0; font-size: 0.68rem; }
+        #my-peer-id { color: var(--accent); font-weight: 700; }
+        #copy-id-btn { background: rgba(124,58,237,0.2); border: 1px solid var(--accent); color: var(--accent); font-size: 0.6rem; padding: 2px 6px; border-radius: 6px; cursor: pointer; }
+        #join-input { width: 100%; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); color: #fff; padding: 5px 8px; border-radius: 6px; font-size: 0.7rem; margin: 4px 0; outline: none; }
+        #connect-btn { width: 100%; background: var(--accent); border: none; color: #fff; padding: 5px; border-radius: 6px; font-size: 0.7rem; cursor: pointer; font-weight: 700; }
+
+        /* ── Customization overlay ── */
+        #custom-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.88); backdrop-filter: blur(16px); z-index: 200; display: flex; align-items: center; justify-content: center; }
+        #custom-overlay.hidden { display: none; }
+        .custom-card { background: rgba(18,18,30,0.98); border: 1px solid rgba(124,58,237,0.4); border-radius: 20px; padding: 32px; width: 360px; max-width: 90vw; display: flex; flex-direction: column; gap: 18px; }
+        .custom-title { font-family: 'Manrope',sans-serif; font-size: 1.5rem; font-weight: 800; text-align: center; background: linear-gradient(135deg, #7C3AED, #EC4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .custom-field label { display: block; font-size: 0.72rem; font-weight: 700; letter-spacing: 1px; color: var(--text-sub); text-transform: uppercase; margin-bottom: 6px; }
+        .custom-input { width: 100%; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); color: #fff; padding: 10px 14px; border-radius: 10px; font-family: 'Inter',sans-serif; font-size: 0.95rem; outline: none; }
+        .custom-input:focus { border-color: var(--accent); }
+        .color-grid { display: grid; grid-template-columns: repeat(6,1fr); gap: 7px; }
+        .col-btn { aspect-ratio: 1; border-radius: 50%; border: 2px solid transparent; cursor: pointer; transition: transform 0.1s, border-color 0.15s; }
+        .col-btn.active, .col-btn:hover { transform: scale(1.2); border-color: #fff; }
+        .enter-btn { width: 100%; background: linear-gradient(135deg, #7C3AED, #EC4899); border: none; color: #fff; padding: 13px; border-radius: 12px; font-family: 'Manrope',sans-serif; font-weight: 800; font-size: 1rem; cursor: pointer; transition: opacity 0.2s; }
+        .enter-btn:hover { opacity: 0.88; }
+
+        /* ── Pause overlay ── */
+        #pause-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.88); backdrop-filter: blur(16px); z-index: 200; display: flex; align-items: center; justify-content: center; }
+        #pause-overlay.hidden { display: none; }
+
+        /* ── MUSIC PLAYER PANEL ── */
+        #music-panel { position: absolute; bottom: 0; left: 0; right: 0; background: var(--panel-bg); border-top: 1px solid var(--divider); backdrop-filter: blur(24px); z-index: 50; display: flex; flex-direction: column; transition: transform 0.4s cubic-bezier(0.4,0,0.2,1); pointer-events: auto; max-height: 88vh; }
+        #music-panel.collapsed { transform: translateY(calc(100% - 80px)); }
+
+        /* Playbar (always visible) */
+        #playbar { display: flex; align-items: center; justify-content: space-between; padding: 0 20px; height: 80px; flex-shrink: 0; }
+        .np-left { display: flex; align-items: center; gap: 14px; flex: 1; min-width: 0; }
+        #np-art { width: 52px; height: 52px; border-radius: 8px; background: rgba(255,255,255,0.1); object-fit: cover; flex-shrink: 0; }
+        #np-art-placeholder { width: 52px; height: 52px; border-radius: 8px; background: rgba(255,255,255,0.07); display: flex; align-items: center; justify-content: center; color: var(--text-sub); font-size: 1.2rem; flex-shrink: 0; }
+        #np-info { min-width: 0; }
+        #np-title { font-weight: 700; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; }
+        #np-artist { font-size: 0.75rem; color: var(--text-sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+        .np-center { display: flex; flex-direction: column; align-items: center; flex: 1; max-width: 520px; }
+        .ctrl-btns { display: flex; align-items: center; gap: 20px; margin-bottom: 8px; }
+        .c-btn { background: none; border: none; color: var(--text-sub); font-size: 1rem; cursor: pointer; transition: color 0.15s; }
+        .c-btn:hover, .c-btn.on { color: #fff; }
+        .c-btn.on { color: var(--accent); }
+        #play-btn { width: 36px; height: 36px; background: #fff; color: #000; border: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; cursor: pointer; transition: transform 0.1s; }
+        #play-btn:hover { transform: scale(1.06); }
+        .prog-row { display: flex; align-items: center; gap: 10px; width: 100%; font-size: 0.7rem; color: var(--text-sub); }
+        .prog-track { flex: 1; height: 4px; background: rgba(255,255,255,0.15); border-radius: 2px; position: relative; cursor: pointer; }
+        .prog-fill { height: 100%; background: #fff; border-radius: 2px; position: absolute; top: 0; left: 0; transition: width 0.5s linear; }
+        .prog-track:hover .prog-fill { background: var(--green-play); }
+        .np-right { display: flex; align-items: center; gap: 16px; flex: 1; justify-content: flex-end; }
+        .extra-btn { background: none; border: none; color: var(--text-sub); font-size: 0.95rem; cursor: pointer; transition: color 0.15s; }
+        .extra-btn:hover { color: #fff; }
+        #toggle-panel-btn { background: none; border: none; color: var(--text-sub); font-size: 1.1rem; cursor: pointer; transition: color 0.15s, transform 0.3s; }
+        #toggle-panel-btn:hover { color: #fff; }
+        #toggle-panel-btn.open { transform: rotate(180deg); color: var(--accent); }
+
+        /* Expanded area */
+        #music-expanded { display: flex; flex: 1; overflow: hidden; min-height: 0; }
+
+        /* Sidebar */
+        #music-sidebar { width: 220px; flex-shrink: 0; border-right: 1px solid var(--divider); display: flex; flex-direction: column; padding: 16px 0; overflow-y: auto; }
+        .ms-logo { font-family: 'Manrope',sans-serif; font-weight: 800; font-size: 1rem; padding: 0 20px 16px 20px; display: flex; align-items: center; gap: 8px; color: #fff; border-bottom: 1px solid var(--divider); margin-bottom: 10px; }
+        .ms-logo i { color: var(--accent); }
+        .ms-nav { display: flex; align-items: center; gap: 12px; padding: 10px 20px; font-size: 0.83rem; font-weight: 600; color: var(--text-sub); cursor: pointer; border-radius: 0; transition: background 0.15s, color 0.15s; }
+        .ms-nav:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .ms-nav.active { color: #fff; background: rgba(124,58,237,0.12); border-left: 3px solid var(--accent); padding-left: 17px; }
+        .ms-nav i { font-size: 1rem; width: 18px; text-align: center; }
+        .ms-divider { border: none; border-top: 1px solid var(--divider); margin: 10px 20px; }
+
+        /* Main view */
+        #music-main { flex: 1; overflow-y: auto; position: relative; }
+        #music-main::-webkit-scrollbar { width: 4px; }
+        #music-main::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+        .m-view { display: none; padding-bottom: 20px; }
+        .m-view.active { display: block; }
+
+        /* Home */
+        #homeView { padding: 28px 28px 0; }
+        #greet { font-family: 'Manrope',sans-serif; font-size: 1.6rem; font-weight: 800; margin-bottom: 4px; }
+        #greet-sub { font-size: 0.82rem; color: var(--text-sub); margin-bottom: 24px; }
+        .sec-title { font-family: 'Manrope',sans-serif; font-size: 1.1rem; font-weight: 800; margin-bottom: 16px; }
+        .tracks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
+        .track-card { background: rgba(255,255,255,0.04); border: 1px solid var(--divider); border-radius: 10px; padding: 12px; cursor: pointer; transition: background 0.2s, transform 0.15s; }
+        .track-card:hover { background: rgba(255,255,255,0.09); transform: translateY(-2px); }
+        .tc-art { width: 100%; aspect-ratio: 1; background: rgba(255,255,255,0.08); border-radius: 8px; object-fit: cover; margin-bottom: 10px; }
+        .tc-title { font-weight: 700; font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; }
+        .tc-sub { font-size: 0.72rem; color: var(--text-sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+
+        /* Search */
+        #searchView { padding: 28px; }
+        .search-hero { text-align: center; margin-bottom: 28px; }
+        .search-hero h1 { font-family: 'Manrope',sans-serif; font-size: 2rem; font-weight: 800; margin-bottom: 20px; }
+        .search-box { max-width: 480px; margin: 0 auto; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); border-radius: 30px; padding: 11px 20px; display: flex; align-items: center; gap: 10px; transition: border-color 0.2s; }
+        .search-box:focus-within { border-color: var(--accent); }
+        .search-box input { background: none; border: none; color: #fff; font-size: 0.9rem; width: 100%; outline: none; font-family: 'Inter',sans-serif; }
+        .search-box i { color: var(--text-sub); }
+        #searchResults { margin-top: 24px; }
+        #searchResults .tracks-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+        .search-loader { text-align: center; padding: 40px; color: var(--text-sub); }
+
+        /* Track playing state */
+        .track-card.is-playing { background: rgba(124,58,237,0.15); border-color: rgba(124,58,237,0.4); }
+
+        /* Loading */
+        .spin { animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        /* Fade overlay */
+        #fade-overlay { position: absolute; inset: 0; background: #000; z-index: 100; opacity: 0; pointer-events: none; transition: opacity 1.5s; }
+        #fade-overlay.visible { opacity: 1; }
+
+        /* Mobile */
+        @media (max-width: 700px) {
+            #music-sidebar { display: none; }
+            #ctrl-panel { display: none; }
+        }
+        @media (max-width: 500px) {
+            .np-center { display: none; }
+        }
+    </style>
+</head>
+<body>
+<div id="fade-overlay"></div>
+
+<div id="custom-overlay">
+    <div class="custom-card">
+        <div class="custom-title">THE STATION</div>
+        <p style="text-align:center; font-size:0.82rem; color:var(--text-sub);">An underground hangout. Press M to open the music player.</p>
+        <div class="custom-field">
+            <label>Your Name</label>
+            <input type="text" id="name-input" class="custom-input" value="Player" maxlength="15" placeholder="Enter name...">
+        </div>
+        <div class="custom-field">
+            <label>Color</label>
+            <div class="color-grid">
+                <div class="col-btn active" data-c="#E2FF3D" style="background:#E2FF3D"></div>
+                <div class="col-btn" data-c="#7C3AED" style="background:#7C3AED"></div>
+                <div class="col-btn" data-c="#EC4899" style="background:#EC4899"></div>
+                <div class="col-btn" data-c="#22D3EE" style="background:#22D3EE"></div>
+                <div class="col-btn" data-c="#34D399" style="background:#34D399"></div>
+                <div class="col-btn" data-c="#F97316" style="background:#F97316"></div>
+                <div class="col-btn" data-c="#FF3366" style="background:#FF3366"></div>
+                <div class="col-btn" data-c="#FACC15" style="background:#FACC15"></div>
+                <div class="col-btn" data-c="#A78BFA" style="background:#A78BFA"></div>
+                <div class="col-btn" data-c="#F87171" style="background:#F87171"></div>
+                <div class="col-btn" data-c="#ffffff" style="background:#ffffff"></div>
+                <div class="col-btn" data-c="#64748B" style="background:#64748B"></div>
+            </div>
+        </div>
+        <button id="enter-btn" class="enter-btn">Enter The Station</button>
+    </div>
+</div>
+
+<div id="pause-overlay" class="hidden">
+    <div class="custom-card">
+        <div class="custom-title">PAUSED</div>
+        <div class="custom-field">
+            <label>Name</label>
+            <input type="text" id="pause-name-input" class="custom-input" maxlength="15">
+        </div>
+        <div class="custom-field">
+            <label>Color</label>
+            <div id="pause-color-grid" class="color-grid">
+                <div class="col-btn" data-c="#E2FF3D" style="background:#E2FF3D"></div>
+                <div class="col-btn" data-c="#7C3AED" style="background:#7C3AED"></div>
+                <div class="col-btn" data-c="#EC4899" style="background:#EC4899"></div>
+                <div class="col-btn" data-c="#22D3EE" style="background:#22D3EE"></div>
+                <div class="col-btn" data-c="#34D399" style="background:#34D399"></div>
+                <div class="col-btn" data-c="#F97316" style="background:#F97316"></div>
+                <div class="col-btn" data-c="#FF3366" style="background:#FF3366"></div>
+                <div class="col-btn" data-c="#FACC15" style="background:#FACC15"></div>
+                <div class="col-btn" data-c="#A78BFA" style="background:#A78BFA"></div>
+                <div class="col-btn" data-c="#F87171" style="background:#F87171"></div>
+                <div class="col-btn" data-c="#ffffff" style="background:#ffffff"></div>
+                <div class="col-btn" data-c="#64748B" style="background:#64748B"></div>
+            </div>
+        </div>
+        <button id="resume-btn" class="enter-btn">Resume</button>
+    </div>
+</div>
+
+<div id="canvas-container"></div>
+
+<div class="ui-layer" style="pointer-events:none;">
+    <div id="hdr">
+        <span id="hdr-title">THE STATION</span>
+        <button class="hdr-btn" onclick="openMusicPanel()"><i class="fa-solid fa-music"></i> Music (M)</button>
+        <button class="hdr-btn" onclick="togglePause()"><i class="fa-solid fa-gear"></i></button>
+    </div>
+
+    <div id="cam-indicator">🚇 STATIONARY — Press V for First Person</div>
+
+    <div id="chat-log">
+        <ul id="chat-list"></ul>
+    </div>
+
+    <div id="chat-row">
+        <input type="text" id="chat-input" placeholder="Say something..." maxlength="80" autocomplete="off">
+        <button id="chat-send"><i class="fa-solid fa-paper-plane"></i></button>
+    </div>
+
+    <div id="emotions">
+        <div class="emo-btn" onclick="spawnEmotion('happy')">😊</div>
+        <div class="emo-btn" onclick="spawnEmotion('love')">❤️</div>
+        <div class="emo-btn" onclick="spawnEmotion('vibe')">🎵</div>
+        <div class="emo-btn" onclick="spawnEmotion('shocked')">😲</div>
+        <div class="emo-btn" onclick="spawnEmotion('angry')">😤</div>
+    </div>
+
+    <div id="ctrl-panel">
+        <h3>Controls</h3>
+        <div class="ctrl-row"><span>Move</span><span class="ctrl-key">WASD</span></div>
+        <div class="ctrl-row"><span>Jump</span><span class="ctrl-key">SPACE</span></div>
+        <div class="ctrl-row"><span>Sprint</span><span class="ctrl-key">SHIFT</span></div>
+        <div class="ctrl-row"><span>Cam Mode</span><span class="ctrl-key">V</span></div>
+        <div class="ctrl-row"><span>Music</span><span class="ctrl-key">M</span></div>
+        <div class="ctrl-row"><span>Menu</span><span class="ctrl-key">ESC</span></div>
+        <div id="conn-status">
+            <div>Status: <span id="status-label">Offline</span></div>
+            <div class="peer-id-row">ID: <span id="my-peer-id">...</span> <button id="copy-id-btn">Copy</button></div>
+            <input type="text" id="join-input" placeholder="Peer ID..." class="custom-input" style="font-size:0.7rem; padding:5px 8px; border-radius:6px;">
+            <button id="connect-btn">Connect</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── MUSIC PLAYER PANEL ── -->
+<div id="music-panel" class="collapsed">
+    <!-- Playbar -->
+    <div id="playbar">
+        <div class="np-left">
+            <img id="np-art" src="" style="display:none;">
+            <div id="np-art-placeholder"><i class="fa-solid fa-music"></i></div>
+            <div id="np-info">
+                <div id="np-title">Not Playing</div>
+                <div id="np-artist">Open the player to search</div>
+            </div>
+        </div>
+
+        <div class="np-center">
+            <div class="ctrl-btns">
+                <button class="c-btn" id="shuffle-btn" onclick="toggleShuffle()"><i class="fa-solid fa-shuffle"></i></button>
+                <button class="c-btn" onclick="playPrevTrack()"><i class="fa-solid fa-backward-step"></i></button>
+                <button id="play-btn" onclick="togglePlayPause()"><i class="fa-solid fa-play" style="margin-left:2px;"></i></button>
+                <button class="c-btn" onclick="playNextTrack()"><i class="fa-solid fa-forward-step"></i></button>
+                <button class="c-btn" id="repeat-btn" onclick="cycleRepeat()"><i class="fa-solid fa-repeat"></i></button>
+            </div>
+            <div class="prog-row">
+                <span id="cur-time">0:00</span>
+                <div class="prog-track" id="prog-track">
+                    <div class="prog-fill" id="prog-fill" style="width:0%"></div>
+                </div>
+                <span id="dur-label">0:00</span>
+            </div>
+        </div>
+
+        <div class="np-right">
+            <button class="extra-btn" id="like-btn" onclick="toggleLike()"><i class="fa-regular fa-heart"></i></button>
+            <button id="toggle-panel-btn" onclick="toggleMusicPanel()"><i class="fa-solid fa-chevron-up"></i></button>
+        </div>
+    </div>
+
+    <!-- Expanded content -->
+    <div id="music-expanded">
+        <div id="music-sidebar">
+            <div class="ms-logo"><i class="fa-solid fa-record-vinyl"></i> THE STATION</div>
+            <div class="ms-nav active" data-view="homeView" onclick="switchMView('homeView')"><i class="fa-solid fa-house"></i> Home</div>
+            <div class="ms-nav" data-view="searchView" onclick="switchMView('searchView')"><i class="fa-solid fa-magnifying-glass"></i> Search</div>
+            <div class="ms-nav" data-view="likedView" onclick="switchMView('likedView')"><i class="fa-solid fa-heart"></i> Liked</div>
+            <hr class="ms-divider">
+            <div style="padding: 0 20px; font-size:0.68rem; letter-spacing:1px; color:var(--text-sub); text-transform:uppercase; font-weight:700;">Playlists</div>
+            <div id="sidebar-playlists"></div>
+        </div>
+
+        <div id="music-main">
+            <!-- Home -->
+            <div class="m-view active" id="homeView">
+                <div style="padding:28px;">
+                    <div id="greet">Good evening</div>
+                    <div id="greet-sub">vibin' underground 🚇</div>
+                    <div class="sec-title">Popular Right Now</div>
+                    <div class="tracks-grid" id="popular-tracks"></div>
+                </div>
+            </div>
+
+            <!-- Search -->
+            <div class="m-view" id="searchView">
+                <div style="padding:28px;">
+                    <div class="search-hero">
+                        <h1>What's on the playlist?</h1>
+                        <div class="search-box">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="search-input" placeholder="Search songs, artists...">
+                        </div>
+                    </div>
+                    <div id="searchResults" style="display:none;">
+                        <div class="sec-title">Results</div>
+                        <div class="tracks-grid" id="search-grid"></div>
+                        <div id="search-load-more" style="text-align:center; padding:20px; display:none;">
+                            <button onclick="loadMoreResults()" class="enter-btn" style="width:auto; padding:10px 28px; font-size:0.85rem;">Load More</button>
+                        </div>
+                    </div>
+                    <div id="search-loader" style="display:none;" class="search-loader"><i class="fa-solid fa-circle-notch spin fa-2x"></i></div>
+                </div>
+            </div>
+
+            <!-- Liked -->
+            <div class="m-view" id="likedView">
+                <div style="padding:28px; background:linear-gradient(to bottom, rgba(124,58,237,0.3) 0%, transparent 300px);">
+                    <div style="display:flex; align-items:center; gap:20px; margin-bottom:24px;">
+                        <div style="width:80px; height:80px; background:linear-gradient(135deg,#7C3AED,#EC4899); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:2rem;">❤️</div>
+                        <div>
+                            <div style="font-size:0.72rem; letter-spacing:2px; color:var(--text-sub); text-transform:uppercase;">Playlist</div>
+                            <div style="font-family:'Manrope',sans-serif; font-size:1.8rem; font-weight:800;">Liked Songs</div>
+                            <div id="liked-count" style="font-size:0.8rem; color:var(--text-sub);">0 songs</div>
+                        </div>
+                    </div>
+                    <button onclick="playAllLiked()" style="background:var(--green-play); border:none; color:#000; width:52px; height:52px; border-radius:50%; font-size:1.1rem; cursor:pointer; display:flex; align-items:center; justify-content:center; margin-bottom:20px;"><i class="fa-solid fa-play" style="margin-left:3px;"></i></button>
+                    <div class="tracks-grid" id="liked-grid"></div>
+                </div>
+            </div>
+
+            <!-- Dynamic playlist view -->
+            <div class="m-view" id="dynamicView"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden audio -->
+<audio id="native-audio" style="display:none;" crossorigin="anonymous"></audio>
+<div id="yt-container" style="position:fixed; bottom:-9999px; left:-9999px; width:1px; height:1px; opacity:0; pointer-events:none;"></div>
+
+<script>
+window.createImageBitmap = undefined;
+const loader3D = new THREE.GLTFLoader();
+const scene = new THREE.Scene();
+
+const ROOM_W = 60, ROOM_D = 36, ROOM_H = 9;
+const floorY = 0;
+const CHARACTER_SCALE = 2.0;
+
+let camMode = 0, isFirstPerson = false;
+let fpYaw = Math.PI, fpPitch = 0;
+let localPlayerId = 1, isHost = true;
+let isCustomizing = true, isPaused = false;
+let chosenColor = '#E2FF3D';
+const connections = [];
+let peer = null;
+
+const players = [
+    { id:1, name:'Player 1', color:'#E2FF3D', mesh:null, position:new THREE.Vector3(0,floorY,ROOM_D/2-4), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false,shift:false}, isCustomizing:true, isSitting:false },
+    { id:2, name:'Player 2', color:'#7C3AED', mesh:null, position:new THREE.Vector3(-2,floorY,ROOM_D/2-4), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false,shift:false}, isCustomizing:false, isSitting:false },
+    { id:3, name:'Player 3', color:'#EC4899', mesh:null, position:new THREE.Vector3(2,floorY,ROOM_D/2-4), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false,shift:false}, isCustomizing:false, isSitting:false }
+];
+
+scene.background = new THREE.Color(0x05050f);
+const aspect = window.innerWidth / window.innerHeight;
+const camera = new THREE.PerspectiveCamera(90, aspect, 0.1, 200);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ── LIGHTING ──
+scene.add(new THREE.AmbientLight(0x1a1a2e, 0.8));
+
+const purpleLight = new THREE.PointLight(0x7C3AED, 1.8, 30);
+purpleLight.position.set(0, ROOM_H - 0.5, 0);
+scene.add(purpleLight);
+
+[-20, 0, 20].forEach((x, i) => {
+    const colors = [0x3b1d8a, 0x2d1a7a, 0x3b1d8a];
+    const pl = new THREE.PointLight(colors[i], 0.9, 22);
+    pl.position.set(x, ROOM_H - 0.8, 0);
+    scene.add(pl);
+});
+
+// Overhead strip lights (fluorescent effect along platform)
+const stripColors = [0x6644cc, 0x4433aa, 0x6644cc, 0x4433aa];
+[-15, -5, 5, 15].forEach((x, i) => {
+    const sp = new THREE.PointLight(0x8866ee, 0.7, 14);
+    sp.position.set(x, ROOM_H - 0.3, -4);
+    scene.add(sp);
+});
+
+// Warm accent near jukebox
+const jukeLight = new THREE.PointLight(0xFF6B00, 1.2, 8);
+jukeLight.position.set(20, 2, -5);
+scene.add(jukeLight);
+
+// ── SUBWAY STATION GEOMETRY ──
+const concreteGray = new THREE.MeshStandardMaterial({ color: 0x1a1a2a, roughness: 0.9 });
+const tileYellow = new THREE.MeshStandardMaterial({ color: 0xFFD600, roughness: 0.6 });
+const tileOrange = new THREE.MeshStandardMaterial({ color: 0xE85D00, roughness: 0.6 });
+const metalMat = new THREE.MeshStandardMaterial({ color: 0x3a3a5a, roughness: 0.5, metalness: 0.7 });
+const darkMat = new THREE.MeshStandardMaterial({ color: 0x0a0a14, roughness: 1.0 });
+const creamTile = new THREE.MeshStandardMaterial({ color: 0xc8b89a, roughness: 0.7 });
+
+// Floor — dark tile
+const floorGeo = new THREE.BoxGeometry(ROOM_W, 0.3, ROOM_D);
+const floorTileMat = new THREE.MeshStandardMaterial({ color: 0x111122, roughness: 0.8 });
+const floorMesh = new THREE.Mesh(floorGeo, floorTileMat);
+floorMesh.position.set(0, floorY - 0.15, 0);
+floorMesh.receiveShadow = true;
+scene.add(floorMesh);
+
+// Floor tile lines (grout effect)
+for (let i = -25; i <= 25; i += 4) {
+    const grout = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.02, ROOM_D), new THREE.MeshStandardMaterial({ color: 0x0a0a1a }));
+    grout.position.set(i, 0.01, 0);
+    scene.add(grout);
+}
+for (let z = -15; z <= 15; z += 4) {
+    const grout = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.02, 0.04), new THREE.MeshStandardMaterial({ color: 0x0a0a1a }));
+    grout.position.set(0, 0.01, z);
+    scene.add(grout);
+}
+
+// Ceiling
+const ceilMesh = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.4, ROOM_D), new THREE.MeshStandardMaterial({ color: 0x0a0a18, roughness: 1.0 }));
+ceilMesh.position.set(0, ROOM_H + 0.2, 0);
+scene.add(ceilMesh);
+
+// Ceiling panels
+for (let x = -24; x <= 24; x += 8) {
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(7.5, 0.08, ROOM_D - 4), new THREE.MeshStandardMaterial({ color: 0x12122a, roughness: 0.9 }));
+    panel.position.set(x, ROOM_H, 0);
+    scene.add(panel);
+}
+
+// Walls — sides
+const wallLeft = new THREE.Mesh(new THREE.BoxGeometry(0.4, ROOM_H, ROOM_D), new THREE.MeshStandardMaterial({ color: 0x111128, roughness: 0.9 }));
+wallLeft.position.set(-ROOM_W/2 - 0.2, ROOM_H/2, 0);
+scene.add(wallLeft);
+const wallRight = new THREE.Mesh(new THREE.BoxGeometry(0.4, ROOM_H, ROOM_D), new THREE.MeshStandardMaterial({ color: 0x111128, roughness: 0.9 }));
+wallRight.position.set(ROOM_W/2 + 0.2, ROOM_H/2, 0);
+scene.add(wallRight);
+
+// Back wall (behind audience)
+const backWall = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, ROOM_H, 0.4), new THREE.MeshStandardMaterial({ color: 0x0d0d22, roughness: 0.9 }));
+backWall.position.set(0, ROOM_H/2, ROOM_D/2 + 0.2);
+scene.add(backWall);
+
+// Front wall (tracks side) with opening in middle
+const fWallMat = new THREE.MeshStandardMaterial({ color: 0x0a0a18, roughness: 0.9 });
+const fWallL = new THREE.Mesh(new THREE.BoxGeometry(14, ROOM_H, 0.4), fWallMat);
+fWallL.position.set(-ROOM_W/2 + 7, ROOM_H/2, -ROOM_D/2 - 0.2);
+scene.add(fWallL);
+const fWallR = new THREE.Mesh(new THREE.BoxGeometry(14, ROOM_H, 0.4), fWallMat);
+fWallR.position.set(ROOM_W/2 - 7, ROOM_H/2, -ROOM_D/2 - 0.2);
+scene.add(fWallR);
+// Top of opening
+const fWallTop = new THREE.Mesh(new THREE.BoxGeometry(32, 2, 0.4), fWallMat);
+fWallTop.position.set(0, ROOM_H - 1, -ROOM_D/2 - 0.2);
+scene.add(fWallTop);
+
+// Tunnel beyond opening (just dark void boxes)
+for (let depth = 1; depth <= 5; depth++) {
+    const tFrame = new THREE.Mesh(new THREE.BoxGeometry(34, ROOM_H + 1, 0.5), new THREE.MeshStandardMaterial({ color: 0x050510, roughness: 1.0 }));
+    tFrame.position.set(0, ROOM_H/2 - 0.5, -ROOM_D/2 - 0.2 - depth * 6);
+    scene.add(tFrame);
+}
+
+// ── TILE STRIPE WALL DECOR ──
+const stripeH = 2.5;
+// Yellow band running the length of wall
+const yellowStripe = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W - 2, stripeH, 0.12), tileYellow);
+yellowStripe.position.set(0, 1.5, ROOM_D/2 + 0.05);
+scene.add(yellowStripe);
+
+const orangeStripe = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W - 2, 0.5, 0.12), tileOrange);
+orangeStripe.position.set(0, stripeH + 0.25, ROOM_D/2 + 0.05);
+scene.add(orangeStripe);
+
+// Tile panels on back wall
+for (let x = -24; x <= 24; x += 8) {
+    const tp = new THREE.Mesh(new THREE.BoxGeometry(7, 3, 0.08), creamTile);
+    tp.position.set(x, 4.5, ROOM_D/2 + 0.1);
+    scene.add(tp);
+}
+
+// ── PLATFORM EDGE ──
+const platEdge = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.35, 1.2), new THREE.MeshStandardMaterial({ color: 0x221122, roughness: 0.8 }));
+platEdge.position.set(0, floorY - 0.175, -ROOM_D/2 + 0.6);
+scene.add(platEdge);
+// Edge stripe (yellow warning line)
+const edgeStripe = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.04, 0.2), new THREE.MeshStandardMaterial({ color: 0xFFD600, roughness: 0.6, emissive: 0x443300, emissiveIntensity: 0.3 }));
+edgeStripe.position.set(0, 0.02, -ROOM_D/2 + 1.2);
+scene.add(edgeStripe);
+
+// ── COLUMNS ──
+const colMat = new THREE.MeshStandardMaterial({ color: 0x1a1a32, roughness: 0.8, metalness: 0.2 });
+const colAccMat = new THREE.MeshStandardMaterial({ color: 0x7C3AED, roughness: 0.4, emissive: 0x3d1d7a, emissiveIntensity: 0.5 });
+for (let x = -20; x <= 20; x += 10) {
+    // Main column shaft
+    const col = new THREE.Mesh(new THREE.BoxGeometry(0.9, ROOM_H, 0.9), colMat);
+    col.position.set(x, ROOM_H/2, -4);
+    scene.add(col);
+    // Purple accent strip on column
+    const acc = new THREE.Mesh(new THREE.BoxGeometry(0.15, ROOM_H * 0.6, 0.15), colAccMat);
+    acc.position.set(x + 0.4, ROOM_H/2, -3.6);
+    scene.add(acc);
+}
+
+// ── BENCHES ──
+const benchMat = new THREE.MeshStandardMaterial({ color: 0x2a2a44, roughness: 0.7, metalness: 0.3 });
+const benchLegMat = new THREE.MeshStandardMaterial({ color: 0x1a1a30, roughness: 0.5, metalness: 0.6 });
+function createBench(x, z) {
+    const g = new THREE.Group();
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(4, 0.2, 0.9), benchMat);
+    seat.position.y = 0.85;
+    g.add(seat);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(4, 0.6, 0.12), benchMat);
+    back.position.set(0, 1.25, 0.38);
+    g.add(back);
+    for (let lx = -1.5; lx <= 1.5; lx += 3) {
+        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.8, 0.6), benchLegMat);
+        leg.position.set(lx, 0.4, 0);
+        g.add(leg);
+    }
+    g.position.set(x, floorY, z);
+    scene.add(g);
+}
+[-20, -10, 0, 10, 20].forEach(x => createBench(x, ROOM_D/2 - 5));
+[-12, 0, 12].forEach(x => createBench(x, -3));
+
+// ── JUKEBOX (glowing, interactive) ──
+const jukeGroup = new THREE.Group();
+const jukeBody = new THREE.Mesh(new THREE.BoxGeometry(2.4, 3.8, 1.4), new THREE.MeshStandardMaterial({ color: 0x1a0a0a, roughness: 0.5, metalness: 0.5 }));
+jukeBody.position.y = 1.9;
+jukeGroup.add(jukeBody);
+const jukeTop = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.5, 1.4), new THREE.MeshStandardMaterial({ color: 0x2a1060, roughness: 0.4 }));
+jukeTop.position.y = 4.05;
+jukeGroup.add(jukeTop);
+// Jukebox screen
+const jukeScreen = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.2, 0.1), new THREE.MeshStandardMaterial({ color: 0x110033, emissive: 0x7C3AED, emissiveIntensity: 1.5, roughness: 0.2 }));
+jukeScreen.position.set(0, 2.6, 0.75);
+jukeGroup.add(jukeScreen);
+// Speaker grille
+const jukeGrill = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.0, 0.1), new THREE.MeshStandardMaterial({ color: 0x221144, roughness: 0.9 }));
+jukeGrill.position.set(0, 1.3, 0.75);
+jukeGroup.add(jukeGrill);
+// Accent lights on jukebox
+const jukeLightL = new THREE.Mesh(new THREE.BoxGeometry(0.15, 3.0, 0.1), new THREE.MeshStandardMaterial({ color: 0xFF6B00, emissive: 0xFF3300, emissiveIntensity: 2.0 }));
+jukeLightL.position.set(-1.1, 1.9, 0.75);
+jukeGroup.add(jukeLightL);
+const jukeLightR = jukeLightL.clone();
+jukeLightR.position.x = 1.1;
+jukeGroup.add(jukeLightR);
+jukeGroup.position.set(22, floorY, -10);
+jukeGroup.rotation.y = -Math.PI / 4;
+scene.add(jukeGroup);
+
+// ── OVERHEAD LIGHT FIXTURES ──
+for (let x = -20; x <= 20; x += 10) {
+    const fixture = new THREE.Mesh(new THREE.BoxGeometry(4, 0.12, 0.5), new THREE.MeshStandardMaterial({ color: 0x8866ee, emissive: 0x5533bb, emissiveIntensity: 0.8 }));
+    fixture.position.set(x, ROOM_H - 0.1, -2);
+    scene.add(fixture);
+    // Diffuser (bottom of fixture, glowing white)
+    const diff = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.05, 0.4), new THREE.MeshStandardMaterial({ color: 0xccbbff, emissive: 0x9977ff, emissiveIntensity: 1.0 }));
+    diff.position.set(x, ROOM_H - 0.18, -2);
+    scene.add(diff);
+}
+
+// ── SIGNS ──
+function makeSign(text, x, y, z, rot = 0) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512; canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#FFD600';
+    ctx.fillRect(0, 0, 512, 128);
+    ctx.fillStyle = '#000';
+    ctx.font = 'bold 52px "Inter", sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(text, 256, 64);
+    const tex = new THREE.CanvasTexture(canvas);
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 0.9), new THREE.MeshBasicMaterial({ map: tex }));
+    mesh.position.set(x, y, z);
+    mesh.rotation.y = rot;
+    scene.add(mesh);
+}
+makeSign('THE STATION', -10, 5, ROOM_D/2 + 0.05);
+makeSign('DOWNTOWN', 10, 5, ROOM_D/2 + 0.05);
+makeSign('EXIT ↑', -25, 4, 0, Math.PI/2);
+
+// ── TRACK / RAILS ──
+const railMat = new THREE.MeshStandardMaterial({ color: 0x444466, roughness: 0.6, metalness: 0.8 });
+for (let rx = -1; rx <= 1; rx += 2) {
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.15, 80), railMat);
+    rail.position.set(rx * 2.5, -1.0, -ROOM_D/2 - 20);
+    scene.add(rail);
+}
+// Sleepers
+for (let z = -ROOM_D/2 - 40; z < -ROOM_D/2 + 2; z += 2.5) {
+    const sleeper = new THREE.Mesh(new THREE.BoxGeometry(7, 0.1, 0.4), new THREE.MeshStandardMaterial({ color: 0x1a1206, roughness: 1.0 }));
+    sleeper.position.set(0, -1.1, z);
+    scene.add(sleeper);
+}
+// Pit (below platform edge)
+const pit = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 1.5, 12), new THREE.MeshStandardMaterial({ color: 0x050508, roughness: 1.0 }));
+pit.position.set(0, -1.0, -ROOM_D/2 - 4);
+scene.add(pit);
+
+// ── CAMERA ──
+const STAT_POS = new THREE.Vector3(0, 5, ROOM_D/2 - 2);
+const STAT_TARGET = new THREE.Vector3(0, 2, -ROOM_D/2);
+function applyStationaryCamera() {
+    camera.position.copy(STAT_POS);
+    camera.lookAt(STAT_TARGET);
+}
+applyStationaryCamera();
+
+// ── PLAYER HELPERS ──
+function createNametagSprite(name) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512; canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 512, 128);
+    ctx.font = 'bold 36px "Inter", sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.strokeStyle = '#000'; ctx.lineWidth = 10; ctx.strokeText(name, 256, 64);
+    ctx.fillStyle = '#fff'; ctx.fillText(name, 256, 64);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.minFilter = THREE.LinearFilter;
+    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+    const sprite = new THREE.Sprite(mat);
+    sprite.scale.set(1.5, 0.375, 1);
+    return sprite;
+}
+function createSpeechBubble(text) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512; canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 512, 256);
+    ctx.font = 'bold 22px "Inter", sans-serif';
+    const tw = ctx.measureText(text).width;
+    const bW = Math.max(80, tw + 40), bH = 56;
+    const bx = (512 - bW) / 2, by = (256 - bH) / 2 - 10;
+    ctx.fillStyle = '#fff'; ctx.strokeStyle = '#1a1a2e'; ctx.lineWidth = 5;
+    ctx.roundRect(bx, by, bW, bH, 10); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(248, by + bH); ctx.lineTo(264, by + bH); ctx.lineTo(256, by + bH + 14); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#000'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(text, 256, by + bH / 2);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.minFilter = THREE.LinearFilter;
+    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+    const sprite = new THREE.Sprite(mat);
+    sprite.scale.set(2, 1, 1);
+    return sprite;
+}
+function createToonMaterial(colorHex) {
+    return new THREE.MeshToonMaterial({ color: colorHex });
+}
+function applyColorToPlayer(id, color) {
+    const p = players[id - 1];
+    if (!p || !p.charMesh) return;
+    p.color = color;
+    p.charMesh.traverse(child => { if (child.isMesh) child.material.color.set(color); });
+}
+function updatePlayerVisuals(p) {
+    if (!p.mesh) return;
+    p.mesh.visible = !p.isCustomizing && (!isFirstPerson || p.id !== localPlayerId);
+}
+function showSpeechBubble(pid, text) {
+    const p = players.find(x => x.id === pid);
+    if (!p) return;
+    addChat(p.name, text, false);
+    if (!p.mesh) return;
+    if (p.bubbleSprite) { p.mesh.remove(p.bubbleSprite); }
+    p.bubbleSprite = createSpeechBubble(text);
+    p.bubbleSprite.position.set(0, 1.2, 0);
+    p.mesh.add(p.bubbleSprite);
+    if (p.bubbleTimeout) clearTimeout(p.bubbleTimeout);
+    p.bubbleTimeout = setTimeout(() => { if (p.bubbleSprite && p.mesh) p.mesh.remove(p.bubbleSprite); }, 4000);
+}
+
+// ── MODELS ──
+const charGltfUrl = 'model/character.gltf';
+function loadModels() {
+    Promise.all([
+        loader3D.loadAsync(charGltfUrl + '?v=' + Date.now()),
+        fetch('animations.json?v=' + Date.now()).then(r => r.json())
+    ]).then(([gltf, animJson]) => {
+        const animations = animJson.map(a => {
+            const tracks = a.tracks.map(t => {
+                const prop = t.property || (t.name ? t.name.split('.')[1] : 'position');
+                return new THREE.KeyframeTrack(t.nodeName + '.' + prop, t.times, t.values);
+            });
+            return new THREE.AnimationClip(a.name, a.duration, tracks);
+        });
+        setupPlayers(gltf, animations);
+    }).catch(e => console.warn('Model load failed (using fallback):', e));
+}
+function setupPlayers(gltf, animations) {
+    const charScene = gltf.scene;
+    for (let i = 0; i < 3; i++) {
+        const p = players[i];
+        const pg = new THREE.Group();
+        pg.position.copy(p.position);
+        pg.rotation.y = Math.PI;
+        const cm = charScene.clone();
+        cm.scale.set(CHARACTER_SCALE, CHARACTER_SCALE, CHARACTER_SCALE);
+        cm.position.y = -0.0625;
+        cm.traverse(child => {
+            if (child.isMesh) { child.castShadow = true; child.material = createToonMaterial(p.color); }
+        });
+        pg.add(cm); p.charMesh = cm;
+        if (animations && animations.length > 0) {
+            p.mixer = new THREE.AnimationMixer(cm);
+            p.actions = {};
+            animations.forEach(clip => {
+                const a = p.mixer.clipAction(clip);
+                a.setLoop(THREE.LoopRepeat, Infinity);
+                p.actions[clip.name] = a;
+            });
+        }
+        scene.add(pg); p.mesh = pg;
+        applyColorToPlayer(i + 1, p.color);
+        p.nametagSprite = createNametagSprite(p.name);
+        p.nametagSprite.position.set(0, 0.45, 0);
+        p.mesh.add(p.nametagSprite);
+        updatePlayerVisuals(p);
+    }
+}
+loadModels();
+
+// ── ANIMATION STATES ──
+function updateAnimState(p, speed) {
+    if (!p.mixer || !p.actions) return;
+    const isMoving = speed > 0.15, isSprinting = speed > 4.5;
+    let next = isMoving ? (isSprinting ? p.actions['Sprint'] : p.actions['Stomp']) : p.actions['Idle'];
+    if (next && p.currentAction !== next) {
+        if (p.currentAction) p.currentAction.fadeOut(0.15);
+        next.reset().fadeIn(0.15).play();
+        p.currentAction = next;
+    }
+}
+
+// ── EMOTION PARTICLES ──
+const reactionParticles = [];
+function createEmoSprite(char, color) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128; canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    ctx.font = '64px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(char, 64, 72);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.minFilter = THREE.LinearFilter;
+    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+    const s = new THREE.Sprite(mat);
+    s.scale.set(0.8, 0.8, 1);
+    return s;
+}
+const EMOTION_MAP = {
+    happy: { char:'😊' }, love: { char:'❤️' }, vibe: { char:'🎵' },
+    shocked: { char:'😲' }, angry: { char:'😤' }
+};
+function spawnEmotion(type) {
+    if (isCustomizing) return;
+    const e = EMOTION_MAP[type];
+    if (!e) return;
+    const p = players[localPlayerId - 1];
+    if (!p || !p.mesh) return;
+    const s = createEmoSprite(e.char, '#fff');
+    s.position.copy(p.mesh.position);
+    s.position.y += 0.8;
+    scene.add(s);
+    reactionParticles.push({ sprite: s, vy: 1.5, life: 1.0, decay: 0.016 });
+    connections.forEach(c => { if (c.open) c.send({ type: 'emotion', id: localPlayerId, emoType: type }); });
+}
+
+// ── PHYSICS & MOVEMENT ──
+function clampToRoom(p) {
+    const hw = ROOM_W / 2 - 0.5, hd = ROOM_D / 2 - 0.5;
+    p.mesh.position.x = Math.max(-hw, Math.min(hw, p.mesh.position.x));
+    p.mesh.position.z = Math.max(-hd, Math.min(hd, p.mesh.position.z));
+}
+const clock = new THREE.Clock();
+function animate() {
+    requestAnimationFrame(animate);
+    const delta = Math.min(clock.getDelta(), 0.05);
+    for (const p of players) {
+        if (!p.mesh) continue;
+        const prevX = p.mesh.position.x, prevZ = p.mesh.position.z;
+        if (p.isCustomizing || p.isRemote) {
+            if (p.mixer) { p.mixer.update(delta); const spd = Math.hypot(p.mesh.position.x - prevX, p.mesh.position.z - prevZ) / Math.max(0.001, delta); updateAnimState(p, spd); }
+            continue;
+        }
+        let mx = 0, mz = 0;
+        if (p.keys.up) mz -= 1;
+        if (p.keys.down) mz += 1;
+        if (p.keys.left) mx -= 1;
+        if (p.keys.right) mx += 1;
+        p.vx *= 0.88; p.vz *= 0.88;
+        const isSprint = p.keys.shift && (mx !== 0 || mz !== 0);
+        const spd = isSprint ? 6.5 : 2.8;
+        if (mx !== 0 || mz !== 0) {
+            let dx = mx, dz = mz;
+            if (isFirstPerson) {
+                const camF = new THREE.Vector3(0, 0, -1).applyEuler(new THREE.Euler(0, fpYaw, 0));
+                camF.y = 0; camF.normalize();
+                const camR = new THREE.Vector3(1, 0, 0).applyEuler(new THREE.Euler(0, fpYaw, 0));
+                camR.y = 0; camR.normalize();
+                const dir = new THREE.Vector3().addScaledVector(camF, -mz).addScaledVector(camR, mx);
+                if (dir.length() > 0) { dir.normalize(); dx = dir.x; dz = dir.z; }
+            }
+            const len = Math.sqrt(dx*dx + dz*dz);
+            if (len > 0) { dx /= len; dz /= len; }
+            p.mesh.position.x += (dx * spd + p.vx) * delta;
+            p.mesh.position.z += (dz * spd + p.vz) * delta;
+            if (!isFirstPerson) {
+                const ta = Math.atan2(dx, dz) + Math.PI;
+                let diff = ta - p.mesh.rotation.y;
+                while (diff < -Math.PI) diff += Math.PI * 2;
+                while (diff > Math.PI) diff -= Math.PI * 2;
+                p.mesh.rotation.y += diff * 0.15;
+            }
+        }
+        clampToRoom(p);
+        if (!p.isJumping && p.mesh.position.y > floorY + 0.1) { p.isJumping = true; p.yVelocity = 0; }
+        if (p.keys.space && !p.isJumping) { p.isJumping = true; p.yVelocity = 5.2; p.jumpHoldTimer = 0; }
+        if (p.isJumping) {
+            const grav = (p.keys.space && (p.jumpHoldTimer || 0) < 0.25) ? 6.0 : 18.0;
+            if (p.keys.space) p.jumpHoldTimer = (p.jumpHoldTimer || 0) + delta;
+            p.yVelocity -= grav * delta;
+            p.mesh.position.y += p.yVelocity * delta;
+            if (p.mesh.position.y <= floorY) { p.mesh.position.y = floorY; p.isJumping = false; p.yVelocity = 0; p.jumpHoldTimer = 0; }
+        } else {
+            p.mesh.position.y = THREE.MathUtils.lerp(p.mesh.position.y, floorY, 0.2);
+        }
+        if (p.mixer) {
+            p.mixer.update(delta);
+            const s2 = Math.hypot(p.mesh.position.x - prevX, p.mesh.position.z - prevZ) / Math.max(0.001, delta);
+            updateAnimState(p, s2);
+        }
+    }
+    for (let i = reactionParticles.length - 1; i >= 0; i--) {
+        const rp = reactionParticles[i];
+        rp.sprite.position.y += rp.vy * delta;
+        rp.life -= rp.decay;
+        rp.sprite.material.opacity = rp.life;
+        if (rp.life <= 0) { scene.remove(rp.sprite); rp.sprite.material.dispose(); reactionParticles.splice(i, 1); }
+    }
+    // Jukebox pulse
+    const t = Date.now() / 1000;
+    if (isPlaying) {
+        jukeLight.intensity = 1.0 + Math.sin(t * 4) * 0.5;
+    }
+    const localP = players[localPlayerId - 1];
+    if (isFirstPerson && localP && localP.mesh) {
+        const hp = new THREE.Vector3().copy(localP.mesh.position).add(new THREE.Vector3(0, 0.65, 0));
+        camera.position.copy(hp);
+        camera.quaternion.setFromEuler(new THREE.Euler(fpPitch, fpYaw, 0, 'YXZ'));
+    }
+    if (localP && localP.mesh && connections.length > 0) {
+        connections.forEach(c => { if (c.open) c.send({ type: 'move', id: localPlayerId, x: localP.mesh.position.x, y: localP.mesh.position.y, z: localP.mesh.position.z, ry: localP.mesh.rotation.y, isJumping: localP.isJumping }); });
+    }
+    renderer.render(scene, camera);
+}
+animate();
+
+// ── INPUT ──
+window.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { togglePause(); return; }
+    if (isCustomizing) return;
+    if (document.activeElement.tagName === 'INPUT') return;
+    const p = players[localPlayerId - 1];
+    if (!p) return;
+    const k = e.key.toLowerCase();
+    if (k === 'w' || k === 'arrowup') p.keys.up = true;
+    else if (k === 's' || k === 'arrowdown') p.keys.down = true;
+    else if (k === 'a' || k === 'arrowleft') p.keys.left = true;
+    else if (k === 'd' || k === 'arrowright') p.keys.right = true;
+    else if (k === ' ' || e.code === 'Space') { p.keys.space = true; e.preventDefault(); }
+    else if (k === 'shift') p.keys.shift = true;
+    else if (k === 'v' && !e.repeat) toggleCamMode();
+    else if (k === 'm' && !e.repeat) toggleMusicPanel();
+});
+window.addEventListener('keyup', e => {
+    if (isCustomizing) return;
+    const p = players[localPlayerId - 1];
+    if (!p) return;
+    const k = e.key.toLowerCase();
+    if (k === 'w' || k === 'arrowup') p.keys.up = false;
+    else if (k === 's' || k === 'arrowdown') p.keys.down = false;
+    else if (k === 'a' || k === 'arrowleft') p.keys.left = false;
+    else if (k === 'd' || k === 'arrowright') p.keys.right = false;
+    else if (k === ' ' || e.code === 'Space') p.keys.space = false;
+    else if (k === 'shift') p.keys.shift = false;
+});
+
+// ── CAMERA MODE ──
+function toggleCamMode() {
+    camMode = camMode === 0 ? 1 : 0;
+    isFirstPerson = camMode === 1;
+    const lp = players[localPlayerId - 1];
+    const ind = document.getElementById('cam-indicator');
+    if (isFirstPerson) {
+        if (lp && lp.mesh) lp.mesh.visible = false;
+        fpYaw = Math.PI; fpPitch = 0;
+        renderer.domElement.requestPointerLock();
+        ind.textContent = '👤 FIRST PERSON — Press V for Stationary';
+    } else {
+        if (lp && lp.mesh) lp.mesh.visible = true;
+        if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
+        applyStationaryCamera();
+        ind.textContent = '🚇 STATIONARY — Press V for First Person';
+    }
+}
+document.addEventListener('mousemove', e => {
+    if (isFirstPerson && document.pointerLockElement === renderer.domElement) {
+        fpYaw -= e.movementX * 0.002;
+        fpPitch -= e.movementY * 0.002;
+        fpPitch = Math.max(-Math.PI/2 + 0.05, Math.min(Math.PI/2 - 0.05, fpPitch));
+    }
+});
+renderer.domElement.addEventListener('click', () => { if (isFirstPerson) renderer.domElement.requestPointerLock(); });
+
+// ── CHAT ──
+function addChat(name, text, isSystem = false) {
+    const list = document.getElementById('chat-list');
+    const li = document.createElement('li');
+    li.className = 'chat-msg' + (isSystem ? ' chat-sys' : '');
+    li.textContent = isSystem ? `[System] ${text}` : `${name}: ${text}`;
+    list.appendChild(li);
+    list.scrollTop = list.scrollHeight;
+}
+function sendChat() {
+    const inp = document.getElementById('chat-input');
+    const text = inp.value.trim();
+    if (!text) return;
+    inp.value = '';
+    showSpeechBubble(localPlayerId, text);
+    connections.forEach(c => { if (c.open) c.send({ type: 'chat', id: localPlayerId, text }); });
+}
+document.getElementById('chat-send').addEventListener('click', sendChat);
+document.getElementById('chat-input').addEventListener('keydown', e => { if (e.key === 'Enter') { sendChat(); e.preventDefault(); } });
+
+// ── PAUSE ──
+function togglePause() {
+    const po = document.getElementById('pause-overlay');
+    const lp = players[localPlayerId - 1];
+    if (!lp) return;
+    if (isPaused) {
+        const nameVal = document.getElementById('pause-name-input').value.trim() || 'Player';
+        lp.name = nameVal; lp.color = chosenColor;
+        po.classList.add('hidden');
+        isPaused = false; isCustomizing = false; lp.isCustomizing = false;
+        updatePlayerVisuals(lp);
+        if (isFirstPerson) renderer.domElement.requestPointerLock();
+    } else {
+        document.getElementById('pause-name-input').value = lp.name;
+        document.querySelectorAll('#pause-color-grid .col-btn').forEach(b => b.classList.toggle('active', b.dataset.c === lp.color));
+        po.classList.remove('hidden');
+        isPaused = true; isCustomizing = true; lp.isCustomizing = true;
+        if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
+    }
+}
+document.getElementById('resume-btn').addEventListener('click', togglePause);
+document.querySelectorAll('#pause-color-grid .col-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('#pause-color-grid .col-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        chosenColor = btn.dataset.c;
+    });
+});
+
+// ── CUSTOMIZATION ──
+document.querySelectorAll('#custom-overlay .col-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('#custom-overlay .col-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        chosenColor = btn.dataset.c;
+    });
+});
+document.getElementById('enter-btn').addEventListener('click', () => {
+    const nameVal = document.getElementById('name-input').value.trim() || 'Player';
+    const lp = players[localPlayerId - 1];
+    if (lp) { lp.name = nameVal; lp.color = chosenColor; lp.isCustomizing = false; applyColorToPlayer(localPlayerId, chosenColor); }
+    document.getElementById('custom-overlay').classList.add('hidden');
+    isCustomizing = false;
+    addChat(null, `${nameVal} entered the station.`, true);
+    const fo = document.getElementById('fade-overlay');
+    fo.classList.add('visible');
+    setTimeout(() => fo.classList.remove('visible'), 800);
+});
+document.getElementById('name-input').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('enter-btn').click(); });
+
+// ── PEER.JS ──
+const myPeerId = '4sp-' + Math.floor(1000 + Math.random() * 9000);
+document.getElementById('my-peer-id').textContent = myPeerId;
+document.getElementById('copy-id-btn').addEventListener('click', () => {
+    navigator.clipboard.writeText(myPeerId);
+    document.getElementById('copy-id-btn').textContent = 'Copied!';
+    setTimeout(() => document.getElementById('copy-id-btn').textContent = 'Copy', 2000);
+});
+try {
+    if (typeof Peer !== 'undefined') {
+        peer = new Peer(myPeerId);
+        peer.on('open', () => document.getElementById('status-label').textContent = 'Waiting...');
+        peer.on('connection', conn => {
+            const assignedId = players[1].isRemotePeer ? 3 : 2;
+            players[assignedId - 1].isRemotePeer = true;
+            players[assignedId - 1].isRemote = true;
+            connections.push(conn);
+            conn.on('open', () => {
+                document.getElementById('status-label').textContent = 'Connected!';
+                conn.send({ type: 'init', assignedId });
+            });
+            setupConn(conn, assignedId);
+        });
+    }
+} catch(e) {}
+document.getElementById('connect-btn').addEventListener('click', () => {
+    if (!peer) return;
+    const tid = document.getElementById('join-input').value.trim();
+    if (!tid) return;
+    const conn = peer.connect(tid);
+    conn.on('open', () => { document.getElementById('status-label').textContent = 'Connected!'; connections.push(conn); });
+    conn.on('data', data => {
+        if (data.type === 'init') {
+            isHost = false; localPlayerId = data.assignedId;
+            for (const p of players) { if (p.id !== localPlayerId) { p.isRemotePeer = true; p.isRemote = true; } }
+        }
+    });
+    setupConn(conn);
+});
+function setupConn(conn, remoteId = null) {
+    conn.on('data', data => {
+        const id = remoteId || data.id;
+        if (data.type === 'move') {
+            const p = players[id - 1];
+            if (p && p.mesh) { p.mesh.position.set(data.x, data.y, data.z); p.mesh.rotation.y = data.ry; }
+            if (isHost) connections.forEach(c => { if (c !== conn && c.open) c.send(data); });
+        } else if (data.type === 'chat') {
+            showSpeechBubble(id, data.text);
+            if (isHost) connections.forEach(c => { if (c !== conn && c.open) c.send(data); });
+        } else if (data.type === 'emotion') {
+            const p = players[id - 1];
+            if (p && p.mesh) {
+                const s = createEmoSprite((EMOTION_MAP[data.emoType] || EMOTION_MAP.happy).char, '#fff');
+                s.position.copy(p.mesh.position); s.position.y += 0.8;
+                scene.add(s);
+                reactionParticles.push({ sprite: s, vy: 1.5, life: 1.0, decay: 0.016 });
+            }
+            if (isHost) connections.forEach(c => { if (c !== conn && c.open) c.send(data); });
+        } else if (data.type === 'musicSync') {
+            if (!isHost) receiveMusicSync(data);
+        }
+    });
+}
+
+// ═══════════════════════════════════════════
+// ──  MUSIC PLAYER  ──────────────────────────
+// ═══════════════════════════════════════════
+
+const API_BASE = 'https://velium.vercel.app/music-api';
+
+let isPlaying = false, isShuffle = false, repeatMode = 'off';
+let currentTrack = null;
+let trackQueue = [], trackIndex = 0;
+let ytPlayer = null, ytReady = false;
+let activeSource = 'none';
+let favorites = JSON.parse(localStorage.getItem('station_liked') || '[]');
+let progressTimer = null;
+let musicPanelOpen = false;
+let currentSearchPage = 1;
+let lastSearchQuery = '';
+let allSearchResults = [];
+
+function toggleMusicPanel() {
+    musicPanelOpen = !musicPanelOpen;
+    const panel = document.getElementById('music-panel');
+    const btn = document.getElementById('toggle-panel-btn');
+    if (musicPanelOpen) {
+        panel.classList.remove('collapsed');
+        btn.classList.add('open');
+    } else {
+        panel.classList.add('collapsed');
+        btn.classList.remove('open');
+    }
+}
+function openMusicPanel() {
+    if (!musicPanelOpen) toggleMusicPanel();
+}
+document.getElementById('toggle-panel-btn').addEventListener('click', toggleMusicPanel);
+
+function switchMView(id) {
+    document.querySelectorAll('.m-view').forEach(v => v.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    document.querySelectorAll('.ms-nav').forEach(n => n.classList.toggle('active', n.dataset.view === id));
+    if (id === 'likedView') renderLikedSongs();
+}
+
+// Greeting
+function setGreeting() {
+    const h = new Date().getHours();
+    const g = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+    const greet = document.getElementById('greet');
+    if (greet) greet.textContent = g;
+}
+setGreeting();
+
+// ── YOUTUBE PLAYER ──
+function loadYTScript() {
+    if (window.YT && window.YT.Player) { ytReady = true; return; }
+    if (document.querySelector('script[src*="youtube.com/iframe_api"]')) return;
+    const s = document.createElement('script');
+    s.src = 'https://www.youtube.com/iframe_api';
+    document.head.appendChild(s);
+}
+window.onYouTubeIframeAPIReady = function() {
+    ytReady = true;
+};
+loadYTScript();
+
+function ensureYTPlayer(videoId, onReady) {
+    const container = document.getElementById('yt-container');
+    if (ytPlayer) {
+        try { ytPlayer.destroy(); } catch(e) {}
+        ytPlayer = null;
+    }
+    const div = document.createElement('div');
+    div.id = 'yt-player-el-' + Date.now();
+    container.innerHTML = '';
+    container.appendChild(div);
+    ytPlayer = new YT.Player(div.id, {
+        height: '1', width: '1',
+        videoId,
+        playerVars: { autoplay: 1, controls: 0, playsinline: 1 },
+        events: {
+            onReady: () => onReady && onReady(),
+            onStateChange: e => {
+                if (e.data === YT.PlayerState.ENDED) playNextTrack();
+                if (e.data === YT.PlayerState.PLAYING) { isPlaying = true; updatePlayBtn(); startProgressTimer(); }
+                if (e.data === YT.PlayerState.PAUSED) { isPlaying = false; updatePlayBtn(); }
+            }
+        }
+    });
+}
+
+// ── PROXIED AUDIO HELPER ──
+function getAudioUrl(track) {
+    if (!track) return null;
+    if (track.downloadUrl) {
+        const urls = Array.isArray(track.downloadUrl) ? track.downloadUrl : [{ link: track.downloadUrl }];
+        const best = urls.find(u => u.quality === '96kbps') || urls.find(u => u.quality === '160kbps') || urls[urls.length - 1];
+        return best && (best.link || best.url);
+    }
+    return null;
+}
+
+// ── PLAY TRACK ──
+async function playTrack(track, queueArr = null, queueIdx = 0) {
+    if (!track) return;
+    currentTrack = track;
+    if (queueArr) { trackQueue = queueArr; trackIndex = queueIdx; }
+    stopProgress();
+    updateNowPlaying(track);
+    const audioUrl = getAudioUrl(track);
+    if (audioUrl) {
+        activeSource = 'audio';
+        if (ytPlayer) { try { ytPlayer.stopVideo(); } catch(e) {} }
+        const audio = document.getElementById('native-audio');
+        audio.src = audioUrl;
+        audio.volume = 0.8;
+        try { await audio.play(); isPlaying = true; } catch(e) { isPlaying = false; }
+        updatePlayBtn();
+        audio.onended = () => playNextTrack();
+        startProgressTimer();
+    } else if (track.videoId || track.youtube_id) {
+        activeSource = 'youtube';
+        const vid = track.videoId || track.youtube_id;
+        if (ytReady && window.YT && window.YT.Player) {
+            ensureYTPlayer(vid, () => { isPlaying = true; updatePlayBtn(); });
+        } else {
+            addChat(null, 'YouTube player loading, try again in a sec.', true);
+        }
+    } else {
+        try {
+            const res = await fetch(`${API_BASE}/youtube-search?q=${encodeURIComponent((track.title||'') + ' ' + (track.artist_name||track.artist||''))}`);
+            const data = await res.json();
+            if (data.videoId) {
+                track.videoId = data.videoId;
+                playTrack(track, queueArr, queueIdx);
+            } else {
+                addChat(null, 'Could not find audio for this track.', true);
+            }
+        } catch(e) {
+            addChat(null, 'Search failed. Check connection.', true);
+        }
+    }
+    broadcastMusicSync();
+}
+
+function updateNowPlaying(track) {
+    const title = track.title || track.name || 'Unknown Track';
+    const artist = track.artist_name || track.artist || 'Unknown Artist';
+    const artwork = track.artwork_url || track.image || '';
+    document.getElementById('np-title').textContent = title;
+    document.getElementById('np-artist').textContent = artist;
+    const art = document.getElementById('np-art');
+    const ph = document.getElementById('np-art-placeholder');
+    if (artwork) {
+        art.src = artwork;
+        art.style.display = 'block';
+        ph.style.display = 'none';
+    } else {
+        art.style.display = 'none';
+        ph.style.display = 'flex';
+    }
+    document.title = `${title} — The Station`;
+    const likeBtn = document.getElementById('like-btn');
+    const isLiked = favorites.some(f => f.id === track.id || (f.title === title && f.artist_name === artist));
+    likeBtn.querySelector('i').className = isLiked ? 'fa-solid fa-heart' : 'fa-regular fa-heart';
+    likeBtn.style.color = isLiked ? '#ef4444' : '';
+}
+
+function togglePlayPause() {
+    if (!currentTrack) return;
+    if (activeSource === 'audio') {
+        const audio = document.getElementById('native-audio');
+        if (audio.paused) { audio.play(); isPlaying = true; }
+        else { audio.pause(); isPlaying = false; }
+    } else if (ytPlayer && typeof ytPlayer.getPlayerState === 'function') {
+        const state = ytPlayer.getPlayerState();
+        if (state === 1) { ytPlayer.pauseVideo(); isPlaying = false; }
+        else { ytPlayer.playVideo(); isPlaying = true; }
+    }
+    updatePlayBtn();
+}
+function updatePlayBtn() {
+    const btn = document.getElementById('play-btn');
+    btn.innerHTML = isPlaying ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play" style="margin-left:2px;"></i>';
+}
+function playNextTrack() {
+    if (trackQueue.length === 0) return;
+    if (repeatMode === 'one') { playTrack(currentTrack, trackQueue, trackIndex); return; }
+    let next = trackIndex + 1;
+    if (isShuffle) next = Math.floor(Math.random() * trackQueue.length);
+    if (next >= trackQueue.length) {
+        if (repeatMode === 'all') next = 0;
+        else return;
+    }
+    trackIndex = next;
+    playTrack(trackQueue[next], trackQueue, next);
+}
+function playPrevTrack() {
+    if (trackQueue.length === 0) return;
+    let prev = trackIndex - 1;
+    if (prev < 0) prev = repeatMode === 'all' ? trackQueue.length - 1 : 0;
+    trackIndex = prev;
+    playTrack(trackQueue[prev], trackQueue, prev);
+}
+function toggleShuffle() {
+    isShuffle = !isShuffle;
+    document.getElementById('shuffle-btn').classList.toggle('on', isShuffle);
+}
+function cycleRepeat() {
+    const modes = ['off', 'all', 'one'];
+    repeatMode = modes[(modes.indexOf(repeatMode) + 1) % 3];
+    const btn = document.getElementById('repeat-btn');
+    btn.classList.toggle('on', repeatMode !== 'off');
+    if (repeatMode === 'one') btn.querySelector('i').className = 'fa-solid fa-repeat-1';
+    else btn.querySelector('i').className = 'fa-solid fa-repeat';
+}
+
+// Progress
+function startProgressTimer() {
+    stopProgress();
+    progressTimer = setInterval(updateProgress, 500);
+}
+function stopProgress() {
+    if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
+}
+function updateProgress() {
+    let cur = 0, dur = 0;
+    if (activeSource === 'audio') {
+        const audio = document.getElementById('native-audio');
+        cur = audio.currentTime; dur = audio.duration || 0;
+    } else if (ytPlayer && typeof ytPlayer.getCurrentTime === 'function') {
+        cur = ytPlayer.getCurrentTime(); dur = ytPlayer.getDuration();
+    }
+    const pct = dur > 0 ? (cur / dur) * 100 : 0;
+    document.getElementById('prog-fill').style.width = pct + '%';
+    document.getElementById('cur-time').textContent = fmt(cur);
+    document.getElementById('dur-label').textContent = fmt(dur);
+}
+function fmt(s) {
+    if (!s || isNaN(s)) return '0:00';
+    const m = Math.floor(s / 60), sec = Math.floor(s % 60);
+    return `${m}:${sec.toString().padStart(2, '0')}`;
+}
+document.getElementById('prog-track').addEventListener('click', e => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pct = (e.clientX - rect.left) / rect.width;
+    if (activeSource === 'audio') {
+        const audio = document.getElementById('native-audio');
+        if (audio.duration) audio.currentTime = audio.duration * pct;
+    } else if (ytPlayer && typeof ytPlayer.getDuration === 'function') {
+        ytPlayer.seekTo(ytPlayer.getDuration() * pct);
+    }
+});
+
+// Like
+function toggleLike() {
+    if (!currentTrack) return;
+    const title = currentTrack.title || currentTrack.name || '';
+    const artist = currentTrack.artist_name || currentTrack.artist || '';
+    const idx = favorites.findIndex(f => f.id === currentTrack.id || (f.title === title && f.artist_name === artist));
+    if (idx > -1) {
+        favorites.splice(idx, 1);
+    } else {
+        favorites.unshift({ ...currentTrack });
+    }
+    localStorage.setItem('station_liked', JSON.stringify(favorites));
+    updateNowPlaying(currentTrack);
+    renderLikedSongs();
+}
+
+function renderLikedSongs() {
+    const grid = document.getElementById('liked-grid');
+    const count = document.getElementById('liked-count');
+    if (count) count.textContent = `${favorites.length} song${favorites.length !== 1 ? 's' : ''}`;
+    if (!grid) return;
+    if (favorites.length === 0) { grid.innerHTML = '<p style="color:var(--text-sub); font-size:0.85rem;">Nothing liked yet. Start playing!</p>'; return; }
+    grid.innerHTML = '';
+    favorites.forEach((track, i) => {
+        grid.appendChild(buildTrackCard(track, favorites, i));
+    });
+}
+function playAllLiked() {
+    if (favorites.length === 0) return;
+    switchMView('likedView');
+    playTrack(favorites[0], favorites, 0);
+}
+
+// ── SEARCH ──
+let searchTimeout;
+document.getElementById('search-input').addEventListener('input', e => {
+    clearTimeout(searchTimeout);
+    const q = e.target.value.trim();
+    if (!q) {
+        document.getElementById('searchResults').style.display = 'none';
+        return;
+    }
+    searchTimeout = setTimeout(() => doSearch(q, false), 400);
+});
+
+async function doSearch(q, append = false) {
+    if (!append) {
+        currentSearchPage = 1;
+        lastSearchQuery = q;
+        allSearchResults = [];
+    }
+    const loader = document.getElementById('search-loader');
+    const resultsDiv = document.getElementById('searchResults');
+    loader.style.display = 'block';
+    resultsDiv.style.display = 'none';
+    try {
+        const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(q)}&page=${currentSearchPage}&limit=24`);
+        const data = await res.json();
+        const tracks = data.results || data.data || data.songs || data || [];
+        const normalizedTracks = tracks.map(t => ({
+            id: t.id || t.videoId || '',
+            title: t.title || t.name || '',
+            artist_name: t.artist_name || t.artist || (t.artists && t.artists[0] && t.artists[0].name) || '',
+            artwork_url: t.artwork_url || t.image || (t.image && t.image[2] && t.image[2].url) || '',
+            downloadUrl: t.downloadUrl || t.download_url || null,
+            videoId: t.videoId || t.youtube_id || null,
+            duration: t.duration || 0
+        }));
+        if (append) allSearchResults = [...allSearchResults, ...normalizedTracks];
+        else allSearchResults = normalizedTracks;
+        loader.style.display = 'none';
+        resultsDiv.style.display = 'block';
+        renderSearchResults(normalizedTracks, append);
+        document.getElementById('search-load-more').style.display = normalizedTracks.length >= 24 ? 'block' : 'none';
+    } catch(e) {
+        loader.style.display = 'none';
+        if (!append) {
+            const grid = document.getElementById('search-grid');
+            grid.innerHTML = '<p style="color:var(--text-sub); text-align:center; padding:20px;">Search failed. Check your connection.</p>';
+            resultsDiv.style.display = 'block';
+        }
+    }
+}
+function renderSearchResults(tracks, append = false) {
+    const grid = document.getElementById('search-grid');
+    if (!append) grid.innerHTML = '';
+    if (!append && tracks.length === 0) {
+        grid.innerHTML = '<p style="color:var(--text-sub); text-align:center; padding:20px;">No results found.</p>';
+        return;
+    }
+    tracks.forEach((track, i) => {
+        const idx = append ? allSearchResults.length - tracks.length + i : i;
+        grid.appendChild(buildTrackCard(track, allSearchResults, idx));
+    });
+}
+function loadMoreResults() {
+    currentSearchPage++;
+    doSearch(lastSearchQuery, true);
+}
+
+// ── POPULAR TRACKS ──
+async function loadPopularTracks() {
+    try {
+        const artists = ['The Weeknd', 'Drake', 'Dua Lipa', 'Bad Bunny', 'SZA', 'Tyler the Creator', 'Frank Ocean'];
+        const picked = artists[Math.floor(Math.random() * artists.length)];
+        const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(picked)}&limit=12`);
+        const data = await res.json();
+        const tracks = (data.results || data.data || data.songs || data || []).map(t => ({
+            id: t.id || t.videoId || '',
+            title: t.title || t.name || '',
+            artist_name: t.artist_name || t.artist || (t.artists && t.artists[0] && t.artists[0].name) || '',
+            artwork_url: t.artwork_url || t.image || (t.image && t.image[2] && t.image[2].url) || '',
+            downloadUrl: t.downloadUrl || null,
+            videoId: t.videoId || null,
+            duration: t.duration || 0
+        }));
+        const grid = document.getElementById('popular-tracks');
+        grid.innerHTML = '';
+        tracks.forEach((track, i) => grid.appendChild(buildTrackCard(track, tracks, i)));
+    } catch(e) {
+        document.getElementById('popular-tracks').innerHTML = '<p style="color:var(--text-sub); font-size:0.82rem;">Could not load popular tracks.</p>';
+    }
+}
+loadPopularTracks();
+
+// ── TRACK CARD BUILDER ──
+function buildTrackCard(track, queue, idx) {
+    const card = document.createElement('div');
+    card.className = 'track-card';
+    if (currentTrack && (currentTrack.id === track.id || currentTrack.title === track.title)) {
+        card.classList.add('is-playing');
+    }
+    const artSrc = track.artwork_url || '';
+    card.innerHTML = `
+        <img class="tc-art" src="${artSrc ? escapeHtml(artSrc) : ''}" ${!artSrc ? 'style="display:none;"' : ''} onerror="this.style.display='none'">
+        ${!artSrc ? `<div class="tc-art" style="display:flex; align-items:center; justify-content:center; color:var(--text-sub); font-size:1.5rem;">🎵</div>` : ''}
+        <div class="tc-title">${escapeHtml(track.title || 'Unknown')}</div>
+        <div class="tc-sub">${escapeHtml(track.artist_name || 'Unknown Artist')}</div>
+    `;
+    card.addEventListener('click', () => playTrack(track, queue, idx));
+    return card;
+}
+function escapeHtml(s) {
+    if (!s) return '';
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+}
+
+// ── MUSIC SYNC (P2P) ──
+function broadcastMusicSync() {
+    if (!currentTrack || connections.length === 0) return;
+    const audio = document.getElementById('native-audio');
+    connections.forEach(c => {
+        if (c.open) c.send({
+            type: 'musicSync',
+            track: currentTrack,
+            queue: trackQueue.slice(0, 10),
+            queueIdx: trackIndex,
+            time: activeSource === 'audio' ? audio.currentTime : (ytPlayer && ytPlayer.getCurrentTime ? ytPlayer.getCurrentTime() : 0),
+            isPlaying,
+            activeSource
+        });
+    });
+}
+function receiveMusicSync(data) {
+    if (data.track && (!currentTrack || currentTrack.id !== data.track.id)) {
+        playTrack(data.track, data.queue || [], data.queueIdx || 0);
+        addChat(null, `Now playing: ${data.track.title}`, true);
+    }
+}
+setInterval(() => { if (isHost && isPlaying) broadcastMusicSync(); }, 5000);
+
+</script>
+<!-- Made with ❤️ from 4SP -->
+</body>
+</html>
