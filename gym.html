@@ -705,6 +705,7 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="character.js"></script>
 
     <script>
@@ -716,9 +717,17 @@
         scene.fog = new THREE.FogExp2(0x88ccff, 0.015);
 
         const aspect = window.innerWidth / window.innerHeight;
-        const camera = new THREE.PerspectiveCamera(90, aspect, 0.2, 500);
+        const camera = new THREE.PerspectiveCamera(90, aspect, 0.2, 300);
         camera.position.set(-15, 8, -15);
-        camera.lookAt(0, 0, 0);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.enableKeys = false;
+        controls.maxPolarAngle = Math.PI / 2 - 0.05;
+        controls.minDistance = 2.0;
+        controls.maxDistance = 50.0;
+        const cameraFocusTarget = new THREE.Vector3();
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -1121,15 +1130,19 @@
             });
 
             // Camera follow
-            if (!isFirstPerson) {
-                const offset = new THREE.Vector3(-8, 8, -8);
-                const targetPos = localP.mesh.position.clone().add(offset);
-                camera.position.lerp(targetPos, 0.1);
-                camera.lookAt(localP.mesh.position.x, localP.mesh.position.y + 1, localP.mesh.position.z);
-            } else {
-                const head = localP.mesh.position.clone().add(new THREE.Vector3(0, 1.4, 0));
-                camera.position.copy(head);
-                camera.rotation.set(fpPitch, fpYaw, 0, 'YXZ');
+            if (localP && localP.mesh) {
+                if (isFirstPerson) {
+                    const headPos = localP.mesh.position.clone().add(new THREE.Vector3(0, 1.4, 0));
+                    camera.position.copy(headPos);
+                    const euler = new THREE.Euler(fpPitch, fpYaw, 0, 'YXZ');
+                    camera.quaternion.setFromEuler(euler);
+                    controls.enabled = false;
+                } else {
+                    controls.enabled = true;
+                    cameraFocusTarget.copy(localP.mesh.position);
+                    controls.target.lerp(cameraFocusTarget, 0.2);
+                    controls.update();
+                }
             }
 
             // Sync
@@ -1196,7 +1209,26 @@
 
         function toggleCameraMode() {
             isFirstPerson = !isFirstPerson;
-            document.getElementById('cam-mode-indicator').textContent = isFirstPerson ? '📽 FIRST PERSON — Press V for Third Person' : '📽 THIRD PERSON — Press V for First Person';
+            const localP = players[localPlayerId - 1];
+
+            if (isFirstPerson) {
+                if (localP && localP.mesh) localP.mesh.visible = false;
+
+                const euler = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ');
+                fpYaw = euler.y;
+                fpPitch = euler.x;
+
+                renderer.domElement.requestPointerLock();
+                document.getElementById('cam-mode-indicator').textContent = '📽 FIRST PERSON — Press V for Third Person';
+            } else {
+                if (localP && localP.mesh) localP.mesh.visible = true;
+                if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
+
+                const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+                camera.position.copy(controls.target).addScaledVector(forward, -15);
+
+                document.getElementById('cam-mode-indicator').textContent = '📽 THIRD PERSON — Press V for First Person';
+            }
         }
 
         function togglePause() {
@@ -1238,9 +1270,60 @@
 
         init();
 
+        function createReactionSprite(iconChar, color) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128; canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, 128, 128);
+            ctx.font = '900 64px "Font Awesome 6 Free"';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.strokeStyle = '#000000'; ctx.lineWidth = 8;
+            ctx.strokeText(iconChar, 64, 64);
+            ctx.fillStyle = color || '#ffffff';
+            ctx.fillText(iconChar, 64, 64);
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.minFilter = THREE.LinearFilter;
+            const mat = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false });
+            const sprite = new THREE.Sprite(mat);
+            sprite.scale.set(0.6, 0.6, 1.0);
+            return sprite;
+        }
+
+        const reactionParticles = [];
+        function spawnEmotionLocal(playerId, iconChar, color, type) {
+            const p = players[playerId - 1];
+            if (!p || !p.mesh) return;
+            const count = type === 'shocked' ? 1 : 4;
+            for (let i = 0; i < count; i++) {
+                const sprite = createReactionSprite(iconChar, color);
+                sprite.position.copy(p.mesh.position);
+                sprite.position.y += 0.5;
+                sprite.position.x += (Math.random() - 0.5) * 0.4;
+                sprite.position.z += (Math.random() - 0.5) * 0.4;
+                scene.add(sprite);
+                const vx = (Math.random() - 0.5) * 0.8;
+                const vy = 1.2 + Math.random() * 1.5;
+                const vz = (Math.random() - 0.5) * 0.8;
+                reactionParticles.push({
+                    sprite: sprite, vx: vx, vy: vy, vz: vz,
+                    life: 1.0, decay: 0.015 + Math.random() * 0.02, type: type
+                });
+            }
+        }
+
         function spawnEmotion(type) {
-            // Local effect logic here if needed
-            connections.forEach(c => c.send({type: 'emotion', id: localPlayerId, emotion: type}));
+            if (isCustomizing) return;
+            let iconChar = '';
+            let color = '';
+            if (type === 'angry') { iconChar = '\uf0e7'; color = '#FF3366'; }
+            else if (type === 'love') { iconChar = '\uf004'; color = '#FF3366'; }
+            else if (type === 'happy') { iconChar = '\uf59a'; color = '#E2FF3D'; }
+            else if (type === 'sad') { iconChar = '\uf740'; color = '#8A2BE2'; }
+            else if (type === 'shocked') { iconChar = '\uf12a'; color = '#FF3366'; }
+            spawnEmotionLocal(localPlayerId, iconChar, color, type);
+            for (const conn of connections) {
+                if (conn.open) conn.send({ type: 'emotion', id: localPlayerId, iconClass: iconChar, color: color, animClass: type });
+            }
         }
 
         function addChatMessage(name, text) {
@@ -1255,4 +1338,5 @@
     </script>
     
 </body>
-</html><!-- Made with ❤️ from 4SP -->
+</html>
+<!-- Made with ❤️ from 4SP -->

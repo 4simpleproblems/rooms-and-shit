@@ -1751,36 +1751,60 @@ function updateAnimState(p, speed) {
 }
 
 // ── EMOTION PARTICLES ──
-const reactionParticles = [];
-function createEmoSprite(char, color) {
+function createReactionSprite(iconChar, color) {
     const canvas = document.createElement('canvas');
     canvas.width = 128; canvas.height = 128;
     const ctx = canvas.getContext('2d');
-    ctx.font = '64px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(char, 64, 72);
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.minFilter = THREE.LinearFilter;
-    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
-    const s = new THREE.Sprite(mat);
-    s.scale.set(0.8, 0.8, 1);
-    return s;
+    ctx.clearRect(0, 0, 128, 128);
+    ctx.font = '900 64px "Font Awesome 6 Free"';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.strokeStyle = '#000000'; ctx.lineWidth = 8;
+    ctx.strokeText(iconChar, 64, 64);
+    ctx.fillStyle = color || '#ffffff';
+    ctx.fillText(iconChar, 64, 64);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.minFilter = THREE.LinearFilter;
+    const mat = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false });
+    const sprite = new THREE.Sprite(mat);
+    sprite.scale.set(0.6, 0.6, 1.0);
+    return sprite;
 }
-const EMOTION_MAP = {
-    happy: { char:'😊' }, love: { char:'❤️' }, vibe: { char:'🎵' },
-    shocked: { char:'😲' }, angry: { char:'😤' }
-};
+
+function spawnEmotionLocal(playerId, iconChar, color, type) {
+    const p = players[playerId - 1];
+    if (!p || !p.mesh) return;
+    const count = type === 'shocked' ? 1 : 4;
+    for (let i = 0; i < count; i++) {
+        const sprite = createReactionSprite(iconChar, color);
+        sprite.position.copy(p.mesh.position);
+        sprite.position.y += 0.5;
+        sprite.position.x += (Math.random() - 0.5) * 0.4;
+        sprite.position.z += (Math.random() - 0.5) * 0.4;
+        scene.add(sprite);
+        const vx = (Math.random() - 0.5) * 0.8;
+        const vy = 1.2 + Math.random() * 1.5;
+        const vz = (Math.random() - 0.5) * 0.8;
+        reactionParticles.push({
+            sprite: sprite, vx: vx, vy: vy, vz: vz,
+            life: 1.0, decay: 0.015 + Math.random() * 0.02, type: type
+        });
+    }
+}
+
 function spawnEmotion(type) {
     if (isCustomizing) return;
-    const e = EMOTION_MAP[type];
-    if (!e) return;
-    const p = players[localPlayerId - 1];
-    if (!p || !p.mesh) return;
-    const s = createEmoSprite(e.char, '#fff');
-    s.position.copy(p.mesh.position);
-    s.position.y += 0.8;
-    scene.add(s);
-    reactionParticles.push({ sprite: s, vy: 1.5, life: 1.0, decay: 0.016 });
-    connections.forEach(c => { if (c.open) c.send({ type: 'emotion', id: localPlayerId, emoType: type }); });
+    let iconChar = '';
+    let color = '';
+    if (type === 'angry') { iconChar = '\uf0e7'; color = '#FF3366'; }
+    else if (type === 'love') { iconChar = '\uf004'; color = '#FF3366'; }
+    else if (type === 'happy') { iconChar = '\uf59a'; color = '#E2FF3D'; }
+    else if (type === 'vibe') { iconChar = '\uf001'; color = '#8A2BE2'; }
+    else if (type === 'shocked') { iconChar = '\uf12a'; color = '#FF3366'; }
+    
+    spawnEmotionLocal(localPlayerId, iconChar, color, type);
+    for (const conn of connections) {
+        if (conn.open) conn.send({ type: 'emotion', id: localPlayerId, iconClass: iconChar, color: color, animClass: type });
+    }
 }
 
 // ── PHYSICS & MOVEMENT ──
@@ -2064,18 +2088,16 @@ function animate() {
     }
     if (localP && localP.mesh) {
         if (isFirstPerson) {
-            const headPos = new THREE.Vector3().copy(localP.mesh.position).add(new THREE.Vector3(0, 0.65, 0));
+            const headPos = localP.mesh.position.clone().add(new THREE.Vector3(0, 1.4, 0));
             camera.position.copy(headPos);
-            camera.quaternion.setFromEuler(new THREE.Euler(fpPitch, fpYaw, 0, 'YXZ'));
-            controls.target.copy(headPos);
+            const euler = new THREE.Euler(fpPitch, fpYaw, 0, 'YXZ');
+            camera.quaternion.setFromEuler(euler);
+            controls.enabled = false;
         } else {
-            const oldTarget = controls.target.clone();
-            cameraFocusTarget.copy(localP.mesh.position).add(new THREE.Vector3(0, 0.8, 0));
+            controls.enabled = true;
+            cameraFocusTarget.copy(localP.mesh.position);
             controls.target.lerp(cameraFocusTarget, 0.25);
-            const deltaTarget = new THREE.Vector3().subVectors(controls.target, oldTarget);
-            camera.position.add(deltaTarget);
             controls.update();
-            constrainCamera(camera.position, localP.mesh.position);
         }
     }
     if (localP && localP.mesh && connections.length > 0) {
@@ -2932,4 +2954,5 @@ window.addEventListener('resize', updateLayoutForDevice);
 
 </body>
 </html>
+
 <!-- Made with ❤️ from 4SP -->
