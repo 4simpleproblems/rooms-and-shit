@@ -216,18 +216,7 @@
         </div>
     </div>
 
-    <div id="movie-lookup-overlay" class="hidden">
-        <div class="lookup-card">
-            <h2 class="custom-title">SELECT MOVIE</h2>
-            <div class="custom-field">
-                <input type="text" id="movie-search-input" placeholder="Search for a movie..." />
-            </div>
-            <div id="movie-results-grid"></div>
-            <button id="close-lookup-btn" class="ui-btn primary" style="width:100%;justify-content:center;font-size:1.1rem;margin-top:10px;">
-                CLOSE
-            </button>
-        </div>
-    </div>
+    <div id="movie-lookup-overlay" class="hidden"></div>
 
     <div id="pause-overlay" class="hidden">
         <div class="custom-card">
@@ -416,13 +405,18 @@
             });
         });
 
-        // Movie screen — VideoTexture
+        // --- MOVIE LOGIC ---
         const videoElement = document.getElementById('movie-video');
         videoElement.crossOrigin = "anonymous";
+        videoElement.src = "movies/steamboat-willie.webm";
+        videoElement.load();
+        videoElement.play().catch(e => console.warn("Auto-play failed:", e));
+
         const screenTexture = new THREE.VideoTexture(videoElement);
         screenTexture.minFilter = THREE.LinearFilter;
         screenTexture.magFilter = THREE.LinearFilter;
         screenTexture.format = THREE.RGBFormat;
+
         const screenW = 20;
         const screenH = 11;
         const screenGeo = new THREE.PlaneGeometry(screenW, screenH);
@@ -463,213 +457,21 @@
         projLight.position.set(0, 0, -0.8);
         projectorMesh.add(projLight);
 
-        // Interaction helper
-        const interactionLabel = createNametagSprite("PRESS ENTER TO BROWSE");
-        interactionLabel.position.set(0, 0.8, 0);
-        interactionLabel.scale.set(1.5, 0.3, 1);
-        interactionLabel.visible = false;
-        projectorMesh.add(interactionLabel);
-
         function updateProjectorLabel(text) {
-            projectorMesh.remove(interactionLabel);
-            const newLabel = createNametagSprite(text);
-            newLabel.position.set(0, 0.8, 0);
-            newLabel.scale.set(1.5, 0.3, 1);
-            newLabel.visible = true;
-            projectorMesh.add(newLabel);
-            // Re-assign to interactionLabel for raycaster visibility logic
-            interactionLabel.material = newLabel.material;
-            interactionLabel.visible = true;
-        }
-
-        // --- CAMERA MODES ---
-        // 0 = Stationary (cinematic), 1 = First Person
-        let camMode = 0;
-        let isFirstPerson = false;
-        let fpYaw = Math.PI; // face toward screen (negative Z)
-        let fpPitch = 0;
-
-        const STATIONARY_POS = new THREE.Vector3(0, floorY + 2.5, ROOM_D / 2 - 1.0);
-        const STATIONARY_TARGET = new THREE.Vector3(0, floorY + ROOM_H * 0.5 + 0.5, -ROOM_D / 2 + 0.2);
-
-        function applyStationaryCamera() {
-            camera.position.copy(STATIONARY_POS);
-            camera.lookAt(STATIONARY_TARGET);
-        }
-        applyStationaryCamera();
-
-        const camIndicator = document.getElementById('cam-mode-indicator');
-
-        function toggleCameraMode() {
-            camMode = camMode === 0 ? 1 : 0;
-            isFirstPerson = camMode === 1;
-            const localP = players[localPlayerId - 1];
-            if (isFirstPerson) {
-                if (localP && localP.mesh) localP.mesh.visible = false;
-                fpYaw = Math.PI;
-                fpPitch = 0;
-                renderer.domElement.requestPointerLock();
-                camIndicator.textContent = '👤 FIRST PERSON — Press V for Stationary';
-            } else {
-                if (localP && localP.mesh) localP.mesh.visible = true;
-                if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
-                applyStationaryCamera();
-                camIndicator.textContent = '📽 STATIONARY CAM — Press V for First Person';
-            }
-        }
-
-        const CHARACTER_SCALE = 2.0;
-        const PLATFORM_SIZE = ROOM_W;
-
-        const players = [
-            { id:1, name:'Player 1', color:'#E2FF3D', mesh:null, position: new THREE.Vector3(0, floorY, ROOM_D/2 - 3), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false}, bubbleText:'', bubbleTimeout:null, isCustomizing:true },
-            { id:2, name:'Player 2', color:'#ff9933', mesh:null, position: new THREE.Vector3(-2, floorY, ROOM_D/2 - 3), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false}, bubbleText:'', bubbleTimeout:null, isCustomizing:false },
-            { id:3, name:'Player 3', color:'#4444ff', mesh:null, position: new THREE.Vector3(2, floorY, ROOM_D/2 - 3), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false}, isRemote:false, bubbleText:'', bubbleTimeout:null, isCustomizing:false }
-        ];
-
-        // --- MOVIE LOGIC ---
-        const PROVIDERS = [
-            { name: "Server 1 (Recommended)", movie: "https://vidrock.net/movie/{id}", tv: "https://vidrock.net/tv/{id}/{s}/{e}" },
-            { name: "Server 2 (Ads)", movie: "https://test.autoembed.cc/embed/movie/{id}", tv: "https://test.autoembed.cc/embed/tv/{id}/{s}/{e}" },
-            { name: "Server 3", movie: "https://player.videasy.net/movie/{id}", tv: "https://player.videasy.net/tv/{id}/{s}/{e}" },
-            { name: "Server 4", movie: "https://moviesapi.club/movie/{id}", tv: "https://moviesapi.club/tv/{id}-{s}-{e}" }
-        ];
-
-        const themoviedb = (() => {
-            const apiKey = "2bf0faeeb3f779dad7d9c7268dc46cf6";
-            return async (endpoint, params = {}) => {
-                try {
-                    const url = new URL(`https://api.themoviedb.org/3/${endpoint}`);
-                    url.searchParams.set('api_key', apiKey);
-                    Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-                    const res = await fetch(proxyUrl(url.toString()), { headers: { Accept: "application/json" } });
-                    if (!res.ok) throw new Error(`TMDB API error: ${res.status}`);
-                    return res.json();
-                } catch (e) {
-                    console.error("themoviedb fetch failed:", e);
-                    return { results: [] };
-                }
-            };
-        })();
-
-        function getEmbedUrl(type, id) {
-            return PROVIDERS[0].movie.replace('{id}', id);
+            // Label disabled
         }
 
         function proxyUrl(url) {
-            if (!url) return url;
-            const prefix = "/VORA/VERN_SYSTEM/uv/service/";
-            // Safety check for UV config and Ultraviolet
-            if (typeof Ultraviolet === 'undefined' || !self.__uv$config) {
-                console.warn("UV not ready, returning original URL");
-                return url;
-            }
-            
-            const encoded = xor.encode(url);
-            return prefix + (encoded.startsWith('/') ? encoded.substring(1) : encoded);
+            return url;
         }
 
-        let currentMovieId = null;
         let isLookingAtProjector = false;
-
         let hls = null;
 
-        async function resolveVideoUrl(embedUrl) {
-            return new Promise((resolve) => {
-                const resolverIframe = document.createElement('iframe');
-                resolverIframe.style.display = 'none';
-                resolverIframe.src = proxyUrl(embedUrl);
-                document.body.appendChild(resolverIframe);
-
-                const checkInterval = setInterval(() => {
-                    try {
-                        // UV should make the iframe content accessible
-                        const doc = resolverIframe.contentDocument || resolverIframe.contentWindow.document;
-                        const video = doc.querySelector('video');
-                        if (video && video.src) {
-                            clearInterval(checkInterval);
-                            let src = video.src;
-                            if (!src.includes('/uv/service/') && (src.startsWith('http') || src.startsWith('//'))) {
-                                src = proxyUrl(src);
-                            }
-                            document.body.removeChild(resolverIframe);
-                            resolve(src);
-                        }
-                    } catch (e) {
-                        // If cross-origin, UV might not be fully ready on this provider
-                    }
-                }, 1000);
-
-                setTimeout(() => {
-                    clearInterval(checkInterval);
-                    if (resolverIframe.parentNode) document.body.removeChild(resolverIframe);
-                    resolve(null);
-                }, 10000);
-            });
-        }
-
-        async function updateMovieScreen(id, sync = true) {
-            currentMovieId = id;
-            updateProjectorLabel("RESOLVING STREAM...");
-            
-            async function tryProvider(providerIdx) {
-                if (providerIdx >= PROVIDERS.length) return false;
-                const url = PROVIDERS[providerIdx].movie.replace('{id}', id);
-                addChatMessageToLog(null, `Attempting Server ${providerIdx + 1}...`, true);
-                let directUrl = await resolveVideoUrl(url);
-                
-                if (directUrl) {
-                    if (hls) { hls.destroy(); hls = null; }
-                    videoElement.muted = true;
-                    if ((directUrl.includes('.m3u8') || directUrl.includes('m3u8')) && Hls.isSupported()) {
-                        hls = new Hls();
-                        hls.loadSource(directUrl);
-                        hls.attachMedia(videoElement);
-                        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                            videoElement.play().catch(handlePlayError);
-                            updateProjectorLabel("PLAYING (MUTED) - PRESS ENTER TO UNMUTE");
-                        });
-                    } else {
-                        videoElement.src = directUrl;
-                        videoElement.play().then(() => {
-                            updateProjectorLabel("PLAYING (MUTED) - PRESS ENTER TO UNMUTE");
-                        }).catch(handlePlayError);
-                    }
-                    addChatMessageToLog(null, "Movie started (Muted). Press Enter at projector to unmute.", true);
-                    return true;
-                }
-                return false;
-            }
-
-            // Try all servers in order
-            let success = false;
-            for (let i = 0; i < PROVIDERS.length; i++) {
-                if (await tryProvider(i)) {
-                    success = true;
-                    break;
-                }
-            }
-            
-            if (!success) {
-                addChatMessageToLog(null, "Failed to resolve stream. Servers might be down or blocked.", true);
-                updateProjectorLabel("STREAM UNAVAILABLE");
-                if (hls) { hls.destroy(); hls = null; }
-                videoElement.removeAttribute('src');
-                videoElement.load();
-            }
-
-            if (sync) {
-                connections.forEach(c => { if (c.open) c.send({ type: 'movieSync', id: localPlayerId, movieId: id }); });
-            }
-        }
-
         function handlePlayError() {
-            if (!videoElement.src && !hls) return;
             addChatMessageToLog(null, "Click anywhere to start playback.", true);
             const starter = () => {
-                if (videoElement.src || hls) {
-                    videoElement.play().catch(e => console.warn("Retry play failed:", e));
-                }
+                videoElement.play().catch(e => console.warn("Retry play failed:", e));
                 window.removeEventListener('click', starter);
             };
             window.removeEventListener('click', starter);
@@ -968,17 +770,6 @@
             const p = players[localPlayerId - 1];
             if (!p) return;
 
-            if (key === 'enter' && isLookingAtProjector && isFirstPerson) {
-                if (videoElement && videoElement.muted && !videoElement.paused) {
-                    videoElement.muted = false;
-                    updateProjectorLabel("PLAYING - PRESS ENTER TO BROWSE");
-                    addChatMessageToLog(null, "Audio unmuted!", true);
-                } else {
-                    openMovieLookup();
-                }
-                return;
-            }
-
             if (key === 'arrowup' || key === 'w') p.keys.up = true;
             else if (key === 'arrowdown' || key === 's') p.keys.down = true;
             else if (key === 'arrowleft' || key === 'a') p.keys.left = true;
@@ -1164,23 +955,6 @@
                 const headPos = new THREE.Vector3().copy(localP.mesh.position).add(new THREE.Vector3(0, 0.65, 0));
                 camera.position.copy(headPos);
                 camera.quaternion.setFromEuler(new THREE.Euler(fpPitch, fpYaw, 0, 'YXZ'));
-
-                // Projector interaction check
-                const raycaster = new THREE.Raycaster();
-                raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-                const intersects = raycaster.intersectObject(projectorMesh);
-                const dist = localP.mesh.position.distanceTo(projectorMesh.position);
-                
-                if (intersects.length > 0 && dist < 4) {
-                    isLookingAtProjector = true;
-                    interactionLabel.visible = true;
-                } else {
-                    isLookingAtProjector = false;
-                    interactionLabel.visible = false;
-                }
-            } else {
-                isLookingAtProjector = false;
-                interactionLabel.visible = false;
             }
 
             if (videoElement && videoElement.readyState >= 2 && !videoElement.paused) {
