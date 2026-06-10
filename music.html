@@ -10,6 +10,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="character.js"></script>
     <style>
         :root {
             --accent: #7C3AED;
@@ -413,7 +414,7 @@ let isPlaying = false;
 const cameraFocusTarget = new THREE.Vector3();
 const boomboxState = {
     carriedBy: null,
-    position: new THREE.Vector3(9.0, 0.0, 5.5),
+    position: new THREE.Vector3(6.0, 0.0, 5.0),
     rotationY: 0,
     mesh: null
 };
@@ -592,58 +593,58 @@ function createBench(x, z) {
 [-10, -4, 4, 10].forEach(x => createBench(x, ROOM_D/2 - 2.5));
 [-6, 0, 6].forEach(x => createBench(x, -1.5));
 
-// ── ALL GENDERS BATHROOM ──
+// ── ALL GENDERS BATHROOM (Expanded) ──
 const bathroomWallMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.6 });
 const stallDividerMat = new THREE.MeshStandardMaterial({ color: 0x888899, roughness: 0.3, metalness: 0.6 });
 const toiletMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.1 });
 
-const bathWallLeft = new THREE.Mesh(new THREE.BoxGeometry(0.2, ROOM_H, 6.0), bathroomWallMat);
-bathWallLeft.position.set(7.0, ROOM_H / 2, 6.0);
+const bathWallLeft = new THREE.Mesh(new THREE.BoxGeometry(0.2, ROOM_H, 8.0), bathroomWallMat);
+bathWallLeft.position.set(4.0, ROOM_H / 2, 5.0);
 scene.add(bathWallLeft);
 
-const bathWallFrontL = new THREE.Mesh(new THREE.BoxGeometry(1.2, ROOM_H, 0.2), bathroomWallMat);
-bathWallFrontL.position.set(7.6, ROOM_H / 2, 3.0);
+const bathWallFrontL = new THREE.Mesh(new THREE.BoxGeometry(1.0, ROOM_H, 0.2), bathroomWallMat);
+bathWallFrontL.position.set(4.5, ROOM_H / 2, 1.0);
 scene.add(bathWallFrontL);
 
-const bathWallFrontR = new THREE.Mesh(new THREE.BoxGeometry(4.8, ROOM_H, 0.2), bathroomWallMat);
-bathWallFrontR.position.set(12.6, ROOM_H / 2, 3.0);
+const bathWallFrontR = new THREE.Mesh(new THREE.BoxGeometry(7.5, ROOM_H, 0.2), bathroomWallMat);
+bathWallFrontR.position.set(11.25, ROOM_H / 2, 1.0);
 scene.add(bathWallFrontR);
 
-const bathDoorTop = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.2, 0.2), bathroomWallMat);
-bathDoorTop.position.set(9.2, ROOM_H - 0.6, 3.0);
+const bathDoorTop = new THREE.Mesh(new THREE.BoxGeometry(2.5, 1.2, 0.2), bathroomWallMat);
+bathDoorTop.position.set(6.25, ROOM_H - 0.6, 1.0);
 scene.add(bathDoorTop);
 
-const stallDivider = new THREE.Mesh(new THREE.BoxGeometry(4.5, 2.2, 0.08), stallDividerMat);
-stallDivider.position.set(12.75, 1.1, 6.0);
+const stallDivider = new THREE.Mesh(new THREE.BoxGeometry(6.0, 2.2, 0.08), stallDividerMat);
+stallDivider.position.set(12.0, 1.1, 5.0);
 scene.add(stallDivider);
 
 const stallFront1 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.2, 1.2), stallDividerMat);
-stallFront1.position.set(10.5, 1.1, 3.6);
+stallFront1.position.set(9.0, 1.1, 1.6);
 scene.add(stallFront1);
 
-const stallFront2 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.2, 2.0), stallDividerMat);
-stallFront2.position.set(10.5, 1.1, 6.2);
+const stallFront2 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.2, 2.4), stallDividerMat);
+stallFront2.position.set(9.0, 1.1, 5.0);
 scene.add(stallFront2);
 
-const stallFront3 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.2, 0.8), stallDividerMat);
-stallFront3.position.set(10.5, 1.1, 8.6);
+const stallFront3 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.2, 1.2), stallDividerMat);
+stallFront3.position.set(9.0, 1.1, 8.4);
 scene.add(stallFront3);
 
-const stallPanel1 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.4, 1.0), stallDividerMat);
-stallPanel1.position.set(10.5, 2.0, 4.7);
+const stallPanel1 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.4, 1.6), stallDividerMat);
+stallPanel1.position.set(9.0, 2.0, 3.0);
 scene.add(stallPanel1);
 
-const stallPanel2 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.4, 1.0), stallDividerMat);
-stallPanel2.position.set(10.5, 2.0, 7.7);
+const stallPanel2 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.4, 1.6), stallDividerMat);
+stallPanel2.position.set(9.0, 2.0, 7.0);
 scene.add(stallPanel2);
 
-const stallDoor1 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.8, 0.9), stallDividerMat);
-stallDoor1.position.set(10.8, 0.9, 4.7);
+const stallDoor1 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.8, 1.5), stallDividerMat);
+stallDoor1.position.set(9.4, 0.9, 3.0);
 stallDoor1.rotation.y = 0.5;
 scene.add(stallDoor1);
 
-const stallDoor2 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.8, 0.9), stallDividerMat);
-stallDoor2.position.set(10.8, 0.9, 7.7);
+const stallDoor2 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.8, 1.5), stallDividerMat);
+stallDoor2.position.set(9.4, 0.9, 7.0);
 stallDoor2.rotation.y = -0.3;
 scene.add(stallDoor2);
 
@@ -661,24 +662,24 @@ function createToilet(x, z) {
     tg.position.set(x, floorY, z);
     scene.add(tg);
 }
-createToilet(13.5, 4.5);
-createToilet(13.5, 7.5);
+createToilet(12.5, 3.0);
+createToilet(12.5, 7.0);
 
 const sinkBase = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.2, 0.8), new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.5, metalness: 0.7 }));
-sinkBase.position.set(7.35, 0.7, 5.5);
+sinkBase.position.set(7.35, 0.7, 5.0);
 scene.add(sinkBase);
 
 const mirror = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 1.0), new THREE.MeshStandardMaterial({ color: 0x88aacc, roughness: 0.1, metalness: 0.9 }));
-mirror.position.set(7.11, 1.5, 5.5);
+mirror.position.set(7.11, 1.5, 5.0);
 mirror.rotation.y = Math.PI / 2;
 scene.add(mirror);
 
 const partyLight = new THREE.PointLight(0x8A2BE2, 2.0, 10);
-partyLight.position.set(11.0, ROOM_H - 1.0, 6.0);
+partyLight.position.set(8.0, ROOM_H - 1.0, 5.0);
 scene.add(partyLight);
 
 const partyLight2 = new THREE.PointLight(0xEC4899, 1.5, 8);
-partyLight2.position.set(13.5, ROOM_H - 1.0, 5.0);
+partyLight2.position.set(12.0, ROOM_H - 1.0, 5.0);
 scene.add(partyLight2);
 
 // ── BOOMBOX (replace jukebox, only one inside bathroom) ──
@@ -871,19 +872,7 @@ function createSpeechBubble(text) {
     sprite.scale.set(2, 1, 1);
     return sprite;
 }
-function createToonMaterial(colorHex) {
-    return new THREE.MeshToonMaterial({ color: colorHex });
-}
-function applyColorToPlayer(id, color) {
-    const p = players[id - 1];
-    if (!p || !p.charMesh) return;
-    p.color = color;
-    p.charMesh.traverse(child => { if (child.isMesh) child.material.color.set(color); });
-}
-function updatePlayerVisuals(p) {
-    if (!p.mesh) return;
-    p.mesh.visible = !p.isCustomizing && (!isFirstPerson || p.id !== localPlayerId);
-}
+
 function showSpeechBubble(pid, text) {
     const p = players.find(x => x.id === pid);
     if (!p) return;
@@ -925,7 +914,7 @@ function setupPlayers(gltf, animations) {
         cm.scale.set(CHARACTER_SCALE, CHARACTER_SCALE, CHARACTER_SCALE);
         cm.position.y = -0.0625;
         cm.traverse(child => {
-            if (child.isMesh) { child.castShadow = true; child.material = createToonMaterial(p.color); }
+            if (child.isMesh) { child.castShadow = true; child.material = createToonMaterial(child.material.map, p.color); }
         });
         pg.add(cm); p.charMesh = cm;
         if (animations && animations.length > 0) {
@@ -994,28 +983,63 @@ function spawnEmotion(type) {
 
 // ── PHYSICS & MOVEMENT ──
 function checkSubwayCollisions(pos, r = 0.38) {
-    if (pos.x >= 7.0 - r && pos.x <= 7.0 + r && pos.z >= 3.0 - r) {
+    if (pos.x >= 4.0 - r && pos.x <= 4.0 + r && pos.z >= 1.0 - r) {
         return true;
     }
-    if (pos.z >= 3.0 - r && pos.z <= 3.0 + r && pos.x >= 7.0 && pos.x <= 8.2 + r) {
+    if (pos.z >= 1.0 - r && pos.z <= 1.0 + r && pos.x >= 4.0 && pos.x <= 5.0 + r) {
         return true;
     }
-    if (pos.z >= 3.0 - r && pos.z <= 3.0 + r && pos.x >= 10.2 - r && pos.x <= 15.0) {
+    if (pos.z >= 1.0 - r && pos.z <= 1.0 + r && pos.x >= 7.5 - r && pos.x <= 15.0) {
         return true;
     }
-    if (pos.z >= 6.0 - r && pos.z <= 6.0 + r && pos.x >= 10.5 - r && pos.x <= 15.0) {
+    if (pos.z >= 5.0 - r && pos.z <= 5.0 + r && pos.x >= 9.0 - r && pos.x <= 15.0) {
         return true;
     }
-    if (pos.x >= 10.5 - r && pos.x <= 10.5 + r) {
+    if (pos.x >= 9.0 - r && pos.x <= 9.0 + r) {
         const z = pos.z;
-        if ((z >= 3.0 - r && z <= 4.2 + r) || 
-            (z >= 5.2 - r && z <= 6.0 + r) || 
-            (z >= 6.0 - r && z <= 7.2 + r) || 
-            (z >= 8.2 - r && z <= 9.0 + r)) {
+        if ((z >= 1.0 - r && z <= 2.2 + r) || 
+            (z >= 3.8 - r && z <= 6.2 + r) || 
+            (z >= 7.8 - r && z <= 9.0 + r)) {
             return true;
         }
     }
     return false;
+}
+
+function constrainCamera(camPos, targetPos) {
+    const pad = 0.4;
+    const hw = ROOM_W / 2 - pad, hd = ROOM_D / 2 - pad;
+    camPos.x = Math.max(-hw, Math.min(hw, camPos.x));
+    camPos.z = Math.max(-hd, Math.min(hd, camPos.z));
+    camPos.y = Math.max(0.2, Math.min(ROOM_H - pad, camPos.y));
+    
+    const playerInBath = (targetPos.x >= 4.0 && targetPos.z >= 1.0);
+    if (playerInBath) {
+        camPos.x = Math.max(4.0 + pad, Math.min(hw, camPos.x));
+        camPos.z = Math.max(1.0 + pad, Math.min(hd, camPos.z));
+    } else {
+        if (camPos.x > 4.0 - pad && camPos.z > 1.0 - pad) {
+            const distToX = camPos.x - (4.0 - pad);
+            const distToZ = camPos.z - (1.0 - pad);
+            if (distToX < distToZ) {
+                camPos.x = 4.0 - pad;
+            } else {
+                camPos.z = 1.0 - pad;
+            }
+        }
+    }
+    const colPositions = [-10, 0, 10];
+    for (const cx of colPositions) {
+        const dx = camPos.x - cx;
+        const dz = camPos.z - (-2.0);
+        const dist = Math.sqrt(dx*dx + dz*dz);
+        const minCamDist = 0.5;
+        if (dist < minCamDist) {
+            const angle = Math.atan2(dz, dx);
+            camPos.x = cx + Math.cos(angle) * minCamDist;
+            camPos.z = -2.0 + Math.sin(angle) * minCamDist;
+        }
+    }
 }
 function clampToRoom(p) {
     const hw = ROOM_W / 2 - 0.5, hd = ROOM_D / 2 - 0.5;
@@ -1111,7 +1135,7 @@ function animate() {
             const carrier = players.find(p => p.id === boomboxState.carriedBy);
             if (carrier && carrier.mesh) {
                 boomboxState.mesh.position.copy(carrier.mesh.position);
-                boomboxState.mesh.position.y += 1.45;
+                boomboxState.mesh.position.y += 1.15;
                 boomboxState.mesh.rotation.y = carrier.mesh.rotation.y;
             }
         } else {
@@ -1146,6 +1170,7 @@ function animate() {
             const deltaTarget = new THREE.Vector3().subVectors(controls.target, oldTarget);
             camera.position.add(deltaTarget);
             controls.update();
+            constrainCamera(camera.position, localP.mesh.position);
         }
     }
     if (localP && localP.mesh && connections.length > 0) {
