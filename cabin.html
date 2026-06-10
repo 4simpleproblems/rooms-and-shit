@@ -537,7 +537,7 @@
         audioLoader.load('https://archive.org/download/SSE_Library_WIND/DESIGNED/WINDDsgn_Blizzard%20wind%20cold%3B%20canvas%20wind%20machine_CS_USC.mp3', function(buffer) {
             stormSound.setBuffer(buffer);
             stormSound.setLoop(true);
-            stormSound.setVolume(0.4);
+            stormSound.setVolume(0.08);
         });
 
         const colliders = [];
@@ -865,7 +865,13 @@
         }
         const mugGroup = new THREE.Group();
         const mugMat = new THREE.MeshStandardMaterial({ color: 0xc93b3b, roughness: 0.5 });
-        const drinkMat = new THREE.MeshStandardMaterial({ color: 0x50301a, roughness: 0.9 });
+        const drinkMat = new THREE.MeshStandardMaterial({
+            color: 0x50301a,
+            roughness: 0.9,
+            polygonOffset: true,
+            polygonOffsetFactor: -1,
+            polygonOffsetUnits: -1
+        });
         const creamMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1.0 });
         const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.14, 8), mugMat);
         mug.position.y = 0.07;
@@ -873,6 +879,7 @@
         mugGroup.add(mug);
         const drink = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.02, 8), drinkMat);
         drink.position.y = 0.13;
+        drink.renderOrder = 1;
         mugGroup.add(drink);
         const mallow = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.02, 0.02), creamMat);
         mallow.position.set(0.01, 0.135, 0.01);
@@ -1825,7 +1832,7 @@
                 if (audioCtx && audioCtx.state === 'running') audioCtx.suspend();
                 document.getElementById('mute-btn').innerHTML = '<i class="fa-solid fa-volume-xmark"></i>';
             } else {
-                stormSound.setVolume(0.4);
+                stormSound.setVolume(0.08);
                 audioMuted = false;
                 if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
                 document.getElementById('mute-btn').innerHTML = '<i class="fa-solid fa-volume-high"></i>';
