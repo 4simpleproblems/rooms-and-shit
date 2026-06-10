@@ -7,6 +7,8 @@
     <script src="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Inter:wght@500;700;900&display=swap" rel="stylesheet"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <style>
         :root {
             --bg-creme: #1a0a0a;
@@ -76,7 +78,7 @@
 
     <div id="fade-overlay"></div>
 
-    <video id="movie-video" loop crossorigin="anonymous" playsinline style="display:none;"></video>
+    <video id="movie-video" crossorigin="anonymous" playsinline style="display:none;"></video>
 
     <div id="customization-overlay">
         <div class="custom-card">
@@ -117,8 +119,8 @@
             </div>
             <div class="custom-field">
                 <label>COLOR</label>
-                <div class="color-options" id="pause-color-options">
-                    <button class="color-btn active" data-color="#E2FF3D" style="background:#E2FF3D;"></button>
+                <div id="pause-color-options" class="color-options">
+                    <button class="color-btn" data-color="#E2FF3D" style="background:#E2FF3D;"></button>
                     <button class="color-btn" data-color="#FF3366" style="background:#FF3366;"></button>
                     <button class="color-btn" data-color="#8A2BE2" style="background:#8A2BE2;"></button>
                     <button class="color-btn" data-color="#33ccff" style="background:#33ccff;"></button>
@@ -132,22 +134,20 @@
                     <button class="color-btn" data-color="#ff9999" style="background:#ff9999;"></button>
                 </div>
             </div>
-            <div class="custom-field">
-                <label for="pause-fov-input">FOV: <span id="fov-val">90</span></label>
+            <div class="custom-field" style="margin-top:10px;">
+                <label>FOV: <span id="fov-val">90</span></label>
                 <input type="range" id="pause-fov-input" min="60" max="120" value="90" />
             </div>
-            <button id="resume-btn" class="ui-btn primary" style="width:100%;justify-content:center;font-size:1.1rem;margin-top:10px;">RESUME</button>
+            <button id="resume-btn" class="ui-btn primary" style="width:100%;justify-content:center;font-size:1.1rem;margin-top:10px;">
+                RESUME
+            </button>
         </div>
     </div>
 
-    <div id="canvas-container"></div>
-
     <div class="ui-layer">
-        <div class="ui-panel header-panel">
-            <button id="back-btn" class="ui-btn" onclick="window.location.href='index.html'"><i class="fa-solid fa-arrow-left"></i> Map</button>
-            <button id="pause-btn" class="ui-btn"><i class="fa-solid fa-pause"></i> Pause</button>
-            <h1 class="header-title">Theater Room</h1>
-            <button id="mobile-menu-btn" class="ui-btn primary"><i class="fa-solid fa-comments"></i> Menu</button>
+        <div class="header-panel ui-panel">
+            <h1 class="header-title">THEATER ROOM</h1>
+            <button id="pause-btn" class="ui-btn"><i class="fa-solid fa-gear"></i></button>
         </div>
 
         <div id="cam-mode-indicator">📽 STATIONARY CAM — Press V for First Person</div>
@@ -156,53 +156,55 @@
             <ul id="chat-log-list"></ul>
         </div>
 
-        <div class="ui-panel controls-panel">
-            <h3>Theater Controls</h3>
-            <div class="control-row"><span>Move</span><span class="control-key">WASD</span></div>
-            <div class="control-row"><span>Jump</span><span class="control-key">Space</span></div>
-            <div class="control-row"><span>Camera</span><span class="control-key">V</span></div>
-            <div class="control-row"><span>Chat</span><span class="control-key">Enter</span></div>
+        <div class="chat-panel ui-panel">
+            <input type="text" id="chat-input" class="chat-input" placeholder="Type a message..." maxlength="80" autocomplete="off" />
+            <button id="chat-send-btn" class="ui-btn"><i class="fa-solid fa-paper-plane"></i></button>
         </div>
 
-        <div class="ui-panel connection-panel" style="bottom:108px;left:20px;width:360px;box-sizing:border-box;display:flex;flex-direction:column;gap:8px;">
-            <h3 style="font-family:'Alfa Slab One',cursive;font-size:0.9rem;margin:0;color:#FF6666;">WATCH WITH FRIENDS</h3>
-            <div style="display:flex;align-items:center;justify-content:space-between;font-size:0.82rem;font-weight:700;background:#1a0000;border:2px solid #8B0000;padding:5px 8px;">
-                <span>Room ID: <span id="my-peer-id-label" style="font-family:monospace;font-weight:900;color:#FF9999;">Loading...</span></span>
-                <button id="copy-id-btn" class="ui-btn" style="padding:2px 6px;font-size:0.7rem;height:20px;"><i class="fa-solid fa-copy"></i> Copy</button>
+        <div class="emotions-panel ui-panel">
+            <button class="ui-btn emotion-btn" onclick="spawnEmotion('happy')">😊</button>
+            <button class="ui-btn emotion-btn" onclick="spawnEmotion('love')">❤️</button>
+            <button class="ui-btn emotion-btn" onclick="spawnEmotion('sad')">😢</button>
+            <button class="ui-btn emotion-btn" onclick="spawnEmotion('angry')">😠</button>
+            <button class="ui-btn emotion-btn" onclick="spawnEmotion('shocked')">😲</button>
+        </div>
+
+        <div class="controls-panel ui-panel">
+            <h3>CONTROLS</h3>
+            <div class="control-row"><span>Move</span> <span class="control-key">WASD</span></div>
+            <div class="control-row"><span>Jump</span> <span class="control-key">SPACE</span></div>
+            <div class="control-row"><span>Sprint</span> <span class="control-key">SHIFT</span></div>
+            <div class="control-row"><span>Sit / Stand</span> <span class="control-key">E</span></div>
+            <div class="control-row"><span>Cam Mode</span> <span class="control-key">V</span></div>
+            <div class="control-row"><span>Menu</span> <span class="control-key">ESC</span></div>
+            <div style="margin-top:10px; border-top:2px solid #8B0000; padding-top:10px;">
+                <div id="connection-status" style="font-size:0.75rem; font-weight:900; color:#FF9999; margin-bottom:5px;">Status: Offline</div>
+                <div style="font-size:0.7rem; color:#fff; margin-bottom:5px;">Your ID: <span id="my-peer-id-label" style="color:#FF3366;">...</span> <button id="copy-id-btn" class="ui-btn" style="padding:2px 5px; font-size:0.6rem; box-shadow:2px 2px 0px #8B0000;"><i class="fa-solid fa-copy"></i> Copy</button></div>
+                <input type="text" id="join-peer-id-input" class="chat-input" style="font-size:0.75rem; padding:4px 6px; margin-bottom:5px;" placeholder="Peer ID..." />
+                <button id="connect-btn" class="ui-btn" style="width:100%; font-size:0.75rem; padding:4px;">Connect</button>
             </div>
-            <div style="display:flex;gap:6px;">
-                <input type="text" id="join-peer-id-input" class="chat-input" placeholder="Enter Room ID..." style="font-size:0.78rem;padding:5px 8px;" />
-                <button id="connect-btn" class="ui-btn primary" style="padding:5px 10px;font-size:0.78rem;"><i class="fa-solid fa-link"></i> Join</button>
-            </div>
-            <div id="connection-status" style="font-size:0.72rem;font-weight:800;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Status: Local Mode</div>
         </div>
 
-        <div class="ui-panel chat-panel">
-            <input type="text" id="chat-input" class="chat-input" placeholder="Say something in the theater..." maxlength="50" autocomplete="off" />
-            <button id="chat-send-btn" class="ui-btn primary"><i class="fa-solid fa-paper-plane"></i></button>
+        <button id="mobile-menu-btn" class="ui-btn" style="position:absolute; top:20px; right:20px; z-index:110;"><i class="fa-solid fa-bars"></i></button>
+        <div id="mobile-menu-drawer" class="mobile-menu-drawer">
+            <button id="mobile-menu-close-btn" class="ui-btn" style="align-self:flex-end;"><i class="fa-solid fa-xmark"></i></button>
+            <h2 class="custom-title" style="font-size:1.2rem;">THEATER MENU</h2>
+            <button class="ui-btn" onclick="toggleCameraMode()">Switch Camera (V)</button>
+            <button class="ui-btn" onclick="togglePause()">Settings (ESC)</button>
+            <div style="margin-top:auto; font-size:0.75rem; color:#FF9999; text-align:center;">Made with ❤️ from 4SP</div>
         </div>
+        <div id="drawer-overlay" class="drawer-overlay"></div>
 
-        <div class="emotions-panel">
-            <button class="ui-btn emotion-btn" onclick="spawnEmotion('angry');this.blur();" tabindex="-1"><i class="fa-solid fa-bolt-lightning"></i></button>
-            <button class="ui-btn emotion-btn" onclick="spawnEmotion('love');this.blur();" tabindex="-1"><i class="fa-solid fa-heart"></i></button>
-            <button class="ui-btn emotion-btn" onclick="spawnEmotion('happy');this.blur();" tabindex="-1"><i class="fa-solid fa-face-laugh-beam"></i></button>
-            <button class="ui-btn emotion-btn" onclick="spawnEmotion('sad');this.blur();" tabindex="-1"><i class="fa-solid fa-cloud-showers-water"></i></button>
-            <button class="ui-btn emotion-btn" onclick="spawnEmotion('shocked');this.blur();" tabindex="-1"><i class="fa-solid fa-exclamation"></i></button>
+        <div id="mobile-joystick-container">
+            <div id="mobile-joystick-handle"></div>
+        </div>
+        <div id="mobile-actions-container">
+            <div id="mobile-jump-btn">JUMP</div>
         </div>
     </div>
 
-    <div id="drawer-overlay" class="drawer-overlay"></div>
-    <div id="mobile-menu-drawer" class="mobile-menu-drawer">
-        <button id="mobile-menu-close-btn" class="ui-btn"><i class="fa-solid fa-xmark"></i> Close</button>
-    </div>
+    <div id="canvas-container"></div>
 
-    <div id="mobile-joystick-container"><div id="mobile-joystick-handle"></div></div>
-    <div id="mobile-actions-container">
-        <div id="mobile-jump-btn">Jmp</div>
-    </div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script>
         window.createImageBitmap = undefined;
         const loader = new THREE.GLTFLoader();
@@ -231,9 +233,9 @@
         const PLATFORM_SIZE = ROOM_W;
 
         const players = [
-            { id:1, name:'Player 1', color:'#E2FF3D', mesh:null, position: new THREE.Vector3(0, floorY, ROOM_D/2 - 3), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false}, bubbleText:'', bubbleTimeout:null, isCustomizing:true },
-            { id:2, name:'Player 2', color:'#ff9933', mesh:null, position: new THREE.Vector3(-2, floorY, ROOM_D/2 - 3), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false}, bubbleText:'', bubbleTimeout:null, isCustomizing:false },
-            { id:3, name:'Player 3', color:'#4444ff', mesh:null, position: new THREE.Vector3(2, floorY, ROOM_D/2 - 3), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false}, isRemote:false, bubbleText:'', bubbleTimeout:null, isCustomizing:false }
+            { id:1, name:'Player 1', color:'#E2FF3D', mesh:null, position: new THREE.Vector3(0, floorY, ROOM_D/2 - 3), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false,shift:false}, bubbleText:'', bubbleTimeout:null, isCustomizing:true, isSitting:false, sitSpotIndex:-1, sprintActiveInJump:false },
+            { id:2, name:'Player 2', color:'#ff9933', mesh:null, position: new THREE.Vector3(-2, floorY, ROOM_D/2 - 3), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false,shift:false}, bubbleText:'', bubbleTimeout:null, isCustomizing:false, isSitting:false, sitSpotIndex:-1, sprintActiveInJump:false },
+            { id:3, name:'Player 3', color:'#4444ff', mesh:null, position: new THREE.Vector3(2, floorY, ROOM_D/2 - 3), isJumping:false, yVelocity:0, vx:0, vz:0, keys:{up:false,down:false,left:false,right:false,space:false,shift:false}, isRemote:false, bubbleText:'', bubbleTimeout:null, isCustomizing:false, isSitting:false, sitSpotIndex:-1, sprintActiveInJump:false }
         ];
 
         scene.background = new THREE.Color(0x000000);
@@ -243,7 +245,7 @@
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setPixelRatio(1.0); 
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         renderer.setClearColor(0x000000);
@@ -267,11 +269,6 @@
             pl.position.set(x, floorY + ROOM_H - 0.5, 0);
             scene.add(pl);
         });
-
-        // Screen glow light
-        const screenLight = new THREE.PointLight(0xffffff, 1.8, 25);
-        screenLight.position.set(0, floorY + ROOM_H * 0.55, -(ROOM_D / 2) + 2.5);
-        scene.add(screenLight);
 
         // --- THEATER GEOMETRY ---
         const floorGeo = new THREE.BoxGeometry(ROOM_W, 0.3, ROOM_D);
@@ -359,6 +356,8 @@
         const videoElement = document.getElementById('movie-video');
         videoElement.crossOrigin = "anonymous";
         videoElement.muted = true; // Start muted for auto-play support
+        videoElement.setAttribute('webkit-playsinline', 'true');
+        videoElement.setAttribute('playsinline', 'true');
 
         function playMovie(index, time = 0) {
             currentMovieIndex = index % MOVIES.length;
@@ -399,7 +398,7 @@
         const screenW = 20;
         const screenH = 11;
         const screenGeo = new THREE.PlaneGeometry(screenW, screenH);
-        const screenMat = new THREE.MeshBasicMaterial({ map: screenTexture }); // Use BasicMaterial for full brightness without shadow influence
+        const screenMat = new THREE.MeshBasicMaterial({ map: screenTexture, transparent: false }); 
         const screenMesh = new THREE.Mesh(screenGeo, screenMat);
         screenMesh.position.set(0, floorY + ROOM_H * 0.5 + 0.5, -ROOM_D / 2 + 0.2);
         scene.add(screenMesh);
@@ -407,62 +406,89 @@
         // --- THEATER SEATING ---
         const chairColor = 0x990000;
         const chairMat = new THREE.MeshStandardMaterial({ color: chairColor, roughness: 0.8 });
+        const seatSpots = [];
 
-        const rows = 8;
-        const cols = 12;
-        const spacingX = 2.0;
-        const spacingZ = 2.8;
+        const rows = 6;
+        const cols = 10;
+        const spacingX = 2.2;
+        const spacingZ = 3.2;
 
-        function createChair(x, z) {
+        function createChair(x, z, idx) {
             const group = new THREE.Group();
             
             // Puffy seat
-            const seat = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.45, 1.1), chairMat);
+            const seat = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.5, 1.3), chairMat);
             seat.position.y = 0.55;
             seat.castShadow = true;
             group.add(seat);
 
-            // Puffy back
-            const back = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.1, 0.35), chairMat);
-            back.position.set(0, 1.2, 0.4);
+            // Reclined back
+            const back = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.4, 0.4), chairMat);
+            back.position.set(0, 1.2, 0.6);
+            back.rotation.x = -0.15;
             back.castShadow = true;
             group.add(back);
 
             // Headrest
-            const headrest = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.4, 0.35), chairMat);
-            headrest.position.set(0, 1.8, 0.4);
+            const headrest = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.5, 0.4), chairMat);
+            headrest.position.set(0, 2.0, 0.7);
+            headrest.rotation.x = -0.15;
             headrest.castShadow = true;
             group.add(headrest);
 
             // Arm rests
-            const armGeo = new THREE.BoxGeometry(0.2, 0.2, 0.9);
+            const armGeo = new THREE.BoxGeometry(0.2, 0.2, 1.1);
             const arm1 = new THREE.Mesh(armGeo, chairMat);
-            arm1.position.set(-0.7, 0.85, 0);
+            arm1.position.set(-0.8, 0.9, 0.1);
             group.add(arm1);
             const arm2 = new THREE.Mesh(armGeo, chairMat);
-            arm2.position.set(0.7, 0.85, 0);
+            arm2.position.set(0.8, 0.9, 0.1);
             group.add(arm2);
-
-            // Legs
-            const legGeo = new THREE.BoxGeometry(0.12, 0.4, 0.12);
-            const legMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
-            [[-0.5,-0.4], [0.5,-0.4], [-0.5,0.4], [0.5,0.4]].forEach(pos => {
-                const leg = new THREE.Mesh(legGeo, legMat);
-                leg.position.set(pos[0], 0.2, pos[1]);
-                group.add(leg);
-            });
 
             group.position.set(x, floorY, z);
             scene.add(group);
+
+            seatSpots.push({ x, z, y: floorY + 0.75 });
         }
 
         for (let r = 0; r < rows; r++) {
-            const z = (ROOM_D / 2 - 6) - (r * spacingZ);
+            const z = (ROOM_D / 2 - 8) - (r * spacingZ);
             for (let c = 0; c < cols; c++) {
                 const x = ((c - (cols - 1) / 2) * spacingX);
-                // Leave a center aisle
                 if (Math.abs(x) < 1.2) continue;
-                createChair(x, z);
+                createChair(x, z, seatSpots.length);
+            }
+        }
+
+        function toggleSitLocalPlayer() {
+            const p = players[localPlayerId - 1];
+            if (!p || !p.mesh) return;
+
+            if (p.isSitting) {
+                p.isSitting = false;
+                p.mesh.position.y = floorY;
+                updatePlayerVisuals(p);
+                return;
+            }
+
+            let closestSpot = null;
+            let minDist = 2.0;
+
+            for (let i = 0; i < seatSpots.length; i++) {
+                const spot = seatSpots[i];
+                const d = Math.hypot(p.mesh.position.x - spot.x, p.mesh.position.z - spot.z);
+                if (d < minDist) {
+                    minDist = d;
+                    closestSpot = spot;
+                }
+            }
+
+            if (closestSpot) {
+                p.isSitting = true;
+                p.vx = 0; p.vz = 0; p.yVelocity = 0; p.isJumping = false;
+                p.mesh.position.set(closestSpot.x, closestSpot.y, closestSpot.z);
+                p.mesh.rotation.set(0, Math.PI, 0); // Face screen
+                updatePlayerVisuals(p);
             }
         }
 
@@ -505,7 +531,10 @@
         function handlePlayError() {
             addChatMessageToLog(null, "Click anywhere to start playback.", true);
             const starter = () => {
-                videoElement.play().catch(e => console.warn("Retry play failed:", e));
+                if (videoElement) {
+                    videoElement.muted = false;
+                    videoElement.play().catch(e => console.warn("Retry play failed:", e));
+                }
                 window.removeEventListener('click', starter);
             };
             window.removeEventListener('click', starter);
@@ -540,62 +569,55 @@
             if (texture) {
                 texture.magFilter = THREE.NearestFilter;
                 texture.minFilter = THREE.NearestFilter;
-                texture.wrapS = THREE.RepeatWrapping;
-                texture.wrapT = THREE.RepeatWrapping;
-                texture.generateMipmaps = false;
-                texture.needsUpdate = true;
             }
-            const mat = new THREE.ShaderMaterial({
-                uniforms: { map:{value:texture}, color:{value:new THREE.Color(colorHex)}, opacity:{value:1.0}, isGreyscale:{value:0.0} },
-                vertexShader: `varying vec3 vNormal; varying vec3 vViewDir; varying vec2 vUv; void main() { vUv=uv; vNormal=normalize(normalMatrix*normal); vec4 mvPosition=modelViewMatrix*vec4(position,1.0); vViewDir=normalize(-mvPosition.xyz); gl_Position=projectionMatrix*mvPosition; }`,
-                fragmentShader: `uniform sampler2D map; uniform vec3 color; uniform float opacity; uniform float isGreyscale; varying vec2 vUv; varying vec3 vNormal; varying vec3 vViewDir; void main() { vec4 texColor=texture2D(map,vUv); if(texColor.a<0.05) discard; vec3 baseColor=texColor.rgb*color; if(isGreyscale>0.5){float grey=dot(baseColor,vec3(0.299,0.587,0.114)); baseColor=vec3(grey);} vec3 lightDir=normalize(vec3(0.0,1.0,0.5)); vec3 viewLightDir=normalize((viewMatrix*vec4(lightDir,0.0)).xyz); float dotNL=dot(normalize(vNormal),viewLightDir); float shade=dotNL>0.5?1.0:dotNL>0.0?0.65:0.35; vec3 finalColor=baseColor*shade; gl_FragColor=vec4(finalColor,opacity); }`,
-                transparent: false,
-                side: THREE.DoubleSide
-            });
-            return mat;
-        }
-
-        function updatePlayerVisuals(p) {
-            if (!p || !p.mesh) return;
-            p.mesh.traverse((child) => {
-                if (child.isMesh && child.material && child.material.uniforms) {
-                    child.material.uniforms.color.value.setStyle(p.color);
-                    const isCust = !!p.isCustomizing;
-                    child.material.uniforms.opacity.value = isCust ? 0.4 : 1.0;
-                    child.material.uniforms.isGreyscale.value = isCust ? 1.0 : 0.0;
-                    child.material.transparent = isCust;
-                    child.material.depthWrite = !isCust;
-                }
+            return new THREE.MeshToonMaterial({
+                map: texture,
+                color: colorHex || 0xffffff,
+                outlineColor: new THREE.Color(0x000000),
             });
         }
 
         function applyColorToPlayer(playerId, colorHex) {
             const p = players[playerId - 1];
-            if (p) { p.color = colorHex; updatePlayerVisuals(p); }
+            if (!p || !p.charMesh) return;
+            p.color = colorHex;
+            p.charMesh.traverse((child) => {
+                if (child.isMesh) {
+                    child.material.color.set(colorHex);
+                }
+            });
         }
 
-        function loadModel(url) {
-            return new Promise((resolve, reject) => { loader.load(url, (gltf) => resolve(gltf), undefined, reject); });
+        function updatePlayerVisuals(p) {
+            if (!p.mesh) return;
+            if (p.isCustomizing) {
+                p.mesh.visible = false;
+            } else {
+                p.mesh.visible = !isFirstPerson || p.id !== localPlayerId;
+            }
+            if (p.isSitting && p.actions['Sit']) {
+                const sitAction = p.actions['Sit'];
+                if (p.currentAction !== sitAction) {
+                    if (p.currentAction) p.currentAction.fadeOut(0.1);
+                    sitAction.reset().fadeIn(0.1).play();
+                    p.currentAction = sitAction;
+                }
+            }
         }
 
-        loadPlayers();
+        // --- MODELS & ANIMATIONS ---
+        const charGltfUrl = 'model/character.gltf';
+        const cacheBust = '?v=' + Date.now();
 
-        function loadPlayers() {
-            const cacheBust = '?t=' + Date.now();
+        function loadModels() {
             Promise.all([
-                loadModel('model/character.gltf' + cacheBust),
+                loader.loadAsync(charGltfUrl + cacheBust),
                 fetch('animations.json' + cacheBust).then(r => r.json())
             ]).then(([charGltf, animJson]) => {
                 const animations = animJson.map(a => {
                     const tracks = a.tracks.map(t => {
-                        const nodeName = t.nodeName || (t.name ? t.name.split('.')[0] : 'unknown');
                         const property = t.property || (t.name ? t.name.split('.')[1] : 'position');
-                        const trackName = `${nodeName}.${property}`;
-                        const times = new Float32Array(t.times);
-                        const values = new Float32Array(t.values);
-                        return property === 'quaternion'
-                            ? new THREE.QuaternionKeyframeTrack(trackName, times, values)
-                            : new THREE.VectorKeyframeTrack(trackName, times, values);
+                        return new THREE.KeyframeTrack(t.nodeName + '.' + property, t.times, t.values);
                     });
                     return new THREE.AnimationClip(a.name, a.duration, tracks);
                 });
@@ -719,7 +741,12 @@
                 const id = remoteId || data.id;
                 if (data.type === 'move') {
                     const p = players[id - 1];
-                    if (p && p.mesh) { p.mesh.position.set(data.x, data.y, data.z); p.mesh.rotation.set(0, data.ry, 0); p.isJumping = data.isJumping; }
+                    if (p && p.mesh) { 
+                        p.mesh.position.set(data.x, data.y, data.z); 
+                        p.mesh.rotation.set(0, data.ry, 0); 
+                        p.isJumping = data.isJumping; 
+                        p.isSitting = data.isSitting;
+                    }
                     if (isHost) connections.forEach(c => { if (c !== conn && c.open) c.send(data); });
                 } else if (data.type === 'chat') {
                     showSpeechBubble(id, data.text);
@@ -767,6 +794,8 @@
             else if (key === 'arrowleft' || key === 'a') p.keys.left = true;
             else if (key === 'arrowright' || key === 'd') p.keys.right = true;
             else if (key === ' ' || e.code === 'Space') { p.keys.space = true; e.preventDefault(); }
+            else if (key === 'shift') { p.keys.shift = true; }
+            else if (key === 'e') { toggleSitLocalPlayer(); }
             else if (key === 'v' && !e.repeat) toggleCameraMode();
         });
 
@@ -780,6 +809,7 @@
             else if (key === 'arrowleft' || key === 'a') p.keys.left = false;
             else if (key === 'arrowright' || key === 'd') p.keys.right = false;
             else if (key === ' ' || e.code === 'Space') p.keys.space = false;
+            else if (key === 'shift') { p.keys.shift = false; }
         });
 
         function getGroundY(pos) {
@@ -798,7 +828,19 @@
 
         function updateAnimationState(p, speed) {
             if (!p.mixer || !p.actions) return;
+
+            if (p.isSitting) {
+                const sitAction = p.actions['Sit'];
+                if (sitAction && p.currentAction !== sitAction) {
+                    if (p.currentAction) p.currentAction.fadeOut(0.1);
+                    sitAction.reset().fadeIn(0.1).play();
+                    p.currentAction = sitAction;
+                }
+                return;
+            }
+
             const isMoving = speed > 0.15;
+            const isSprinting = speed > 4.5;
 
             const jumpAction = p.actions['Jump'];
             if (p.isJumping && jumpAction) {
@@ -818,8 +860,8 @@
                 return;
             }
 
-            let nextAction = isMoving ? p.actions['Stomp'] : p.actions['Idle'];
-            if (nextAction) nextAction.timeScale = 1.1;
+            let nextAction = isMoving ? (isSprinting ? p.actions['Sprint'] : p.actions['Stomp']) : p.actions['Idle'];
+            if (nextAction) nextAction.timeScale = isSprinting ? 1.5 : 1.1;
 
             if (nextAction && p.currentAction !== nextAction) {
                 if (p.currentAction) p.currentAction.fadeOut(0.15);
@@ -851,6 +893,7 @@
             for (const p of players) {
                 if (!p.mesh) continue;
                 if (p.isCustomizing) { p.vx = 0; p.vz = 0; continue; }
+                if (p.isSitting) { p.vx = 0; p.vz = 0; continue; }
 
                 if (p.isRemote) {
                     if (p.mixer) {
@@ -868,7 +911,8 @@
                 if (p.keys.right) moveX += 1;
 
                 p.vx *= 0.88; p.vz *= 0.88;
-                const speed = 2.8;
+                const isSprinting = p.keys.shift && (moveX !== 0 || moveZ !== 0);
+                const speed = isSprinting ? 6.5 : 2.8;
 
                 if (moveX !== 0 || moveZ !== 0) {
                     let dx = moveX, dz = moveZ;
@@ -925,7 +969,7 @@
             // Network broadcast
             const localP = players[localPlayerId - 1];
             if (localP && localP.mesh && connections.length > 0) {
-                const moveData = { type: 'move', id: localPlayerId, x: localP.mesh.position.x, y: localP.mesh.position.y, z: localP.mesh.position.z, ry: localP.mesh.rotation.y, isJumping: localP.isJumping };
+                const moveData = { type: 'move', id: localPlayerId, x: localP.mesh.position.x, y: localP.mesh.position.y, z: localP.mesh.position.z, ry: localP.mesh.rotation.y, isJumping: localP.isJumping, isSitting: localP.isSitting };
                 connections.forEach(c => { if (c.open) c.send(moveData); });
             }
 
@@ -1306,6 +1350,10 @@
                     }
                     customOverlay.classList.add('hidden');
                     isCustomizing = false;
+                    if (videoElement) {
+                        videoElement.muted = false;
+                        videoElement.play().catch(() => {});
+                    }
                     addChatMessageToLog(null, `${savedName} entered the theater.`, true);
                     broadcastConfig(); broadcastCustomizingState(false);
                 } else {
@@ -1316,6 +1364,7 @@
 
         loadSavedPreferences();
         animate();
+        loadModels();
     </script>
 </body>
 </html>
