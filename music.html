@@ -757,6 +757,105 @@ for (let depth = 1; depth <= 6; depth++) {
     scene.add(tf);
 }
 
+// ── RAILWAY END TUNNELS & BLACK FOG FADE ──
+function createTunnel(xSide) {
+    const dir = xSide > 0 ? 1 : -1;
+    const wall1 = new THREE.Mesh(new THREE.BoxGeometry(20, ROOM_H, 0.3), new THREE.MeshStandardMaterial({ color: 0x111115, roughness: 0.9 }));
+    wall1.position.set(xSide + dir * 10, ROOM_H/2, TRACK_Z - 2.8);
+    scene.add(wall1);
+    
+    const wall2 = new THREE.Mesh(new THREE.BoxGeometry(20, ROOM_H, 0.3), new THREE.MeshStandardMaterial({ color: 0x111115, roughness: 0.9 }));
+    wall2.position.set(xSide + dir * 10, ROOM_H/2, TRACK_Z + 2.8);
+    scene.add(wall2);
+    
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(20, 0.3, 5.6), new THREE.MeshStandardMaterial({ color: 0x111115, roughness: 0.9 }));
+    roof.position.set(xSide + dir * 10, ROOM_H, TRACK_Z);
+    scene.add(roof);
+
+    for (let i = 0; i <= 5; i++) {
+        const px = xSide + dir * i * 1.5;
+        const opacity = i / 5;
+        const fadePlane = new THREE.Mesh(
+            new THREE.PlaneGeometry(5.6, ROOM_H),
+            new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: opacity, depthWrite: false, side: THREE.DoubleSide })
+        );
+        fadePlane.position.set(px, ROOM_H/2, TRACK_Z);
+        fadePlane.rotation.y = Math.PI / 2;
+        scene.add(fadePlane);
+    }
+}
+createTunnel(-15);
+createTunnel(15);
+
+// ── ADVERTISEMENT PLACEHOLDERS ──
+function createAdMaterial(label, w, h) {
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    
+    ctx.fillStyle = '#1e1e24';
+    ctx.fillRect(0, 0, w, h);
+    
+    ctx.strokeStyle = '#2d2d35';
+    ctx.lineWidth = 2;
+    for (let x = 0; x < w; x += 32) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+    }
+    for (let y = 0; y < h; y += 32) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+    }
+    
+    ctx.strokeStyle = '#7C3AED';
+    ctx.lineWidth = 16;
+    ctx.strokeRect(0, 0, w, h);
+    
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 36px Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, w / 2, h / 2 - 20);
+    
+    ctx.fillStyle = '#aaaaaa';
+    ctx.font = '24px Arial, sans-serif';
+    ctx.fillText(`${w}x${h} Ratio`, w / 2, h / 2 + 30);
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    return new THREE.MeshStandardMaterial({ map: texture, roughness: 0.5 });
+}
+
+function createAdPlaceholder(x, y, z, width, height, mat, rotY = 0) {
+    const g = new THREE.Group();
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(width + 0.1, height + 0.1, 0.06), new THREE.MeshStandardMaterial({ color: 0x333335, roughness: 0.5 }));
+    g.add(frame);
+    const screen = new THREE.Mesh(new THREE.PlaneGeometry(width, height), mat);
+    screen.position.z = 0.035;
+    g.add(screen);
+    
+    g.position.set(x, y, z);
+    g.rotation.y = rotY;
+    scene.add(g);
+}
+
+const wideAdMat = createAdMaterial('WIDE BANNER', 512, 256);
+const posterAdMat = createAdMaterial('POSTER AD', 384, 512);
+const squareAdMat = createAdMaterial('SQUARE SIGN', 512, 512);
+
+createAdPlaceholder(-8.5, 2.4, ROOM_D/2 - 0.02, 3.0, 1.5, wideAdMat, Math.PI);
+createAdPlaceholder(8.5, 2.4, ROOM_D/2 - 0.02, 3.0, 1.5, wideAdMat, Math.PI);
+
+createAdPlaceholder(-3.0, 2.3, ROOM_D/2 - 0.02, 1.8, 2.4, posterAdMat, Math.PI);
+createAdPlaceholder(3.0, 2.3, ROOM_D/2 - 0.02, 1.8, 2.4, posterAdMat, Math.PI);
+
+createAdPlaceholder(-ROOM_W/2 + 0.05, 2.4, 0, 2.2, 2.2, squareAdMat, Math.PI / 2);
+createAdPlaceholder(ROOM_W/2 - 0.05, 2.4, 0, 2.2, 2.2, squareAdMat, -Math.PI / 2);
+
 // ── TILE STRIPE DECOR (Gray) ──
 const yellowStripe = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W - 1, 1.2, 0.08), tileYellow);
 yellowStripe.position.set(0, 0.8, ROOM_D/2 + 0.04);
@@ -876,7 +975,7 @@ const boomboxes = [
     {
         id: 'bb1',
         position: new THREE.Vector3(-6.0, floorY, 4.0),
-        rotationY: 0.2,
+        rotationY: 0.2 + Math.PI,
         mesh: null,
         audio: null,
         currentTrack: null,
@@ -887,7 +986,7 @@ const boomboxes = [
     {
         id: 'bb2',
         position: new THREE.Vector3(6.0, floorY, 4.0),
-        rotationY: -0.2,
+        rotationY: -0.2 + Math.PI,
         mesh: null,
         audio: null,
         currentTrack: null,
@@ -983,13 +1082,12 @@ scene.add(pit);
 
 // ── TRAIN (travels left→right along X axis, stays in track pit) ──
 const trainGroup = new THREE.Group();
-const trainBodyMat = new THREE.MeshStandardMaterial({ color: 0x1a2a6c, roughness: 0.6, metalness: 0.5 });
-const trainStripeMat = new THREE.MeshStandardMaterial({ color: 0xFFD600, roughness: 0.5, emissive: 0x443300, emissiveIntensity: 0.3 });
+const trainBodyMat = new THREE.MeshStandardMaterial({ color: 0xbcbcbc, roughness: 0.2, metalness: 0.8 });
+const trainStripeMat = new THREE.MeshStandardMaterial({ color: 0x757575, roughness: 0.25, metalness: 0.8 });
 const trainWindowMat = new THREE.MeshStandardMaterial({ color: 0x88aacc, roughness: 0.2, transparent: true, opacity: 0.6, emissive: 0x334466, emissiveIntensity: 0.8 });
-const trainDoorMat = new THREE.MeshStandardMaterial({ color: 0x223355, roughness: 0.5 });
+const trainDoorMat = new THREE.MeshStandardMaterial({ color: 0x616161, roughness: 0.3, metalness: 0.8 });
 const numCars = 3;
-// Car dimensions: X=length (along travel), Y=height, Z=width (faces platform)
-const carLen = 6.0, carZ_dim = 2.4, carH = 1.9;
+const carLen = 7.5, carZ_dim = 3.2, carH = 2.6;
 const totalTrainLen = numCars * carLen + (numCars - 1) * 0.15;
 for (let c = 0; c < numCars; c++) {
     const carX = c * (carLen + 0.15);
@@ -997,45 +1095,41 @@ for (let c = 0; c < numCars; c++) {
     const carBody = new THREE.Mesh(new THREE.BoxGeometry(carLen, carH, carZ_dim), trainBodyMat);
     carBody.position.y = carH / 2;
     car.add(carBody);
-    const stripe = new THREE.Mesh(new THREE.BoxGeometry(carLen + 0.01, 0.18, carZ_dim + 0.01), trainStripeMat);
-    stripe.position.y = carH - 0.42;
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(carLen + 0.01, 0.22, carZ_dim + 0.01), trainStripeMat);
+    stripe.position.y = carH - 0.5;
     car.add(stripe);
-    // Windows along the platform-facing side (+Z)
-    for (let wx = -carLen/2 + 0.7; wx < carLen/2 - 0.4; wx += 1.1) {
-        const win = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.5, carZ_dim + 0.02), trainWindowMat);
-        win.position.set(wx, carH - 0.9, 0);
+    for (let wx = -carLen/2 + 0.9; wx < carLen/2 - 0.4; wx += 1.4) {
+        const win = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.65, carZ_dim + 0.02), trainWindowMat);
+        win.position.set(wx, carH - 1.1, 0);
         car.add(win);
     }
-    const door = new THREE.Mesh(new THREE.BoxGeometry(0.75, carH * 0.68, carZ_dim + 0.02), trainDoorMat);
-    door.position.set(0, carH * 0.34, 0);
+    const door = new THREE.Mesh(new THREE.BoxGeometry(0.85, carH * 0.72, carZ_dim + 0.02), trainDoorMat);
+    door.position.set(0, carH * 0.36, 0);
     car.add(door);
-    // Wheels
-    for (let rx = -carLen/2 + 0.6; rx <= carLen/2 - 0.6; rx += carLen - 1.2) {
-        const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, carZ_dim + 0.1, 10), new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.5, metalness: 0.8 }));
+    for (let rx = -carLen/2 + 0.9; rx <= carLen/2 - 0.9; rx += carLen - 1.8) {
+        const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, carZ_dim + 0.1, 12), new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.6, metalness: 0.8 }));
         wheel.rotation.x = Math.PI / 2;
-        wheel.position.set(rx, -0.04, 0);
+        wheel.position.set(rx, -0.08, 0);
         car.add(wheel);
     }
     car.position.x = carX;
     trainGroup.add(car);
 }
-// Headlight on front car
-const headlightL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.28, 0.28), new THREE.MeshStandardMaterial({ color: 0xffffcc, emissive: 0xffffcc, emissiveIntensity: 3.0 }));
-headlightL.position.set(-0.05, 0.55, -0.7);
+const headlightL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.35, 0.35), new THREE.MeshStandardMaterial({ color: 0xffffcc, emissive: 0xffffcc, emissiveIntensity: 3.0 }));
+headlightL.position.set(-0.05, 0.7, -0.9);
 trainGroup.children[0].add(headlightL);
 const headlightR = headlightL.clone();
-headlightR.position.z = 0.7;
+headlightR.position.z = 0.9;
 trainGroup.children[0].add(headlightR);
-const trainLight = new THREE.PointLight(0xffffaa, 2.5, 8);
-trainLight.position.set(-carLen/2 - 0.5, 0.9, 0);
+const trainLight = new THREE.PointLight(0xffffaa, 3.5, 12);
+trainLight.position.set(-carLen/2 - 0.5, 1.3, 0);
 trainGroup.children[0].add(trainLight);
-// Start train offscreen to the left
 const TRAIN_START_X = -ROOM_W/2 - totalTrainLen - 5;
 const TRAIN_END_X   =  ROOM_W/2 + totalTrainLen + 5;
 const TRAIN_SPEED = 10;
-const TRAIN_INTERVAL = 20;  // seconds between passes
+const TRAIN_INTERVAL = 20;
 let trainX = TRAIN_START_X;
-let trainTimer = TRAIN_INTERVAL * 0.7;  // first pass comes sooner
+let trainTimer = TRAIN_INTERVAL * 0.7;
 trainGroup.position.set(trainX, TRACK_Y, TRACK_Z);
 scene.add(trainGroup);
 
@@ -1227,6 +1321,21 @@ function checkSubwayCollisions(pos, r = 0.38) {
     for (const bx of bbs) {
         if (pos.x >= bx - 0.7 - r && pos.x <= bx + 0.7 + r &&
             pos.z >= 4.0 - 0.225 - r && pos.z <= 4.0 + 0.225 + r) {
+            return true;
+        }
+    }
+    const benches = [
+        { x: -10, z: 6.5 },
+        { x: -4, z: 6.5 },
+        { x: 4, z: 6.5 },
+        { x: 10, z: 6.5 },
+        { x: -6, z: -1.5 },
+        { x: 0, z: -1.5 },
+        { x: 6, z: -1.5 }
+    ];
+    for (const b of benches) {
+        if (pos.x >= b.x - 1.3 - r && pos.x <= b.x + 1.3 + r &&
+            pos.z >= b.z - 0.45 - r && pos.z <= b.z + 0.45 + r) {
             return true;
         }
     }
@@ -1508,13 +1617,44 @@ window.addEventListener('keydown', e => {
                     }
                 });
                 if (closestBench) {
-                    localP.isSitting = true;
-                    localP.vx = 0;
-                    localP.vz = 0;
-                    localP.yVelocity = 0;
-                    localP.isJumping = false;
-                    localP.mesh.position.set(closestBench.x, floorY + 0.5, closestBench.z);
-                    localP.mesh.rotation.set(0, 0, 0);
+                    let sitCount = 0;
+                    players.forEach(other => {
+                        if (other.isSitting && other.mesh) {
+                            const dx = other.mesh.position.x - closestBench.x;
+                            const dz = other.mesh.position.z - closestBench.z;
+                            if (Math.abs(dx) < 1.4 && Math.abs(dz) < 0.1) {
+                                sitCount++;
+                            }
+                        }
+                    });
+                    if (sitCount < 3) {
+                        localP.isSitting = true;
+                        localP.vx = 0;
+                        localP.vz = 0;
+                        localP.yVelocity = 0;
+                        localP.isJumping = false;
+                        
+                        const offsets = [0, -0.8, 0.8];
+                        let chosenOffset = 0;
+                        for (const offset of offsets) {
+                            let occupied = false;
+                            players.forEach(other => {
+                                if (other.isSitting && other.mesh) {
+                                    const otherDx = other.mesh.position.x - (closestBench.x + offset);
+                                    const otherDz = other.mesh.position.z - closestBench.z;
+                                    if (Math.abs(otherDx) < 0.2 && Math.abs(otherDz) < 0.1) {
+                                        occupied = true;
+                                    }
+                                }
+                            });
+                            if (!occupied) {
+                                chosenOffset = offset;
+                                break;
+                            }
+                        }
+                        localP.mesh.position.set(closestBench.x + chosenOffset, floorY + 0.5, closestBench.z);
+                        localP.mesh.rotation.set(0, 0, 0);
+                    }
                 }
             }
         }
