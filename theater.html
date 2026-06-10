@@ -917,20 +917,36 @@
         screenTexture.magFilter = THREE.LinearFilter;
         screenTexture.format = THREE.RGBFormat;
 
-        const screenW = 20;
-        let screenH = 11;
-        let screenGeo = new THREE.PlaneGeometry(screenW, screenH);
+        const containerW = 20;
+        const containerH = 11.25;
+        const containerY = floorY + ROOM_H * 0.5 + 0.5;
+
+        const backingGeo = new THREE.PlaneGeometry(containerW, containerH);
+        const backingMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+        const backingMesh = new THREE.Mesh(backingGeo, backingMat);
+        backingMesh.position.set(0, containerY, -ROOM_D / 2 + 0.55);
+        scene.add(backingMesh);
+
+        const screenGeo = new THREE.PlaneGeometry(containerW, containerH);
         const screenMat = new THREE.MeshBasicMaterial({ map: screenTexture, transparent: false }); 
         const screenMesh = new THREE.Mesh(screenGeo, screenMat);
-        screenMesh.position.set(0, floorY + ROOM_H * 0.5 + 0.5, -ROOM_D / 2 + 0.6);
+        screenMesh.position.set(0, containerY, -ROOM_D / 2 + 0.57);
         scene.add(screenMesh);
 
         videoElement.addEventListener('loadedmetadata', () => {
             const aspect = videoElement.videoWidth / videoElement.videoHeight;
-            const newH = screenW / aspect;
+            const containerAspect = containerW / containerH;
+            let finalW, finalH;
+            if (aspect > containerAspect) {
+                finalW = containerW;
+                finalH = containerW / aspect;
+            } else {
+                finalH = containerH;
+                finalW = containerH * aspect;
+            }
             screenMesh.geometry.dispose();
-            screenMesh.geometry = new THREE.PlaneGeometry(screenW, newH);
-            screenMesh.position.y = floorY + (ROOM_H * 0.5) + (newH / 22 * 0.5); // Adjust Y based on height
+            screenMesh.geometry = new THREE.PlaneGeometry(finalW, finalH);
+            screenMesh.position.set(0, containerY, -ROOM_D / 2 + 0.57);
         });
 
         const reactionParticles = [];
@@ -993,45 +1009,43 @@
         const seatSpots = [];
 
         const rows = 8;
-        const cols = 14;
-        const spacingX = 1.4;
         const spacingZ = 1.8;
+        const seatSpacing = 0.8;
 
-        function createChair(x, z, idx) {
+        function createChair(x, z, idx, isStart, isEnd) {
             const group = new THREE.Group();
             
-            // Seat — 0.5x original size
-            const seat = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.25, 0.65), chairMat);
+            const seat = new THREE.Mesh(new THREE.BoxGeometry(seatSpacing - 0.05, 0.25, 0.65), chairMat);
             seat.position.y = 0.275;
             seat.castShadow = true;
             group.add(seat);
 
-            // Reclined back
-            const back = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, 0.2), chairMat);
+            const back = new THREE.Mesh(new THREE.BoxGeometry(seatSpacing - 0.05, 0.7, 0.2), chairMat);
             back.position.set(0, 0.6, 0.3);
             back.rotation.x = -0.15;
             back.castShadow = true;
             group.add(back);
 
-            // Headrest
-            const headrest = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.25, 0.2), chairMat);
+            const headrest = new THREE.Mesh(new THREE.BoxGeometry(seatSpacing - 0.25, 0.25, 0.2), chairMat);
             headrest.position.set(0, 1.0, 0.35);
             headrest.rotation.x = -0.15;
             headrest.castShadow = true;
             group.add(headrest);
 
-            // Arm rests
-            const armGeo = new THREE.BoxGeometry(0.1, 0.1, 0.55);
-            const arm1 = new THREE.Mesh(armGeo, chairMat);
-            arm1.position.set(-0.4, 0.45, 0.05);
-            group.add(arm1);
-            const arm2 = new THREE.Mesh(armGeo, chairMat);
-            arm2.position.set(0.4, 0.45, 0.05);
-            group.add(arm2);
+            const armGeo = new THREE.BoxGeometry(0.08, 0.1, 0.55);
+            
+            const armLeft = new THREE.Mesh(armGeo, chairMat);
+            armLeft.position.set(-seatSpacing / 2, 0.45, 0.05);
+            group.add(armLeft);
+            
+            if (isEnd) {
+                const armRight = new THREE.Mesh(armGeo, chairMat);
+                armRight.position.set(seatSpacing / 2, 0.45, 0.05);
+                group.add(armRight);
+            }
 
-            // Legs
             const legGeo = new THREE.BoxGeometry(0.08, 0.25, 0.08);
-            [-0.3, 0.3].forEach(lx => {
+            [-0.25, 0.25].forEach(lx => {
                 [-0.22, 0.22].forEach(lz => {
                     const leg = new THREE.Mesh(legGeo, chairMat);
                     leg.position.set(lx, 0.125, lz);
@@ -1047,11 +1061,22 @@
 
         for (let r = 0; r < rows; r++) {
             const z = (ROOM_D / 2 - 8) - (r * spacingZ);
-            for (let c = 0; c < cols; c++) {
-                const x = ((c - (cols - 1) / 2) * spacingX);
-                if (Math.abs(x) < 1.2) continue;
-                createChair(x, z, seatSpots.length);
+            
+            const leftSeats = [];
+            for (let x = -ROOM_W / 2 + 2.0; x <= -1.6; x += seatSpacing) {
+                leftSeats.push(x);
             }
+            leftSeats.forEach((x, i) => {
+                createChair(x, z, seatSpots.length, i === 0, i === leftSeats.length - 1);
+            });
+
+            const rightSeats = [];
+            for (let x = 1.6; x <= ROOM_W / 2 - 2.0; x += seatSpacing) {
+                rightSeats.push(x);
+            }
+            rightSeats.forEach((x, i) => {
+                createChair(x, z, seatSpots.length, i === 0, i === rightSeats.length - 1);
+            });
         }
 
         function toggleSitLocalPlayer() {
@@ -1089,9 +1114,9 @@
         // Screen border frame (black)
         const frameMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
         const frameBorder = 0.4;
-        const frameGeo = new THREE.BoxGeometry(screenW + frameBorder * 2, screenH + frameBorder * 2, 0.1);
+        const frameGeo = new THREE.BoxGeometry(containerW + frameBorder * 2, containerH + frameBorder * 2, 0.1);
         const frameMesh = new THREE.Mesh(frameGeo, frameMat);
-        frameMesh.position.set(0, floorY + ROOM_H * 0.5 + 0.5, -ROOM_D / 2 + 0.45);
+        frameMesh.position.set(0, containerY, -ROOM_D / 2 + 0.45);
         scene.add(frameMesh);
 
         // Projector (Interaction Point at the back)
@@ -1591,6 +1616,10 @@
                     cameraFocusTarget.copy(localP.mesh.position);
                     controls.target.lerp(cameraFocusTarget, 0.2);
                     controls.update();
+                    const camPad = 0.4;
+                    camera.position.x = THREE.MathUtils.clamp(camera.position.x, -ROOM_W / 2 + camPad, ROOM_W / 2 - camPad);
+                    camera.position.z = THREE.MathUtils.clamp(camera.position.z, -ROOM_D / 2 + camPad, ROOM_D / 2 - camPad);
+                    camera.position.y = THREE.MathUtils.clamp(camera.position.y, floorY + camPad, floorY + ROOM_H - camPad);
                 }
             }
 
