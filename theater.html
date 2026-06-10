@@ -491,51 +491,6 @@
             }
         }, 2000);
 
-        const movieLookupOverlay = document.getElementById('movie-lookup-overlay');
-        const movieSearchInput = document.getElementById('movie-search-input');
-        const movieResultsGrid = document.getElementById('movie-results-grid');
-
-        async function searchMovies(query) {
-            const data = await themoviedb('search/movie', { query, language: 'en-US' });
-            movieResultsGrid.innerHTML = '';
-            if (!data || !data.results) {
-                addChatMessageToLog(null, "Search failed or returned no results.", true);
-                return;
-            }
-            data.results.forEach(movie => {
-                if (!movie.poster_path) return;
-                const div = document.createElement('div');
-                div.className = 'movie-item';
-                div.innerHTML = `
-                    <img src="https://image.tmdb.org/t/p/w200${movie.poster_path}" />
-                    <div class="movie-item-title">${movie.title}</div>
-                `;
-                div.onclick = () => {
-                    updateMovieScreen(movie.id);
-                    closeMovieLookup();
-                };
-                movieResultsGrid.appendChild(div);
-            });
-        }
-
-        function openMovieLookup() {
-            movieLookupOverlay.classList.remove('hidden');
-            movieSearchInput.focus();
-            isCustomizing = true;
-            if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
-        }
-
-        function closeMovieLookup() {
-            movieLookupOverlay.classList.add('hidden');
-            isCustomizing = false;
-            if (isFirstPerson) renderer.domElement.requestPointerLock();
-        }
-
-        movieSearchInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') searchMovies(movieSearchInput.value);
-        });
-        document.getElementById('close-lookup-btn').onclick = closeMovieLookup;
-
         function addChatMessageToLog(name, text, isSystem = false) {
             const logList = document.getElementById('chat-log-list');
             if (!logList) return;
@@ -761,10 +716,9 @@
         window.addEventListener('keydown', (e) => {
             const key = e.key.toLowerCase();
             if (key === 'escape') { 
-                if (!movieLookupOverlay.classList.contains('hidden')) { closeMovieLookup(); return; }
                 togglePause(); return; 
             }
-            if (isCustomizing && movieLookupOverlay.classList.contains('hidden')) return;
+            if (isCustomizing) return;
             if (document.activeElement.tagName === 'INPUT') return;
 
             const p = players[localPlayerId - 1];
