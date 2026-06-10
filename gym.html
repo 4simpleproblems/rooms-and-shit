@@ -242,6 +242,7 @@
         const ROOFTOP_D = 25;
         const CHARACTER_SCALE = 2.0;
         const floorY = 0;
+        const colliders = [];
 
         // Materials
         const concreteMat = new THREE.MeshStandardMaterial({ color: 0x4a4a4a, roughness: 0.9, metalness: 0.1 });
@@ -668,7 +669,7 @@
 
         loadModels();
 
-        const colliders = [];
+
         function checkEnvironmentCollision(pos) {
             const r = 0.38;
             if (pos.x < -ROOFTOP_W/2 + r || pos.x > ROOFTOP_W/2 - r || pos.z < -ROOFTOP_D/2 + r || pos.z > ROOFTOP_D/2 - r) return true;
