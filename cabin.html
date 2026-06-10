@@ -166,45 +166,63 @@
         const loader = new THREE.GLTFLoader();
 
         // --- Lighting ---
-        const ambientLight = new THREE.AmbientLight(0x101020, 0.4);
+        const ambientLight = new THREE.AmbientLight(0x101020, 0.5);
         scene.add(ambientLight);
 
         // Fireplace Light (Warm)
-        const fireLight = new THREE.PointLight(0xff4400, 2.0, 15);
-        fireLight.position.set(-7, 2, -7);
+        const fireLight = new THREE.PointLight(0xff6600, 2.5, 12);
+        fireLight.position.set(-5, 1.5, -5);
         fireLight.castShadow = true;
         scene.add(fireLight);
 
         // Outside Storm Light (Cold)
-        const stormLight = new THREE.PointLight(0x4466ff, 1.5, 20);
-        stormLight.position.set(0, 5, 12);
+        const stormLight = new THREE.PointLight(0x4466ff, 0.8, 15);
+        stormLight.position.set(0, 4, 8);
         scene.add(stormLight);
+
+        // --- Snow Storm Sound ---
+        const listener = new THREE.AudioListener();
+        camera.add(listener);
+        const stormSound = new THREE.Audio(listener);
+        const audioLoader = new THREE.AudioLoader();
+        audioLoader.load('https://www.soundjay.com/nature/sounds/wind-howl-01.mp3', function(buffer) {
+            stormSound.setBuffer(buffer);
+            stormSound.setLoop(true);
+            stormSound.setVolume(0.5);
+        });
 
         // --- Cabin Environment ---
         const logMat = new THREE.MeshStandardMaterial({ color: 0x3d2b1f, roughness: 0.9 });
         const floorMat = new THREE.MeshStandardMaterial({ color: 0x2b1d12, roughness: 0.8 });
         const brickMat = new THREE.MeshStandardMaterial({ color: 0x6e261d, roughness: 1.0 });
+        const rugMat = new THREE.MeshStandardMaterial({ color: 0x882222, roughness: 1.0 });
+        const couchMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.9 });
+        const tableMat = new THREE.MeshStandardMaterial({ color: 0x4d3319, roughness: 0.7 });
 
-        // Floor
-        const floor = new THREE.Mesh(new THREE.BoxGeometry(20, 0.5, 20), floorMat);
+        // Floor (Smaller 15x15)
+        const floor = new THREE.Mesh(new THREE.BoxGeometry(15, 0.5, 15), floorMat);
         floor.receiveShadow = true;
         scene.add(floor);
 
-        // Walls (Simple Logs)
+        // Rug
+        const rug = new THREE.Mesh(new THREE.BoxGeometry(8, 0.1, 6), rugMat);
+        rug.position.set(0, 0.3, 0);
+        rug.receiveShadow = true;
+        scene.add(rug);
+
+        // Walls
         function createLogWall(x, z, rotY, hasWindow = false) {
             const group = new THREE.Group();
             for (let i = 0; i < 10; i++) {
                 if (hasWindow && i > 2 && i < 8) {
-                    // Left segment
-                    const l1 = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 6), logMat);
-                    l1.rotation.z = Math.PI / 2; l1.position.set(-7, i * 0.8, 0); group.add(l1);
-                    // Right segment
-                    const l2 = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 6), logMat);
-                    l2.rotation.z = Math.PI / 2; l2.position.set(7, i * 0.8, 0); group.add(l2);
+                    const l1 = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 5), logMat);
+                    l1.rotation.z = Math.PI / 2; l1.position.set(-5, i * 0.6, 0); group.add(l1);
+                    const l2 = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 5), logMat);
+                    l2.rotation.z = Math.PI / 2; l2.position.set(5, i * 0.6, 0); group.add(l2);
                 } else {
-                    const log = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 20), logMat);
+                    const log = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 15), logMat);
                     log.rotation.z = Math.PI / 2;
-                    log.position.y = i * 0.8;
+                    log.position.y = i * 0.6;
                     group.add(log);
                 }
             }
@@ -213,35 +231,84 @@
             scene.add(group);
         }
 
-        createLogWall(0, -10, 0); // Back
-        createLogWall(-10, 0, Math.PI / 2); // Left
-        createLogWall(10, 0, Math.PI / 2); // Right
-        createLogWall(0, 10, 0, true); // Front with huge window
+        createLogWall(0, -7.5, 0); // Back
+        createLogWall(-7.5, 0, Math.PI / 2); // Left
+        createLogWall(7.5, 0, Math.PI / 2); // Right
+        createLogWall(0, 7.5, 0, true); // Front window
 
-        // Fireplace
+        // Remade Fireplace
         const fireplace = new THREE.Group();
-        const mantel = new THREE.Mesh(new THREE.BoxGeometry(4, 5, 2), brickMat);
-        mantel.position.set(-8, 2.5, -8);
+        const mantel = new THREE.Mesh(new THREE.BoxGeometry(3, 4, 1.5), brickMat);
+        mantel.position.set(-6, 2, -6);
         fireplace.add(mantel);
-        const hearth = new THREE.Mesh(new THREE.BoxGeometry(3, 1.5, 1.5), new THREE.MeshStandardMaterial({color: 0x111111}));
-        hearth.position.set(-8, 0.75, -7.5);
-        fireplace.add(hearth);
+        const hole = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.8, 1), new THREE.MeshBasicMaterial({color: 0x000000}));
+        hole.position.set(-6, 1.2, -5.3);
+        fireplace.add(hole);
+        
+        // Flames
+        const flameGeo = new THREE.ConeGeometry(0.4, 0.8, 8);
+        const flameMat = new THREE.MeshBasicMaterial({color: 0xffaa00});
+        const flames = new THREE.Group();
+        for(let i=0; i<3; i++) {
+            const f = new THREE.Mesh(flameGeo, flameMat);
+            f.position.set(-6 + (i-1)*0.3, 0.8, -5.5);
+            flames.add(f);
+        }
+        fireplace.add(flames);
         scene.add(fireplace);
 
-        // --- Snow Particle System ---
-        const snowCount = 2000;
+        // Furniture
+        function createCouch(x, z, rotY) {
+            const group = new THREE.Group();
+            const base = new THREE.Mesh(new THREE.BoxGeometry(4, 1, 1.8), couchMat);
+            base.position.y = 0.5;
+            const back = new THREE.Mesh(new THREE.BoxGeometry(4, 1.5, 0.5), couchMat);
+            back.position.set(0, 1.25, -0.65);
+            const armL = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.8, 1.8), couchMat);
+            armL.position.set(-1.75, 0.9, 0);
+            const armR = armL.clone(); armR.position.x = 1.75;
+            group.add(base, back, armL, armR);
+            group.position.set(x, 0.25, z);
+            group.rotation.y = rotY;
+            scene.add(group);
+        }
+        createCouch(0, -5, 0); 
+
+        function createBeanBag(x, z, color) {
+            const bb = new THREE.Mesh(new THREE.SphereGeometry(0.8, 12, 8), new THREE.MeshStandardMaterial({color, roughness: 1.0}));
+            bb.scale.y = 0.6;
+            bb.position.set(x, 0.6, z);
+            scene.add(bb);
+        }
+        createBeanBag(4, -4, 0x224488);
+        createBeanBag(-4, 4, 0x884422);
+
+        function createSideTable(x, z) {
+            const group = new THREE.Group();
+            const top = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.1, 1.2), tableMat);
+            const leg = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.8, 0.1), tableMat);
+            leg.position.y = -0.45;
+            group.add(top, leg);
+            group.position.set(x, 0.8, z);
+            scene.add(group);
+        }
+        createSideTable(2.5, -5);
+
+        // --- Snow Particle System (Blowing Parallel) ---
+        const snowCount = 3000;
         const snowGeo = new THREE.BufferGeometry();
         const snowPos = new Float32Array(snowCount * 3);
         const snowVel = [];
 
         for(let i = 0; i < snowCount; i++) {
-            snowPos[i*3] = (Math.random() - 0.5) * 40;
-            snowPos[i*3+1] = Math.random() * 20;
-            snowPos[i*3+2] = 10 + Math.random() * 20;
-            snowVel.push({ x: (Math.random()-0.5)*0.2, y: -0.05 - Math.random()*0.1, z: -0.1 - Math.random()*0.2 });
+            snowPos[i*3] = (Math.random() - 0.5) * 50; // X (Across window)
+            snowPos[i*3+1] = Math.random() * 20;      // Y
+            snowPos[i*3+2] = 8 + Math.random() * 10;   // Z (Outside window)
+            // Fast lateral velocity
+            snowVel.push({ x: -1.5 - Math.random() * 2.0, y: -0.1 - Math.random() * 0.1, z: 0 });
         }
         snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPos, 3));
-        const snowMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.1, transparent: true, opacity: 0.8 });
+        const snowMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.1, transparent: true, opacity: 0.6 });
         const snowParticles = new THREE.Points(snowGeo, snowMat);
         scene.add(snowParticles);
 
@@ -313,16 +380,19 @@
             const delta = clock.getDelta();
             
             // Fireplace Flicker
-            fireLight.intensity = 1.5 + Math.random() * 1.0;
+            fireLight.intensity = 2.0 + Math.random() * 1.0;
+            flames.children.forEach(f => {
+                f.scale.y = 0.8 + Math.random() * 0.4;
+                f.position.y = 0.8 + (f.scale.y - 1) * 0.4;
+            });
 
             // Snow Update
             const positions = snowParticles.geometry.attributes.position.array;
             for(let i = 0; i < snowCount; i++) {
                 positions[i*3] += snowVel[i].x;
                 positions[i*3+1] += snowVel[i].y;
-                positions[i*3+2] += snowVel[i].z;
+                if (positions[i*3] < -25) positions[i*3] = 25;
                 if (positions[i*3+1] < 0) positions[i*3+1] = 20;
-                if (positions[i*3+2] < 5) positions[i*3+2] = 30;
             }
             snowParticles.geometry.attributes.position.needsUpdate = true;
 
@@ -349,7 +419,7 @@
                 const nextPos = p.mesh.position.clone().addScaledVector(moveDir, speed * delta);
                 
                 // Simple Cabin Bounds
-                if (Math.abs(nextPos.x) < 9.2 && Math.abs(nextPos.z) < 9.2) {
+                if (Math.abs(nextPos.x) < 6.8 && Math.abs(nextPos.z) < 6.8) {
                     p.mesh.position.copy(nextPos);
                 }
 
@@ -444,6 +514,11 @@
             players[0].color = document.querySelector('.color-btn.active').dataset.color;
             updatePlayerVisuals(players[0]);
             document.getElementById('customization-overlay').classList.add('hidden');
+            
+            // Start audio on first interaction
+            if (stormSound.buffer) {
+                stormSound.play();
+            }
         });
 
         document.querySelectorAll('.color-btn').forEach(btn => {
