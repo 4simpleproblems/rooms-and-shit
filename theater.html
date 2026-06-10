@@ -42,20 +42,23 @@
     <script src="/VORA/VERN_SYSTEM/baremux/index.js"></script>
     <script>
         let bareInitialized = false;
-        window.checkBare = async () => {
+        window.checkBare = async (retry = 0) => {
             if (bareInitialized) return;
             const workerPath = "/VORA/VERN_SYSTEM/baremux/worker.js";
-            const connection = new BareMux.BareMuxConnection(workerPath);
-            const wispUrl = "wss://wisp.mercurywork.shop/";
-            const transportPath = "/VORA/VERN_SYSTEM/libcurl/index.mjs";
             try {
+                const connection = new BareMux.BareMuxConnection(workerPath);
+                const wispUrl = "wss://wisp.mercurywork.shop/";
+                const transportPath = "/VORA/VERN_SYSTEM/libcurl/index.mjs";
                 await connection.setTransport(transportPath, [
                     { websocket: wispUrl },
                     { websocket: "wss://ruby.rubynetwork.xyz/wisp/" }
                 ]);
                 bareInitialized = true;
                 console.log("BareMux Initialized");
-            } catch (e) { console.error("BareMux Init Failed", e); }
+            } catch (e) { 
+                console.error(`BareMux Init Failed (Attempt ${retry + 1}):`, e);
+                if (retry < 3) setTimeout(() => window.checkBare(retry + 1), 1000);
+            }
         };
         (async () => {
             if ("serviceWorker" in navigator) {
@@ -64,6 +67,21 @@
                         scope: "/"
                     });
                     console.log("ServiceWorker registered");
+
+                    // Wait for ServiceWorker to be active
+                    if (!navigator.serviceWorker.controller) {
+                        await new Promise(resolve => {
+                            const handler = () => {
+                                if (navigator.serviceWorker.controller) {
+                                    navigator.serviceWorker.removeEventListener('controllerchange', handler);
+                                    resolve();
+                                }
+                            };
+                            navigator.serviceWorker.addEventListener('controllerchange', handler);
+                            // Fallback timeout
+                            setTimeout(resolve, 2000);
+                        });
+                    }
                     
                     // Signal BareMux to the SW
                     await window.checkBare();
@@ -1036,7 +1054,9 @@
 
         function animate() {
             requestAnimationFrame(animate);
-            if (screenTexture) screenTexture.needsUpdate = true;
+            if (screenTexture && videoElement.readyState >= 2) {
+                screenTexture.needsUpdate = true;
+            }
             const delta = Math.min(clock.getDelta(), 0.05);
 
             for (const p of players) {
