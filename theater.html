@@ -15,7 +15,8 @@
             },
             decode(str) {
                 if (!str) return str;
-                return decodeURIComponent(str).split('').map((char, ind) => ind % 2 ? String.fromCharCode(char.charCodeAt(0) ^ 2) : char).join('');
+                let [input, ...search] = str.split('?');
+                return decodeURIComponent(input).split('').map((char, ind) => ind % 2 ? String.fromCharCode(char.charCodeAt(0) ^ 2) : char).join('') + (search.length ? '?' + search.join('?') : '');
             }
         };
         function initUVConfig() {
@@ -640,8 +641,15 @@
         }
 
         function handlePlayError() {
+            if (!videoElement.src && !hls) return;
             addChatMessageToLog(null, "Click anywhere to start playback.", true);
-            const starter = () => { videoElement.play(); window.removeEventListener('click', starter); };
+            const starter = () => {
+                if (videoElement.src || hls) {
+                    videoElement.play().catch(e => console.warn("Retry play failed:", e));
+                }
+                window.removeEventListener('click', starter);
+            };
+            window.removeEventListener('click', starter);
             window.addEventListener('click', starter);
         }
 

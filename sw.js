@@ -19,7 +19,8 @@ const xor = {
     },
     decode(str) {
         if (!str) return str;
-        return decodeURIComponent(str).split('').map((char, ind) => ind % 2 ? String.fromCharCode(char.charCodeAt(0) ^ 2) : char).join('');
+        let [input, ...search] = str.split('?');
+        return decodeURIComponent(input).split('').map((char, ind) => ind % 2 ? String.fromCharCode(char.charCodeAt(0) ^ 2) : char).join('') + (search.length ? '?' + search.join('?') : '');
     }
 };
 
