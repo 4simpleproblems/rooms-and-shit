@@ -742,7 +742,13 @@ stripeTexture.wrapS = THREE.RepeatWrapping;
 stripeTexture.wrapT = THREE.RepeatWrapping;
 stripeTexture.repeat.set(30, 1);
 stripeTexture.anisotropy = renderer.capabilities.getMaxAnisotropy() || 4;
-const stripeMat = new THREE.MeshStandardMaterial({ map: stripeTexture, roughness: 0.8 });
+const stripeMat = new THREE.MeshStandardMaterial({
+    map: stripeTexture,
+    roughness: 0.8,
+    polygonOffset: true,
+    polygonOffsetFactor: -3,
+    polygonOffsetUnits: -3
+});
 
 const floorMesh = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.3, ROOM_D), new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.5 }));
 floorMesh.position.set(0, floorY - 0.15, 0);
@@ -912,10 +918,8 @@ function createBench(x, z) {
     g.position.set(x, floorY, z);
     scene.add(g);
 }
-[-10, -4, 4, 10].forEach(x => createBench(x, ROOM_D/2 - 2.5));
-[-6, 0, 6].forEach(x => createBench(x, -1.5));
-
-
+[-10, -4, 4, 10].forEach(x => createBench(x, 6.5));
+[-13.7, 13.7].forEach(x => createBench(x, 0.0));
 
 function createBoombox(x, z, rotY = 0) {
     const g = new THREE.Group();
@@ -924,17 +928,17 @@ function createBoombox(x, z, rotY = 0) {
     const accentMat = new THREE.MeshStandardMaterial({ color: 0xfcfcfc, roughness: 0.15, metalness: 0.95 });
     
     const body = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.55, 0.45), bodyMat);
-    body.position.y = 0.5;
+    body.position.y = 0.275;
     g.add(body);
     
     const spkRingL = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.08, 16), accentMat);
     spkRingL.rotation.x = Math.PI/2;
-    spkRingL.position.set(-0.45, 0.5, 0.23);
+    spkRingL.position.set(-0.45, 0.275, 0.23);
     g.add(spkRingL);
     
     const spkConeL = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.082, 16), speakerMat);
     spkConeL.rotation.x = Math.PI/2;
-    spkConeL.position.set(-0.45, 0.5, 0.231);
+    spkConeL.position.set(-0.45, 0.275, 0.231);
     g.add(spkConeL);
     
     const spkRingR = spkRingL.clone();
@@ -947,11 +951,11 @@ function createBoombox(x, z, rotY = 0) {
     
     const defaultArtworkMat = new THREE.MeshBasicMaterial({ color: 0x222222 });
     const artworkMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.35, 0.35), defaultArtworkMat);
-    artworkMesh.position.set(0, 0.5, 0.23);
+    artworkMesh.position.set(0, 0.275, 0.23);
     g.add(artworkMesh);
     
     const ant = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.5, 0.04), bodyMat);
-    ant.position.set(-0.6, 1.0, 0);
+    ant.position.set(-0.6, 0.775, 0);
     ant.rotation.z = -0.2;
     g.add(ant);
     
@@ -961,11 +965,11 @@ function createBoombox(x, z, rotY = 0) {
     g.add(ant2);
     
     const strip = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.06, 0.06), accentMat);
-    strip.position.set(0, 0.35, 0.23);
+    strip.position.set(0, 0.125, 0.23);
     g.add(strip);
     
     const handle = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.08, 0.08), bodyMat);
-    handle.position.set(0, 0.82, 0);
+    handle.position.set(0, 0.595, 0);
     g.add(handle);
     
     g.position.set(x, floorY, z);
@@ -1331,9 +1335,8 @@ function checkSubwayCollisions(pos, r = 0.38) {
         { x: -4, z: 6.5 },
         { x: 4, z: 6.5 },
         { x: 10, z: 6.5 },
-        { x: -6, z: -1.5 },
-        { x: 0, z: -1.5 },
-        { x: 6, z: -1.5 }
+        { x: -13.7, z: 0.0 },
+        { x: 13.7, z: 0.0 }
     ];
     for (const b of benches) {
         if (pos.x >= b.x - 1.3 - r && pos.x <= b.x + 1.3 + r &&
@@ -1484,9 +1487,8 @@ function animate() {
                 { x: -4, z: 6.5 },
                 { x: 4, z: 6.5 },
                 { x: 10, z: 6.5 },
-                { x: -6, z: -1.5 },
-                { x: 0, z: -1.5 },
-                { x: 6, z: -1.5 }
+                { x: -13.7, z: 0.0 },
+                { x: 13.7, z: 0.0 }
             ];
             benches.forEach(bench => {
                 const dx = localP.mesh.position.x - bench.x;
@@ -1603,9 +1605,8 @@ window.addEventListener('keydown', e => {
                     { x: -4, z: 6.5 },
                     { x: 4, z: 6.5 },
                     { x: 10, z: 6.5 },
-                    { x: -6, z: -1.5 },
-                    { x: 0, z: -1.5 },
-                    { x: 6, z: -1.5 }
+                    { x: -13.7, z: 0.0 },
+                    { x: 13.7, z: 0.0 }
                 ];
                 let closestBench = null;
                 let minBenchDist = Infinity;
