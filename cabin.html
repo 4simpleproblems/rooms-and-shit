@@ -1339,25 +1339,67 @@
 
         let isReadingBook = false;
         let bookCurrentPage = 1;
+        let pdfDoc = null;
+        let pdfLoading = false;
 
-        function openBookReader() {
+        const pdfjsLib = window['pdfjs-dist/build/pdf'];
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+        async function openBookReader() {
             if (document.pointerLockElement) {
                 document.exitPointerLock();
             }
             isReadingBook = true;
             isCustomizing = true;
-            const savedPage = localStorage.getItem('gatsby_bookmark_page');
-            const targetPage = savedPage ? parseInt(savedPage) : 1;
-            const iframe = document.getElementById('book-iframe');
-            const targetUrl = `book/thegreatgatsby.pdf#toolbar=0&navpanes=0&page=${targetPage}`;
-            if (!iframe.src || iframe.src.indexOf('thegreatgatsby.pdf') === -1) {
-                bookCurrentPage = targetPage;
-                document.getElementById('book-page-input').value = bookCurrentPage;
-                iframe.src = targetUrl;
-            } else if (bookCurrentPage !== targetPage) {
-                changeBookPage(targetPage);
-            }
             document.getElementById('book-overlay').classList.remove('hidden');
+            
+            if (!pdfDoc && !pdfLoading) {
+                pdfLoading = true;
+                document.getElementById('book-loading').classList.remove('hidden');
+                try {
+                    pdfDoc = await pdfjsLib.getDocument('book/thegreatgatsby.pdf').promise;
+                    document.getElementById('book-total-pages').innerText = pdfDoc.numPages;
+                    const savedPage = localStorage.getItem('gatsby_bookmark_page');
+                    bookCurrentPage = savedPage ? parseInt(savedPage) : 1;
+                    if (bookCurrentPage % 2 === 0) bookCurrentPage--; // Start on odd page for two-page spread
+                } catch (e) {
+                    console.error("PDF load error:", e);
+                    addSystemMessage("Failed to load book PDF.");
+                }
+                document.getElementById('book-loading').classList.add('hidden');
+                pdfLoading = false;
+            }
+            
+            if (pdfDoc) renderBookPages();
+        }
+
+        async function renderBookPages() {
+            if (!pdfDoc) return;
+            document.getElementById('book-page-display').innerText = `${bookCurrentPage}-${Math.min(bookCurrentPage + 1, pdfDoc.numPages)}`;
+            
+            renderSinglePage(bookCurrentPage, 'book-canvas-left');
+            if (bookCurrentPage + 1 <= pdfDoc.numPages) {
+                document.getElementById('book-canvas-right').style.display = 'block';
+                renderSinglePage(bookCurrentPage + 1, 'book-canvas-right');
+            } else {
+                document.getElementById('book-canvas-right').style.display = 'none';
+            }
+        }
+
+        async function renderSinglePage(num, canvasId) {
+            const page = await pdfDoc.getPage(num);
+            const canvas = document.getElementById(canvasId);
+            const context = canvas.getContext('2d');
+            
+            const viewport = page.getViewport({ scale: 1.5 });
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+
+            const renderContext = {
+                canvasContext: context,
+                viewport: viewport
+            };
+            await page.render(renderContext).promise;
         }
 
         function closeBookReader() {
@@ -1367,25 +1409,27 @@
             document.getElementById('book-overlay').classList.add('hidden');
         }
 
-        function changeBookPage(page) {
-            let p = parseInt(page);
-            if (isNaN(p) || p < 1) p = 1;
-            if (p > 1000) p = 1000;
-            bookCurrentPage = p;
-            document.getElementById('book-page-input').value = bookCurrentPage;
-            const iframe = document.getElementById('book-iframe');
-            const targetUrl = `book/thegreatgatsby.pdf#toolbar=0&navpanes=0&page=${bookCurrentPage}`;
-            if (iframe && iframe.contentWindow) {
-                try {
-                    iframe.contentWindow.location.replace(targetUrl);
-                } catch (e) {
-                    iframe.src = targetUrl;
-                }
-            } else if (iframe) {
-                iframe.src = targetUrl;
-            }
+        function changeBookPage(delta) {
+            if (!pdfDoc) return;
+            let newPage = bookCurrentPage + delta;
+            if (newPage < 1) newPage = 1;
+            if (newPage > pdfDoc.numPages) return;
+            
+            bookCurrentPage = newPage;
+            if (bookCurrentPage > 1 && bookCurrentPage % 2 === 0 && delta > 0) bookCurrentPage++; 
+            if (bookCurrentPage > 1 && bookCurrentPage % 2 === 0 && delta < 0) bookCurrentPage--;
+            
+            renderBookPages();
             localStorage.setItem('gatsby_bookmark_page', bookCurrentPage);
         }
+
+        document.getElementById('book-prev-btn').addEventListener('click', () => changeBookPage(-2));
+        document.getElementById('book-next-btn').addEventListener('click', () => changeBookPage(2));
+        document.getElementById('book-close-btn').addEventListener('click', closeBookReader);
+        document.getElementById('book-bookmark-btn').addEventListener('click', () => {
+            localStorage.setItem('gatsby_bookmark_page', bookCurrentPage);
+            addSystemMessage(`Bookmarked page ${bookCurrentPage}!`);
+        });
 
         let isFirstPerson = false, fpYaw = Math.PI, fpPitch = 0;
         let isCustomizing = true, isPaused = false, isSitting = false;
@@ -1757,9 +1801,9 @@
         function spawnEmbersFlurry() {
             embers.forEach(ember => {
                 ember.position.set(
-                    0 + (Math.random() - 0.5) * 0.4,
+                    -3.6 + (Math.random() - 0.5) * 0.2,
                     0.4 + Math.random() * 0.1,
-                    -3.6 + (Math.random() - 0.5) * 0.2
+                    0 + (Math.random() - 0.5) * 0.4
                 );
                 ember.userData.vy = 1.2 + Math.random() * 1.6;
                 ember.userData.vx = (Math.random() - 0.5) * 0.8;
@@ -2016,28 +2060,6 @@
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
-
-        document.getElementById('book-prev-btn').addEventListener('click', () => changeBookPage(bookCurrentPage - 1));
-        document.getElementById('book-next-btn').addEventListener('click', () => changeBookPage(bookCurrentPage + 1));
-        document.getElementById('book-page-input').addEventListener('change', (e) => changeBookPage(e.target.value));
-        document.getElementById('book-page-input').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                changeBookPage(e.target.value);
-                e.target.blur();
-            }
-        });
-        
-        const bookmarkBtn = document.getElementById('book-bookmark-btn');
-        bookmarkBtn.addEventListener('click', () => {
-            localStorage.setItem('gatsby_bookmark_page', bookCurrentPage);
-            bookmarkBtn.innerHTML = '<i class="fa-solid fa-check"></i> Bookmarked!';
-            setTimeout(() => {
-                bookmarkBtn.innerHTML = '<i class="fa-solid fa-bookmark"></i> Bookmark';
-            }, 1500);
-            addSystemMessage(`Saved bookmark at Page ${bookCurrentPage}`);
-        });
-        
-        document.getElementById('book-close-btn').addEventListener('click', closeBookReader);
 
         loadModels();
     </script>
