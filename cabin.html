@@ -602,7 +602,7 @@
         audioLoader.load('https://archive.org/download/SSE_Library_WIND/DESIGNED/WINDDsgn_Blizzard%20wind%20cold%3B%20canvas%20wind%20machine_CS_USC.mp3', function(buffer) {
             stormSound.setBuffer(buffer);
             stormSound.setLoop(true);
-            stormSound.setVolume(0.08);
+            stormSound.setVolume(0.20);
         });
 
         const colliders = [];
@@ -1199,7 +1199,7 @@
         lanternGroup.add(chain);
         lanternGroup.position.set(0, 1.95, 0);
         scene.add(lanternGroup);
-        const lanternLight = new THREE.PointLight(0xffddaa, 0.8, 6);
+        const lanternLight = new THREE.PointLight(0xffddaa, 3.5, 15);
         lanternLight.position.set(0, 1.95, 0);
         lanternLight.castShadow = true;
         scene.add(lanternLight);
@@ -1243,20 +1243,14 @@
         snowGround.receiveShadow = true;
         scene.add(snowGround);
 
-        const snowCount = 1200;
+        const snowCount = 8000;
         const snowGeo = new THREE.BufferGeometry();
         const snowPos = new Float32Array(snowCount * 3);
         const snowVel = [];
         for (let i = 0; i < snowCount; i++) {
-            let sx, sy, sz;
-            if (Math.random() < 0.5) {
-                sx = -10 + Math.random() * 7;
-                sz = -10 + Math.random() * 20;
-            } else {
-                sx = -10 + Math.random() * 20;
-                sz = 3 + Math.random() * 7;
-            }
-            sy = Math.random() * 8;
+            let sx = -12 + Math.random() * 24;
+            let sz = -12 + Math.random() * 24;
+            let sy = Math.random() * 8;
             snowPos[i * 3] = sx;
             snowPos[i * 3 + 1] = sy;
             snowPos[i * 3 + 2] = sz;
@@ -1269,6 +1263,7 @@
         snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPos, 3));
         const snowParticlesMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.05, transparent: true, opacity: 0.6 });
         const snowParticles = new THREE.Points(snowGeo, snowParticlesMat);
+        snowParticles.frustumCulled = false;
         scene.add(snowParticles);
 
         const notes = [];
@@ -1535,14 +1530,9 @@
                     }
                 }
 
-                if (positions[i * 3 + 1] < 0 || positions[i * 3] < -10) {
-                    if (Math.random() < 0.5) {
-                        positions[i * 3] = -10 + Math.random() * 7;
-                        positions[i * 3 + 2] = -10 + Math.random() * 20;
-                    } else {
-                        positions[i * 3] = -10 + Math.random() * 20;
-                        positions[i * 3 + 2] = 3 + Math.random() * 7;
-                    }
+                if (positions[i * 3 + 1] < 0 || positions[i * 3] < -12) {
+                    positions[i * 3] = -12 + Math.random() * 24;
+                    positions[i * 3 + 2] = -12 + Math.random() * 24;
                     positions[i * 3 + 1] = 8;
                 }
             }
@@ -1959,7 +1949,7 @@
                 if (radioAudio) radioAudio.volume = 0;
                 document.getElementById('mute-btn').innerHTML = '<i class="fa-solid fa-volume-xmark"></i>';
             } else {
-                stormSound.setVolume(0.08);
+                stormSound.setVolume(0.20);
                 audioMuted = false;
                 if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
                 if (radioAudio) radioAudio.volume = 0.3;
