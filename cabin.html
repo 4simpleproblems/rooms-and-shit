@@ -799,8 +799,8 @@
         fMantel.castShadow = true;
         fireGroup.add(fMantel);
 
-        const fBack = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.6, 0.1), darkBackMat);
-        fBack.position.set(0, 0.95, -0.22);
+        const fBack = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.0, 0.15), brickMat);
+        fBack.position.set(0, 1.0, -0.25);
         fireGroup.add(fBack);
 
         const woodLogMat = new THREE.MeshStandardMaterial({ color: 0x281810, roughness: 0.9 });
