@@ -530,7 +530,7 @@
             <div class="control-row"><span>Squat</span><span class="control-key">Q</span></div>
             <div class="control-row"><span>Interact / Sit</span><span class="control-key">E</span></div>
             <div class="control-row"><span>Cam Mode</span><span class="control-key">V</span></div>
-            <div class="control-row"><span>Emotes</span><span class="control-key">1–6</span></div>
+            <div class="control-row"><span>Emotes</span><span class="control-key">1–5</span></div>
             <div class="control-row"><span>Pause</span><span class="control-key">Esc</span></div>
         </div>
 
@@ -848,63 +848,76 @@
         }
 
         const couchGroup = new THREE.Group();
-        const couchC = 0x2e4235;
-        const pillowC = 0xebdcb9;
-        const woodC = 0x3d2b1f;
-        const couchMat = new THREE.MeshStandardMaterial({ color: couchC, roughness: 0.8 });
-        const pillowMat = new THREE.MeshStandardMaterial({ color: pillowC, roughness: 0.9 });
-        const legMat = new THREE.MeshStandardMaterial({ color: woodC, roughness: 0.7 });
+        const couchFabricMat = new THREE.MeshStandardMaterial({ color: 0x2c3e35, roughness: 0.95, metalness: 0.0 });
+        const couchFabricLightMat = new THREE.MeshStandardMaterial({ color: 0x3a5244, roughness: 0.95, metalness: 0.0 });
+        const couchWoodMat = new THREE.MeshStandardMaterial({ color: 0x2a1a0e, roughness: 0.6, metalness: 0.0 });
+        const throwPillowMatA = new THREE.MeshStandardMaterial({ color: 0xd4a96a, roughness: 0.9 });
+        const throwPillowMatB = new THREE.MeshStandardMaterial({ color: 0x8b3a3a, roughness: 0.9 });
 
-        const cBase = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.3, 0.9), couchMat);
-        cBase.position.y = 0.35;
-        cBase.castShadow = true;
-        cBase.receiveShadow = true;
-        couchGroup.add(cBase);
+        const cSeat = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.22, 1.0), couchFabricMat);
+        cSeat.position.set(0, 0.37, 0);
+        cSeat.castShadow = true; cSeat.receiveShadow = true;
+        couchGroup.add(cSeat);
 
         for (let i = -1; i <= 1; i++) {
-            const cush = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.15, 0.8), couchMat);
-            cush.position.set(i * 0.7, 0.5, 0.02);
+            const cush = new THREE.Mesh(new THREE.BoxGeometry(0.74, 0.20, 0.88), couchFabricLightMat);
+            cush.position.set(i * 0.78, 0.52, 0.03);
             cush.castShadow = true;
-            cush.receiveShadow = true;
             couchGroup.add(cush);
+            const seam = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.02, 0.86), couchFabricMat);
+            seam.position.set(i * 0.78, 0.62, 0.03);
+            couchGroup.add(seam);
         }
-        const cBack = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.7, 0.2), couchMat);
-        cBack.position.set(0, 0.8, -0.35);
+
+        const cBack = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.72, 0.24), couchFabricMat);
+        cBack.position.set(0, 0.84, -0.40);
         cBack.castShadow = true;
         couchGroup.add(cBack);
 
-        const cArmL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.55, 0.9), couchMat);
-        cArmL.position.set(-1.1, 0.6, 0);
-        cArmL.castShadow = true;
-        const cArmR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.55, 0.9), couchMat);
-        cArmR.position.set(1.1, 0.6, 0);
-        cArmR.castShadow = true;
-        couchGroup.add(cArmL, cArmR);
+        const cHeadRoll = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.085, 2.26, 12), couchFabricLightMat);
+        cHeadRoll.rotation.z = Math.PI / 2;
+        cHeadRoll.position.set(0, 1.22, -0.38);
+        cHeadRoll.castShadow = true;
+        couchGroup.add(cHeadRoll);
 
-        for (let x = -1; x <= 1; x += 2) {
-            for (let z = -1; z <= 1; z += 2) {
-                const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.25, 0.08), legMat);
-                leg.position.set(x * 1.0, 0.125, z * 0.38);
-                leg.castShadow = true;
-                couchGroup.add(leg);
-            }
+        for (let side = -1; side <= 1; side += 2) {
+            const armBase = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.58, 1.0), couchFabricMat);
+            armBase.position.set(side * 1.18, 0.58, 0);
+            armBase.castShadow = true;
+            couchGroup.add(armBase);
+            const armCap = new THREE.Mesh(new THREE.BoxGeometry(0.30, 0.10, 1.06), couchFabricLightMat);
+            armCap.position.set(side * 1.18, 0.91, 0);
+            armCap.castShadow = true;
+            couchGroup.add(armCap);
         }
-        const pillow1 = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 0.15), pillowMat);
-        pillow1.position.set(-0.85, 0.65, 0.2);
-        pillow1.rotation.y = 0.3;
-        pillow1.rotation.z = 0.2;
-        const pillow2 = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 0.15), pillowMat);
-        pillow2.position.set(0.85, 0.65, 0.2);
-        pillow2.rotation.y = -0.3;
-        pillow2.rotation.z = -0.2;
-        couchGroup.add(pillow1, pillow2);
+
+        const legPositions = [[-1.05, -0.42], [-1.05, 0.42], [1.05, -0.42], [1.05, 0.42]];
+        legPositions.forEach(([lx, lz]) => {
+            const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.03, 0.26, 8), couchWoodMat);
+            leg.position.set(lx, 0.13, lz);
+            leg.castShadow = true;
+            couchGroup.add(leg);
+        });
+
+        const pA = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.38, 0.12), throwPillowMatA);
+        pA.position.set(-0.88, 0.78, -0.20);
+        pA.rotation.set(0.0, 0.25, 0.12);
+        couchGroup.add(pA);
+        const pB = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.36, 0.12), throwPillowMatB);
+        pB.position.set(0.88, 0.78, -0.20);
+        pB.rotation.set(0.0, -0.25, -0.10);
+        couchGroup.add(pB);
+        const pC = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.32, 0.10), throwPillowMatA);
+        pC.position.set(0.30, 0.74, -0.15);
+        pC.rotation.set(0.0, 0.15, 0.08);
+        couchGroup.add(pC);
 
         couchGroup.position.set(0, 0, -1.8);
         scene.add(couchGroup);
-        colliders.push({ x: 0, z: -1.8, w: 2.4, d: 1.1 });
-        seatSpots.push({ x: -0.6, z: -1.8, y: 0.38, type: 'Couch', rotY: 0 });
-        seatSpots.push({ x: 0, z: -1.8, y: 0.38, type: 'Couch', rotY: 0 });
-        seatSpots.push({ x: 0.6, z: -1.8, y: 0.38, type: 'Couch', rotY: 0 });
+        colliders.push({ x: 0, z: -1.8, w: 2.6, d: 1.2 });
+        seatSpots.push({ x: -0.76, z: -1.8, y: 0.52, type: 'Couch', rotY: 0 });
+        seatSpots.push({ x: 0, z: -1.8, y: 0.52, type: 'Couch', rotY: 0 });
+        seatSpots.push({ x: 0.76, z: -1.8, y: 0.52, type: 'Couch', rotY: 0 });
 
         function createBeanBag(x, z, color) {
             const bb = new THREE.Mesh(new THREE.SphereGeometry(0.62, 14, 10), new THREE.MeshStandardMaterial({ color, roughness: 1.0 }));
@@ -983,9 +996,9 @@
         bookGroup.position.set(0.25, 0.49, 0.1);
         bookGroup.rotation.y = 0.4;
         tableGroup.add(bookGroup);
-        tableGroup.position.set(0, 0, -0.8);
+        tableGroup.position.set(0, 0, 0.3);
         scene.add(tableGroup);
-        interactions.push({ x: 0.25, z: -0.7, type: 'Book', range: 1.0 });
+        interactions.push({ x: 0.25, z: 0.4, type: 'Book', range: 1.2 });
 
         const sideTableGroup = new THREE.Group();
         const sTop = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.5), tableTopMat);
@@ -1692,13 +1705,12 @@
                 isSitting = false;
                 p.mesh.position.y = 0;
                 if (p.currentSeatType === 'Couch') {
-                    p.mesh.position.z = -1.0;
+                    p.mesh.position.set(p.mesh.position.x, 0, -0.7);
                 } else if (p.currentSeatType === 'BeanBag') {
-                    if (p.mesh.position.x > 0) {
-                        p.mesh.position.x = 1.25;
-                    } else {
-                        p.mesh.position.x = -1.25;
-                    }
+                    const bx = p.mesh.position.x;
+                    const bz = p.mesh.position.z;
+                    const stepDir = bx > 0 ? 1 : -1;
+                    p.mesh.position.set(bx + stepDir * 1.1, 0, bz);
                 }
                 showSpeechBubble("Back on my feet.");
             } else {
@@ -1870,7 +1882,7 @@
                     toggleSit();
                 }
             }
-            const emoteMap = { '1': ['pushup', '💪 Pushup!'], '2': ['situp', '🔥 Situp!'], '3': ['jumpingjack', '⭐ Jumping Jacks!'], '4': ['plank', '😤 Planking...'], '5': ['highknees', '🏃 High Knees!'], '6': ['treadmill', '🚶 Treadmill!'] };
+            const emoteMap = { '1': ['pushup', '💪 Pushup!'], '2': ['situp', '🔥 Situp!'], '3': ['jumpingjack', '⭐ Jumping Jacks!'], '4': ['plank', '😤 Planking...'], '5': ['highknees', '🏃 High Knees!'] };
             if (emoteMap[k] && !isSitting) {
                 const [emoteName, emoteMsg] = emoteMap[k];
                 if (p.isEmoting && p.currentAnim === emoteName) {
