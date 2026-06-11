@@ -426,12 +426,13 @@
             border: 6px solid var(--black-outline);
             box-shadow: 10px 10px 0px var(--black-outline);
             padding: 16px;
-            width: 80vw;
-            height: 85vh;
+            width: 90vw;
+            height: 90vh;
             display: flex;
             flex-direction: column;
             gap: 12px;
             box-sizing: border-box;
+            position: relative;
         }
         .book-header {
             display: flex;
@@ -442,17 +443,41 @@
             color: #3d2b1f;
             border-bottom: 4px solid var(--black-outline);
             padding-bottom: 10px;
+            z-index: 10;
         }
         .book-controls {
             display: flex;
             align-items: center;
             gap: 10px;
         }
-        .book-iframe {
+        .book-content {
             width: 100%;
             flex-grow: 1;
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            background: #e6d5b8;
             border: 4px solid var(--black-outline);
-            background: #ffffff;
+            position: relative;
+        }
+        .book-page-canvas {
+            max-width: 48%;
+            max-height: 100%;
+            box-shadow: 4px 4px 15px rgba(0,0,0,0.2);
+            background: white;
+            border: 1px solid #ccc;
+        }
+        #book-loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Alfa Slab One', cursive;
+            color: var(--color-cabin-dark);
+            font-size: 1.5rem;
+            text-shadow: 2px 2px 0px white;
         }
     </style>
 </head>
@@ -495,13 +520,17 @@
                 <span>THE GREAT GATSBY</span>
                 <div class="book-controls">
                     <button id="book-prev-btn" class="ui-btn" style="padding: 4px 8px; font-size: 0.85rem;"><i class="fa-solid fa-chevron-left"></i></button>
-                    <span style="font-family: sans-serif; font-size: 0.95rem; font-weight: bold; color: #3d2b1f;">Page <input type="number" id="book-page-input" value="1" min="1" max="1000" style="width: 50px; text-align: center; border: 3px solid var(--black-outline); font-family: sans-serif; font-weight: bold; background: #fff; padding: 2px;" /></span>
+                    <span style="font-family: sans-serif; font-size: 0.95rem; font-weight: bold; color: #3d2b1f;">Pages <span id="book-page-display">1-2</span> / <span id="book-total-pages">?</span></span>
                     <button id="book-next-btn" class="ui-btn" style="padding: 4px 8px; font-size: 0.85rem;"><i class="fa-solid fa-chevron-right"></i></button>
                     <button id="book-bookmark-btn" class="ui-btn primary" style="padding: 4px 12px; font-size: 0.85rem;"><i class="fa-solid fa-bookmark"></i> Bookmark</button>
                 </div>
                 <button id="book-close-btn" class="ui-btn" style="padding: 4px 12px; font-size: 0.85rem;"><i class="fa-solid fa-xmark"></i> Close</button>
             </div>
-            <iframe id="book-iframe" class="book-iframe" src=""></iframe>
+            <div class="book-content" id="book-content">
+                <div id="book-loading" class="hidden">LOADING...</div>
+                <canvas id="book-canvas-left" class="book-page-canvas"></canvas>
+                <canvas id="book-canvas-right" class="book-page-canvas"></canvas>
+            </div>
         </div>
     </div>
 
@@ -547,6 +576,7 @@
     <div id="canvas-container"></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="character.js"></script>
@@ -1192,10 +1222,11 @@
         topLog.position.set(0, 0.2, 0);
         topLog.castShadow = true;
         logStack.add(topLog);
-        logStack.position.set(-2.4, 0, 3.0);
+        logStack.position.set(-3.0, 0, 1.2);
+        logStack.rotation.y = Math.PI / 2;
         scene.add(logStack);
-        interactions.push({ x: -2.4, z: 3.0, type: 'Logs', range: 0.8 });
-        colliders.push({ x: -2.4, z: 3.0, w: 0.7, d: 0.7 });
+        interactions.push({ x: -3.0, z: 1.2, type: 'Logs', range: 0.8 });
+        colliders.push({ x: -3.0, z: 1.2, w: 0.7, d: 0.7 });
 
         const lanternGroup = new THREE.Group();
         const glassGlowMat = new THREE.MeshBasicMaterial({ color: 0xffeedd });
@@ -2071,4 +2102,4 @@
 >/html>
 <!-- Made with ❤️ from 4SP -->>
 </html>
-<!-- Made with ❤️ from 4SP -->>
+<!-- Made with ❤️ from 4SP -->>>
