@@ -1742,6 +1742,9 @@
             } else {
                 if (p.mixer) p.mixer.update(delta);
                 playAnim(p, 'sit');
+                if (isFirstPerson && p.currentSeatType === 'BeanBag') {
+                    p.mesh.rotation.y = fpYaw + Math.PI;
+                }
             }
 
             if (targetCameraPos) {
