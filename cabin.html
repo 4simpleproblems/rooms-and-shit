@@ -951,7 +951,7 @@
         seatSpots.push({ x: 0, z: -2.6, y: 0.52, type: 'Couch', rotY: 0 });
         seatSpots.push({ x: 0.76, z: -2.6, y: 0.52, type: 'Couch', rotY: 0 });
 
-        function createBeanBag(x, z, color) {
+        function createBeanBag(x, z, color, rotY = 0) {
             const bb = new THREE.Mesh(new THREE.SphereGeometry(0.62, 14, 10), new THREE.MeshStandardMaterial({ color, roughness: 1.0 }));
             bb.scale.y = 0.52;
             bb.position.set(x, 0.2, z);
@@ -959,10 +959,10 @@
             bb.receiveShadow = true;
             scene.add(bb);
             colliders.push({ x, z, w: 1.24, d: 1.24 });
-            seatSpots.push({ x, z, y: 0.32, type: 'BeanBag' });
+            seatSpots.push({ x, z, y: 0.32, type: 'BeanBag', rotY });
         }
-        createBeanBag(2.2, -1.2, 0x224488);
-        createBeanBag(-2.4, 2.6, 0x884422);
+        createBeanBag(2.2, -1.2, 0x224488, -Math.PI / 4);
+        createBeanBag(-2.4, 2.6, 0x884422, Math.PI / 2);
 
         const tableGroup = new THREE.Group();
         const tableTopMat = new THREE.MeshStandardMaterial({ color: 0x5a3e2e, roughness: 0.6 });
