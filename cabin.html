@@ -680,16 +680,16 @@
         function createLogWall(x, z, rotY, hasWindow = false, isGable = false) {
             const group = new THREE.Group();
             const logSpacing = 0.15;
-            const logCount = isGable ? 32 : 15;
+            const logCount = isGable ? 35 : 18;
             const logRadius = 0.08;
             for (let i = 0; i < logCount; i++) {
                 let logW = 8.4;
                 const yVal = i * logSpacing;
-                if (isGable && yVal >= 2.25) {
-                    logW = 8.4 * (4.75 - yVal) / 2.5;
+                if (isGable && yVal >= 2.7) {
+                    logW = 8.4 * (5.2 - yVal) / 2.5;
                     if (logW < 0.1) continue;
                 }
-                if (hasWindow && i > 3 && i < 11) {
+                if (hasWindow && i > 4 && i < 13) {
                     const l1 = new THREE.Mesh(new THREE.CylinderGeometry(logRadius, logRadius, 2.6), logMat);
                     l1.rotation.z = Math.PI / 2;
                     l1.position.set(-2.9, yVal, 0);
@@ -715,21 +715,21 @@
                 const frameMat = new THREE.MeshStandardMaterial({ color: 0x22140a, roughness: 0.8 });
                 const fWidth = 3.2;
                 const fTop = new THREE.Mesh(new THREE.BoxGeometry(fWidth + 0.08, 0.08, 0.2), frameMat);
-                fTop.position.set(0, 10.5 * logSpacing, 0);
+                fTop.position.set(0, 12.5 * logSpacing, 0);
                 const fBot = new THREE.Mesh(new THREE.BoxGeometry(fWidth + 0.08, 0.08, 0.2), frameMat);
-                fBot.position.set(0, 3.5 * logSpacing, 0);
-                const fLeft = new THREE.Mesh(new THREE.BoxGeometry(0.08, 7 * logSpacing, 0.2), frameMat);
-                fLeft.position.set(-fWidth/2, 7.0 * logSpacing, 0);
-                const fRight = new THREE.Mesh(new THREE.BoxGeometry(0.08, 7 * logSpacing, 0.2), frameMat);
-                fRight.position.set(fWidth/2, 7.0 * logSpacing, 0);
-                const fDivV = new THREE.Mesh(new THREE.BoxGeometry(0.03, 7 * logSpacing, 0.15), frameMat);
-                fDivV.position.set(0, 7.0 * logSpacing, 0);
+                fBot.position.set(0, 4.5 * logSpacing, 0);
+                const fLeft = new THREE.Mesh(new THREE.BoxGeometry(0.08, 8 * logSpacing, 0.2), frameMat);
+                fLeft.position.set(-fWidth/2, 8.5 * logSpacing, 0);
+                const fRight = new THREE.Mesh(new THREE.BoxGeometry(0.08, 8 * logSpacing, 0.2), frameMat);
+                fRight.position.set(fWidth/2, 8.5 * logSpacing, 0);
+                const fDivV = new THREE.Mesh(new THREE.BoxGeometry(0.03, 8 * logSpacing, 0.15), frameMat);
+                fDivV.position.set(0, 8.5 * logSpacing, 0);
                 const fDivH = new THREE.Mesh(new THREE.BoxGeometry(fWidth, 0.03, 0.15), frameMat);
-                fDivH.position.set(0, 7.0 * logSpacing, 0);
+                fDivH.position.set(0, 8.5 * logSpacing, 0);
                 group.add(fTop, fBot, fLeft, fRight, fDivV, fDivH);
                 const glassMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.18, metalness: 0.9, roughness: 0.1, side: THREE.DoubleSide });
-                const glassPane = new THREE.Mesh(new THREE.PlaneGeometry(fWidth, 7 * logSpacing), glassMat);
-                glassPane.position.set(0, 7.0 * logSpacing, 0);
+                const glassPane = new THREE.Mesh(new THREE.PlaneGeometry(fWidth, 8 * logSpacing), glassMat);
+                glassPane.position.set(0, 8.5 * logSpacing, 0);
                 group.add(glassPane);
             }
             group.position.set(x, 0, z);
@@ -738,8 +738,8 @@
         }
 
         createLogWall(0, -4, 0, false, true);
-        createLogWall(-4, 0, Math.PI / 2, true, false);
-        createLogWall(4, 0, Math.PI / 2, false, false);
+        createLogWall(-4, 0, Math.PI / 2, false, false);
+        createLogWall(4, 0, Math.PI / 2, true, false);
         createLogWall(0, 4, 0, true, true);
 
         const roofGroup = new THREE.Group();
@@ -747,17 +747,17 @@
         const beamMat = new THREE.MeshStandardMaterial({ color: 0x3d2b1f, roughness: 0.9 });
         const roofSideA = new THREE.Mesh(new THREE.BoxGeometry(5.6, 0.2, 8.2), roofMat);
         roofSideA.rotation.z = 0.7;
-        roofSideA.position.set(-1.75, 3.25, 0);
+        roofSideA.position.set(-1.75, 3.75, 0);
         roofSideA.castShadow = true;
         roofSideA.receiveShadow = true;
         const roofSideB = new THREE.Mesh(new THREE.BoxGeometry(5.6, 0.2, 8.2), roofMat);
         roofSideB.rotation.z = -0.7;
-        roofSideB.position.set(1.75, 3.25, 0);
+        roofSideB.position.set(1.75, 3.75, 0);
         roofSideB.castShadow = true;
         roofSideB.receiveShadow = true;
         const ridgeBeam = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 8.2, 8), beamMat);
         ridgeBeam.rotation.x = Math.PI / 2;
-        ridgeBeam.position.set(0, 4.68, 0);
+        ridgeBeam.position.set(0, 5.18, 0);
         ridgeBeam.castShadow = true;
         roofGroup.add(roofSideA, roofSideB, ridgeBeam);
         scene.add(roofGroup);
@@ -765,7 +765,7 @@
         const beamsGroup = new THREE.Group();
         for (let z = -3; z <= 3; z += 2) {
             const beam = new THREE.Mesh(new THREE.BoxGeometry(8.2, 0.25, 0.18), beamMat);
-            beam.position.set(0, 2.55, z);
+            beam.position.set(0, 3.0, z);
             beam.castShadow = true;
             beamsGroup.add(beam);
         }
@@ -1245,11 +1245,11 @@
             }
         }
         
-        logRackGroup.position.set(3.6, 0, 1.2);
-        logRackGroup.rotation.y = -Math.PI / 2;
+        logRackGroup.position.set(-3.4, 0, 1.0);
+        logRackGroup.rotation.y = Math.PI / 2;
         scene.add(logRackGroup);
-        interactions.push({ x: 3.6, z: 1.2, type: 'Logs', range: 0.9 });
-        colliders.push({ x: 3.6, z: 1.2, w: 0.8, d: 0.8 });
+        interactions.push({ x: -3.4, z: 1.0, type: 'Logs', range: 0.9 });
+        colliders.push({ x: -3.4, z: 1.0, w: 0.8, d: 0.8 });
 
         const lanternGroup = new THREE.Group();
         const glassGlowMat = new THREE.MeshBasicMaterial({ color: 0xffeedd });
@@ -2128,4 +2128,4 @@
 >/html>
 <!-- Made with ❤️ from 4SP -->>
 </html>
-<!-- Made with ❤️ from 4SP -->>>
+<!-- Made with ❤️ from 4SP -->>>>
