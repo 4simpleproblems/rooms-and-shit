@@ -862,7 +862,8 @@
         <button id="mobile-menu-btn" class="ui-btn primary"><i class="fa-solid fa-comments"></i> Menu</button>
     </div>
 
-    <div id="cam-indicator">🚇 THIRD PERSON — Press V/C for First Person</div>
+    <div id="cam-mode-indicator">📽 THIRD PERSON — Press C for First Person</div>
+
 
     <div id="chat-log-panel">
         <ul id="chat-list"></ul>
@@ -2352,14 +2353,13 @@ window.addEventListener('keyup', e => {
     const p = players[localPlayerId - 1];
     if (!p) return;
     const k = e.key.toLowerCase();
-    if (k === 'w' || k === 'arrowup') p.keys.up = false;
-    else if (k === 's' || k === 'arrowdown') p.keys.down = false;
-    else if (k === 'a' || k === 'arrowleft') p.keys.left = false;
-    else if (k === 'd' || k === 'arrowright') p.keys.right = false;
+    if (k === 'w' || k === 'arrowup' || e.code === 'KeyW') p.keys.up = false;
+    else if (k === 's' || k === 'arrowdown' || e.code === 'KeyS') p.keys.down = false;
+    else if (k === 'a' || k === 'arrowleft' || e.code === 'KeyA') p.keys.left = false;
+    else if (k === 'd' || k === 'arrowright' || e.code === 'KeyD') p.keys.right = false;
     else if (k === ' ' || e.code === 'Space') p.keys.space = false;
     else if (k === 'shift') p.keys.shift = false;
 });
-
 // ── CAMERA MODE ──
 function toggleCamMode() {
     camMode = camMode === 0 ? 1 : 0;

@@ -1489,10 +1489,10 @@
             const p = players[localPlayerId - 1];
             if (!p) return;
             
-            if (key === 'arrowup' || key === 'w') p.keys.up = false;
-            else if (key === 'arrowdown' || key === 's') p.keys.down = false;
-            else if (key === 'arrowleft' || key === 'a') p.keys.left = false;
-            else if (key === 'arrowright' || key === 'd') p.keys.right = false;
+            if (key === 'arrowup' || key === 'w' || e.code === 'KeyW') p.keys.up = false;
+            else if (key === 'arrowdown' || key === 's' || e.code === 'KeyS') p.keys.down = false;
+            else if (key === 'arrowleft' || key === 'a' || e.code === 'KeyA') p.keys.left = false;
+            else if (key === 'arrowright' || key === 'd' || e.code === 'KeyD') p.keys.right = false;
             else if (key === ' ' || key === 'spacebar' || key === '\u00a0' || e.code === 'Space') p.keys.space = false;
             else if (key === 'shift' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') p.keys.shift = false;
         });

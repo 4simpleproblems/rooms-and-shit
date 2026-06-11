@@ -254,7 +254,7 @@
             <div class="control-row"><span>Move</span><span class="control-key">WASD</span></div>
             <div class="control-row"><span>Jump</span><span class="control-key">Space</span></div>
             <div class="control-row"><span>Workout</span><span class="control-key">E</span></div>
-            <div class="control-row"><span>Cam Mode</span><span class="control-key">V</span></div>
+            <div class="control-row"><span>Cam Mode</span><span class="control-key">C</span></div>
         </div>
 
         <div class="ui-panel chat-panel">
@@ -1187,10 +1187,10 @@
             if (document.activeElement.tagName === 'INPUT') return;
             const p = players[0];
             const k = e.key.toLowerCase();
-            if (k === 'w' || k === 'arrowup') p.keys.up = false;
-            if (k === 's' || k === 'arrowdown') p.keys.down = false;
-            if (k === 'a' || k === 'arrowleft') p.keys.left = false;
-            if (k === 'd' || k === 'arrowright') p.keys.right = false;
+            if (k === 'w' || k === 'arrowup' || e.code === 'KeyW') p.keys.up = false;
+            if (k === 's' || k === 'arrowdown' || e.code === 'KeyS') p.keys.down = false;
+            if (k === 'a' || k === 'arrowleft' || e.code === 'KeyA') p.keys.left = false;
+            if (k === 'd' || k === 'arrowright' || e.code === 'KeyD') p.keys.right = false;
             if (k === ' ') p.keys.space = false;
             if (!e.shiftKey) p.keys.shift = false;
         });
