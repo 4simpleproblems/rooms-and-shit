@@ -961,7 +961,7 @@
             seatSpots.push({ x, z, y: 0.32, type: 'BeanBag' });
         }
         createBeanBag(2.2, -1.2, 0x224488);
-        createBeanBag(-2.2, 1.6, 0x884422);
+        createBeanBag(-2.4, 2.6, 0x884422);
 
         const tableGroup = new THREE.Group();
         const tableTopMat = new THREE.MeshStandardMaterial({ color: 0x5a3e2e, roughness: 0.6 });
@@ -1142,9 +1142,9 @@
                 shelfGroup.add(book);
             }
         }
-        shelfGroup.position.set(-3.67, 0, 1.1);
+        shelfGroup.position.set(-3.67, 0, 2.6);
         scene.add(shelfGroup);
-        colliders.push({ x: -3.67, z: 1.1, w: 0.5, d: 1.3 });
+        colliders.push({ x: -3.67, z: 2.6, w: 0.5, d: 1.3 });
 
         const deskGroup = new THREE.Group();
         const deskWoodMat = new THREE.MeshStandardMaterial({ color: 0x5a3e2e, roughness: 0.6 });
@@ -1210,24 +1210,45 @@
         scene.add(deskGroup);
         colliders.push({ x: 3.0, z: 3.0, w: 1.3, d: 1.3, rotY: -Math.PI / 4 });
 
-        const logStack = new THREE.Group();
-        for (let i = 0; i < 3; i++) {
-            const log = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.6), logMat);
-            log.rotation.z = Math.PI / 2;
-            log.position.set(0, 0.08, i * 0.2 - 0.2);
-            log.castShadow = true;
-            logStack.add(log);
+        const logRackGroup = new THREE.Group();
+        const rackMetalMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8, roughness: 0.2 });
+        
+        // Vertical bars
+        for (let sideX of [-0.35, 0.35]) {
+            for (let sideZ of [-0.25, 0.25]) {
+                const bar = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.8, 0.04), rackMetalMat);
+                bar.position.set(sideX, 0.4, sideZ);
+                bar.castShadow = true;
+                logRackGroup.add(bar);
+            }
+            // Bottom connectors
+            const conn = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.54), rackMetalMat);
+            conn.position.set(sideX, 0.05, 0);
+            logRackGroup.add(conn);
         }
-        const topLog = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.6), logMat);
-        topLog.rotation.z = Math.PI / 2;
-        topLog.position.set(0, 0.2, 0);
-        topLog.castShadow = true;
-        logStack.add(topLog);
-        logStack.position.set(-3.0, 0, 1.2);
-        logStack.rotation.y = Math.PI / 2;
-        scene.add(logStack);
-        interactions.push({ x: -3.0, z: 1.2, type: 'Logs', range: 0.8 });
-        colliders.push({ x: -3.0, z: 1.2, w: 0.7, d: 0.7 });
+        // Horizontal connectors
+        for (let sideZ of [-0.25, 0.25]) {
+            const conn = new THREE.Mesh(new THREE.BoxGeometry(0.74, 0.04, 0.04), rackMetalMat);
+            conn.position.set(0, 0.05, sideZ);
+            logRackGroup.add(conn);
+        }
+
+        // Fill with logs
+        for (let row = 0; row < 4; row++) {
+            for (let col = -1; col <= 1; col++) {
+                const log = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.6), logMat);
+                log.rotation.z = Math.PI / 2;
+                log.position.set(0, 0.15 + row * 0.15, col * 0.18);
+                log.castShadow = true;
+                logRackGroup.add(log);
+            }
+        }
+        
+        logRackGroup.position.set(3.6, 0, 1.2);
+        logRackGroup.rotation.y = -Math.PI / 2;
+        scene.add(logRackGroup);
+        interactions.push({ x: 3.6, z: 1.2, type: 'Logs', range: 0.9 });
+        colliders.push({ x: 3.6, z: 1.2, w: 0.8, d: 0.8 });
 
         const lanternGroup = new THREE.Group();
         const glassGlowMat = new THREE.MeshBasicMaterial({ color: 0xffeedd });
@@ -1954,7 +1975,7 @@
                 document.getElementById('cam-mode-indicator').innerText = isFirstPerson ? "📽 FIRST PERSON — Press V for Third Person" : "📽 THIRD PERSON — Press V for First Person";
             }
             if (k === 'e') {
-                if (Math.hypot(p.mesh.position.x - (-3.0), p.mesh.position.z - 1.2) < 0.8) {
+                if (Math.hypot(p.mesh.position.x - 3.6, p.mesh.position.z - 1.2) < 0.9) {
                     fireBonusTime = 120;
                     spawnEmbersFlurry();
                     addSystemMessage("Added a log to the fireplace. Cozy!");
