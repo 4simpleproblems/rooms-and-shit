@@ -2120,6 +2120,12 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
+        renderer.domElement.addEventListener('click', () => {
+            if (isFirstPerson && !document.pointerLockElement && !isPaused && !isReadingBook) {
+                renderer.domElement.requestPointerLock();
+            }
+        });
+
         loadModels();
     </script>
 </body>
