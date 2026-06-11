@@ -690,15 +690,15 @@
                     if (logW < 0.1) continue;
                 }
                 if (hasWindow && i > 3 && i < 11) {
-                    const l1 = new THREE.Mesh(new THREE.CylinderGeometry(logRadius, logRadius, 2.8), logMat);
+                    const l1 = new THREE.Mesh(new THREE.CylinderGeometry(logRadius, logRadius, 2.6), logMat);
                     l1.rotation.z = Math.PI / 2;
-                    l1.position.set(-2.8, yVal, 0);
+                    l1.position.set(-2.9, yVal, 0);
                     l1.castShadow = true;
                     l1.receiveShadow = true;
                     group.add(l1);
-                    const l2 = new THREE.Mesh(new THREE.CylinderGeometry(logRadius, logRadius, 2.8), logMat);
+                    const l2 = new THREE.Mesh(new THREE.CylinderGeometry(logRadius, logRadius, 2.6), logMat);
                     l2.rotation.z = Math.PI / 2;
-                    l2.position.set(2.8, yVal, 0);
+                    l2.position.set(2.9, yVal, 0);
                     l2.castShadow = true;
                     l2.receiveShadow = true;
                     group.add(l2);
@@ -713,21 +713,22 @@
             }
             if (hasWindow) {
                 const frameMat = new THREE.MeshStandardMaterial({ color: 0x22140a, roughness: 0.8 });
-                const fTop = new THREE.Mesh(new THREE.BoxGeometry(2.08, 0.08, 0.2), frameMat);
+                const fWidth = 3.2;
+                const fTop = new THREE.Mesh(new THREE.BoxGeometry(fWidth + 0.08, 0.08, 0.2), frameMat);
                 fTop.position.set(0, 10.5 * logSpacing, 0);
-                const fBot = new THREE.Mesh(new THREE.BoxGeometry(2.08, 0.08, 0.2), frameMat);
+                const fBot = new THREE.Mesh(new THREE.BoxGeometry(fWidth + 0.08, 0.08, 0.2), frameMat);
                 fBot.position.set(0, 3.5 * logSpacing, 0);
                 const fLeft = new THREE.Mesh(new THREE.BoxGeometry(0.08, 7 * logSpacing, 0.2), frameMat);
-                fLeft.position.set(-1.0, 7.0 * logSpacing, 0);
+                fLeft.position.set(-fWidth/2, 7.0 * logSpacing, 0);
                 const fRight = new THREE.Mesh(new THREE.BoxGeometry(0.08, 7 * logSpacing, 0.2), frameMat);
-                fRight.position.set(1.0, 7.0 * logSpacing, 0);
+                fRight.position.set(fWidth/2, 7.0 * logSpacing, 0);
                 const fDivV = new THREE.Mesh(new THREE.BoxGeometry(0.03, 7 * logSpacing, 0.15), frameMat);
                 fDivV.position.set(0, 7.0 * logSpacing, 0);
-                const fDivH = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.03, 0.15), frameMat);
+                const fDivH = new THREE.Mesh(new THREE.BoxGeometry(fWidth, 0.03, 0.15), frameMat);
                 fDivH.position.set(0, 7.0 * logSpacing, 0);
                 group.add(fTop, fBot, fLeft, fRight, fDivV, fDivH);
                 const glassMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.18, metalness: 0.9, roughness: 0.1, side: THREE.DoubleSide });
-                const glassPane = new THREE.Mesh(new THREE.PlaneGeometry(2, 7 * logSpacing), glassMat);
+                const glassPane = new THREE.Mesh(new THREE.PlaneGeometry(fWidth, 7 * logSpacing), glassMat);
                 glassPane.position.set(0, 7.0 * logSpacing, 0);
                 group.add(glassPane);
             }
