@@ -525,9 +525,12 @@
                 <button id="controls-close-btn" class="controls-close-btn"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="control-row"><span>Move</span><span class="control-key">WASD</span></div>
+            <div class="control-row"><span>Sprint</span><span class="control-key">Shift</span></div>
             <div class="control-row"><span>Jump</span><span class="control-key">Space</span></div>
-            <div class="control-row"><span>Interact</span><span class="control-key">E</span></div>
+            <div class="control-row"><span>Squat</span><span class="control-key">Q</span></div>
+            <div class="control-row"><span>Interact / Sit</span><span class="control-key">E</span></div>
             <div class="control-row"><span>Cam Mode</span><span class="control-key">V</span></div>
+            <div class="control-row"><span>Emotes</span><span class="control-key">1–6</span></div>
             <div class="control-row"><span>Pause</span><span class="control-key">Esc</span></div>
         </div>
 
@@ -904,14 +907,14 @@
         seatSpots.push({ x: 0.6, z: -1.8, y: 0.38, type: 'Couch', rotY: 0 });
 
         function createBeanBag(x, z, color) {
-            const bb = new THREE.Mesh(new THREE.SphereGeometry(0.4, 12, 8), new THREE.MeshStandardMaterial({ color, roughness: 1.0 }));
-            bb.scale.y = 0.6;
-            bb.position.set(x, 0.15, z);
+            const bb = new THREE.Mesh(new THREE.SphereGeometry(0.62, 14, 10), new THREE.MeshStandardMaterial({ color, roughness: 1.0 }));
+            bb.scale.y = 0.52;
+            bb.position.set(x, 0.2, z);
             bb.castShadow = true;
             bb.receiveShadow = true;
             scene.add(bb);
-            colliders.push({ x, z, w: 0.8, d: 0.8 });
-            seatSpots.push({ x, z, y: 0.28, type: 'BeanBag' });
+            colliders.push({ x, z, w: 1.24, d: 1.24 });
+            seatSpots.push({ x, z, y: 0.32, type: 'BeanBag' });
         }
         createBeanBag(1.8, -0.8, 0x224488);
         createBeanBag(-1.8, 1.2, 0x884422);
@@ -1376,7 +1379,7 @@
         let chatLogTimeout = null;
 
         const players = [
-            { id: 1, name: 'Lumberjack', color: '#FF8C00', mesh: null, position: new THREE.Vector3(0, 0, 0), isJumping: false, yVelocity: 0, keys: { up: false, down: false, left: false, right: false, space: false, shift: false }, isCustomizing: true, chatText: null, chatTimeout: null }
+            { id: 1, name: 'Lumberjack', color: '#FF8C00', mesh: null, position: new THREE.Vector3(0, 0, 0), isJumping: false, yVelocity: 0, keys: { up: false, down: false, left: false, right: false, space: false, shift: false, squat: false }, isCustomizing: true, chatText: null, chatTimeout: null, isEmoting: false, emoteLocked: false }
         ];
 
         let charGltfMaster = null, animationsMaster = [];
@@ -1443,6 +1446,20 @@
             if (p.currentAnim && p.actions[p.currentAnim]) p.actions[p.currentAnim].fadeOut(0.25);
             p.actions[name].reset().fadeIn(0.25).play();
             p.currentAnim = name;
+        }
+
+        function playEmote(p, name, message) {
+            if (!p.actions || !p.actions[name]) return;
+            p.isEmoting = true;
+            p.emoteLocked = true;
+            playAnim(p, name);
+            showSpeechBubble(message);
+        }
+
+        function clearEmote(p) {
+            if (!p.isEmoting) return;
+            p.isEmoting = false;
+            p.emoteLocked = false;
         }
 
         function checkCollision(pos) {
@@ -1621,13 +1638,15 @@
                 }
                 if (p.mixer) {
                     p.mixer.update(delta);
-                    if (p.isJumping) playAnim(p, 'jump');
-                    else if (dx !== 0 || dz !== 0) playAnim(p, p.keys.shift ? 'sprint' : 'stomp');
+                    if (p.isJumping) { clearEmote(p); playAnim(p, 'jump'); }
+                    else if (dx !== 0 || dz !== 0) { clearEmote(p); playAnim(p, p.keys.shift ? 'sprint' : 'stomp'); }
+                    else if (p.keys.squat) playAnim(p, 'squat');
+                    else if (p.isEmoting) { }
                     else playAnim(p, 'idle');
                 }
             } else {
                 if (p.mixer) p.mixer.update(delta);
-                playAnim(p, 'idle');
+                playAnim(p, 'sit');
             }
 
             if (targetCameraPos) {
@@ -1830,6 +1849,7 @@
             if (k === 'd') p.keys.right = true;
             if (k === ' ') p.keys.space = true;
             if (e.shiftKey) p.keys.shift = true;
+            if (k === 'q') p.keys.squat = true;
             if (k === 'v') {
                 isFirstPerson = !isFirstPerson;
                 if (isFirstPerson) renderer.domElement.requestPointerLock(); else document.exitPointerLock();
@@ -1850,6 +1870,15 @@
                     toggleSit();
                 }
             }
+            const emoteMap = { '1': ['pushup', '💪 Pushup!'], '2': ['situp', '🔥 Situp!'], '3': ['jumpingjack', '⭐ Jumping Jacks!'], '4': ['plank', '😤 Planking...'], '5': ['highknees', '🏃 High Knees!'], '6': ['treadmill', '🚶 Treadmill!'] };
+            if (emoteMap[k] && !isSitting) {
+                const [emoteName, emoteMsg] = emoteMap[k];
+                if (p.isEmoting && p.currentAnim === emoteName) {
+                    clearEmote(p);
+                } else {
+                    playEmote(p, emoteName, emoteMsg);
+                }
+            }
             if (e.key === 'Escape') {
                 isPaused = !isPaused;
                 document.getElementById('pause-overlay').classList.toggle('hidden', !isPaused);
@@ -1865,6 +1894,7 @@
             if (k === 'd') p.keys.right = false;
             if (k === ' ') p.keys.space = false;
             if (!e.shiftKey) p.keys.shift = false;
+            if (k === 'q') p.keys.squat = false;
         });
 
         document.addEventListener('mousemove', e => {
